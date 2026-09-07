@@ -19,63 +19,46 @@ class NexivraLiveAvatar extends HTMLElement {
 
         this.attachShadow({ mode: "open" });
 
-        /*
-         * LiveAvatar
-         */
-
+        // LiveAvatar
         this._session = null;
         this._sessionToken = null;
         this._avatarStarted = false;
         this._attachTimer = null;
 
-        /*
-         * Learner session
-         */
-
+        // Learner session
         this._learnerSessionActive = false;
         this._cameraStream = null;
+        this._endingSession = false;
 
-        /*
-         * MediaPipe
-         */
-
+        // MediaPipe
         this._visionFileset = null;
         this._faceLandmarker = null;
         this._poseLandmarker = null;
         this._visualAnalysisTimer = null;
         this._visualAnalysisRunning = false;
 
-        /*
-         * Visual coaching metrics
-         */
-
-        this._visualMetrics = this.createEmptyVisualMetrics();
+        // Visual metrics
+        this._visualMetrics =
+            this.createEmptyVisualMetrics();
     }
 
 
     /*
      * =====================================================
-     * CUSTOM ELEMENT LIFECYCLE
+     * CUSTOM ELEMENT
      * =====================================================
      */
 
     connectedCallback() {
 
         this.render();
-
         this.bindControls();
 
         this._sessionToken =
             this.getAttribute("session-token");
 
-        this.setDebug(
-            "NEXIVRA CUSTOM ELEMENT READY"
-        );
-
         if (this._sessionToken) {
-
             this.startNexivra();
-
         }
     }
 
@@ -92,12 +75,11 @@ class NexivraLiveAvatar extends HTMLElement {
             newValue !== oldValue
         ) {
 
-            this._sessionToken = newValue;
+            this._sessionToken =
+                newValue;
 
             if (this.isConnected) {
-
                 this.startNexivra();
-
             }
         }
     }
@@ -137,10 +119,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 }
 
 
-                /*
-                 * NEXIVRA / Elenora
-                 */
-
                 #avatarVideo {
                     width: 100%;
                     height: 100%;
@@ -152,7 +130,7 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
                 /*
-                 * Learner camera
+                 * Learner self-view
                  */
 
                 .learner-preview {
@@ -196,64 +174,7 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
                 /*
-                 * Temporary visual developer panel.
-                 * We will hide/remove this in production.
-                 */
-
-                .visual-panel {
-                    position: absolute;
-                    top: 170px;
-                    right: 16px;
-                    width: 225px;
-                    background: rgba(0,0,0,.84);
-                    color: white;
-                    border: 1px solid rgba(255,255,255,.35);
-                    border-radius: 8px;
-                    padding: 10px;
-                    font-size: 11px;
-                    line-height: 1.45;
-                    display: none;
-                    z-index: 60;
-                }
-
-                .visual-panel.active {
-                    display: block;
-                }
-
-                .visual-title {
-                    font-weight: 700;
-                    font-size: 12px;
-                    margin-bottom: 7px;
-                }
-
-                .metric {
-                    display: flex;
-                    justify-content: space-between;
-                    gap: 8px;
-                }
-
-                .metric-value {
-                    font-weight: 600;
-                    text-align: right;
-                }
-
-
-                /*
-                 * Debug
-                 */
-
-                .debug {
-                    position: absolute;
-                    top: 8px;
-                    left: 8px;
-                    color: rgba(255,255,255,.45);
-                    font-size: 11px;
-                    z-index: 40;
-                }
-
-
-                /*
-                 * Controls
+                 * Learner controls
                  */
 
                 .controls {
@@ -330,11 +251,6 @@ class NexivraLiveAvatar extends HTMLElement {
                         height: 95px;
                     }
 
-                    .visual-panel {
-                        width: 180px;
-                        top: 125px;
-                    }
-
                     input {
                         flex-basis: 100%;
                     }
@@ -345,16 +261,12 @@ class NexivraLiveAvatar extends HTMLElement {
 
             <div class="wrap">
 
-                <!-- NEXIVRA -->
-
                 <video
                     id="avatarVideo"
                     autoplay
                     playsinline>
                 </video>
 
-
-                <!-- Learner camera -->
 
                 <div
                     class="learner-preview"
@@ -373,100 +285,6 @@ class NexivraLiveAvatar extends HTMLElement {
 
                 </div>
 
-
-                <!-- Temporary visual metrics -->
-
-                <div
-                    class="visual-panel"
-                    id="visualPanel">
-
-                    <div class="visual-title">
-                        Visual Coaching Data
-                    </div>
-
-                    <div class="metric">
-                        <span>Analysis:</span>
-                        <span
-                            class="metric-value"
-                            id="analysisStatus">
-                            Off
-                        </span>
-                    </div>
-
-                    <div class="metric">
-                        <span>Face detected:</span>
-                        <span
-                            class="metric-value"
-                            id="faceDetected">
-                            No
-                        </span>
-                    </div>
-
-                    <div class="metric">
-                        <span>Pose detected:</span>
-                        <span
-                            class="metric-value"
-                            id="poseDetected">
-                            No
-                        </span>
-                    </div>
-
-                    <div class="metric">
-                        <span>Head:</span>
-                        <span
-                            class="metric-value"
-                            id="headOrientation">
-                            Unknown
-                        </span>
-                    </div>
-
-                    <div class="metric">
-                        <span>Posture:</span>
-                        <span
-                            class="metric-value"
-                            id="posture">
-                            Unknown
-                        </span>
-                    </div>
-
-                    <div class="metric">
-                        <span>Facing forward:</span>
-                        <span
-                            class="metric-value"
-                            id="facingForward">
-                            0%
-                        </span>
-                    </div>
-
-                    <div class="metric">
-                        <span>In frame:</span>
-                        <span
-                            class="metric-value"
-                            id="inFrame">
-                            0%
-                        </span>
-                    </div>
-
-                    <div class="metric">
-                        <span>Look-away events:</span>
-                        <span
-                            class="metric-value"
-                            id="lookAwayEvents">
-                            0
-                        </span>
-                    </div>
-
-                </div>
-
-
-                <div
-                    class="debug"
-                    id="debug">
-                    NEXIVRA CUSTOM ELEMENT READY
-                </div>
-
-
-                <!-- Learner controls -->
 
                 <div class="controls">
 
@@ -490,7 +308,7 @@ class NexivraLiveAvatar extends HTMLElement {
                 <div
                     class="status"
                     id="status">
-                    Waiting for NEXIVRA...
+                    Connecting to NEXIVRA...
                 </div>
 
             </div>
@@ -533,9 +351,7 @@ class NexivraLiveAvatar extends HTMLElement {
             (event) => {
 
                 if (event.key === "Enter") {
-
                     this.sendMessage();
-
                 }
 
             }
@@ -556,31 +372,8 @@ class NexivraLiveAvatar extends HTMLElement {
             );
 
         if (status) {
-
             status.textContent =
                 message;
-
-        }
-    }
-
-
-    setDebug(message) {
-
-        console.log(
-            "NEXIVRA DEBUG:",
-            message
-        );
-
-        const debug =
-            this.shadowRoot.getElementById(
-                "debug"
-            );
-
-        if (debug) {
-
-            debug.textContent =
-                message;
-
         }
     }
 
@@ -597,27 +390,22 @@ class NexivraLiveAvatar extends HTMLElement {
             this._avatarStarted ||
             !this._sessionToken
         ) {
-
             return;
-
         }
+
 
         this._avatarStarted =
             true;
 
 
-        let stage =
-            "creating LiveAvatar session";
-
-
         try {
 
             this.setStatus(
-                "Creating LiveAvatar session..."
+                "Starting AI Hospitality Coach..."
             );
 
 
-            const newSession =
+            this._session =
                 new LiveAvatarSession(
                     this._sessionToken,
                     {
@@ -626,36 +414,11 @@ class NexivraLiveAvatar extends HTMLElement {
                 );
 
 
-            stage =
-                "storing LiveAvatar session";
-
-
-            this._session =
-                newSession;
-
-
-            stage =
-                "starting LiveAvatar session";
-
-
-            this.setStatus(
-                "Starting AI Hospitality Coach..."
-            );
-
-
             await this._session.start();
 
 
-            stage =
-                "waiting for avatar video";
-
-
-            this.setDebug(
-                "LiveAvatar session started."
-            );
-
-
             this.waitForVideo();
+
 
         } catch (error) {
 
@@ -665,24 +428,16 @@ class NexivraLiveAvatar extends HTMLElement {
 
             console.error(
                 "NEXIVRA SESSION ERROR:",
-                stage,
                 error
             );
 
 
             this.setStatus(
-                "ERROR AT " +
-                stage +
-                ": " +
+                "Unable to start NEXIVRA: " +
                 (
                     error?.message ||
                     String(error)
                 )
-            );
-
-
-            this.setDebug(
-                "NEXIVRA SESSION ERROR"
             );
         }
     }
@@ -696,17 +451,7 @@ class NexivraLiveAvatar extends HTMLElement {
             );
 
 
-        let attempts =
-            0;
-
-
-        if (this._attachTimer) {
-
-            clearInterval(
-                this._attachTimer
-            );
-
-        }
+        let attempts = 0;
 
 
         this._attachTimer =
@@ -739,32 +484,20 @@ class NexivraLiveAvatar extends HTMLElement {
                             null;
 
 
-                        this.setDebug(
-                            "NEXIVRA VIDEO CONNECTED"
-                        );
-
-
                         this.setStatus(
-                            "AI Hospitality Coach is ready. Click Start Session."
+                            "NEXIVRA is ready. Click Start Session."
                         );
 
 
                         video.play().catch(
-                            (error) => {
-
-                                console.warn(
-                                    "NEXIVRA VIDEO PLAYBACK WARNING:",
-                                    error
-                                );
-
-                            }
+                            () => {}
                         );
                     }
 
                 } catch (error) {
 
                     console.log(
-                        "NEXIVRA waiting for avatar stream..."
+                        "Waiting for NEXIVRA video..."
                     );
 
                 }
@@ -792,11 +525,18 @@ class NexivraLiveAvatar extends HTMLElement {
 
     /*
      * =====================================================
-     * ONE-CLICK LEARNER SESSION
+     * ONE-CLICK SESSION
      * =====================================================
      */
 
     async toggleLearnerSession() {
+
+        if (
+            this._endingSession
+        ) {
+            return;
+        }
+
 
         if (
             this._learnerSessionActive
@@ -829,16 +569,11 @@ class NexivraLiveAvatar extends HTMLElement {
                 "learnerPreview"
             );
 
-        const visualPanel =
-            this.shadowRoot.getElementById(
-                "visualPanel"
-            );
-
 
         if (!this._session) {
 
             this.setStatus(
-                "Please wait for NEXIVRA to finish connecting."
+                "Please wait for NEXIVRA to connect."
             );
 
             return;
@@ -856,19 +591,8 @@ class NexivraLiveAvatar extends HTMLElement {
             );
 
 
-            if (
-                !navigator.mediaDevices ||
-                !navigator.mediaDevices.getUserMedia
-            ) {
-
-                throw new Error(
-                    "This browser does not provide camera and microphone access."
-                );
-            }
-
-
             /*
-             * Ask for both permissions in ONE learner action.
+             * Request audio + video together.
              */
 
             const mediaStream =
@@ -893,10 +617,6 @@ class NexivraLiveAvatar extends HTMLElement {
                     });
 
 
-            /*
-             * Keep the camera stream.
-             */
-
             this._cameraStream =
                 mediaStream;
 
@@ -913,33 +633,21 @@ class NexivraLiveAvatar extends HTMLElement {
             );
 
 
-            visualPanel.classList.add(
-                "active"
-            );
-
-
             /*
-             * Browser permission for audio has now
-             * been established.
-             *
-             * LiveAvatar will manage its own microphone
-             * stream for voice chat, so stop only the
-             * temporary audio tracks from this stream.
+             * Browser audio permission is established.
+             * LiveAvatar uses its own mic stream.
              */
 
             mediaStream
                 .getAudioTracks()
                 .forEach(
-                    (track) => {
-
-                        track.stop();
-
-                    }
+                    (track) =>
+                        track.stop()
                 );
 
 
             /*
-             * Start visual coaching engine.
+             * Visual analysis
              */
 
             this.setStatus(
@@ -954,7 +662,7 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
             /*
-             * Start LiveAvatar voice conversation.
+             * Voice
              */
 
             this.setStatus(
@@ -966,10 +674,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 .voiceChat
                 .start();
 
-
-            /*
-             * Session is fully active.
-             */
 
             this._learnerSessionActive =
                 true;
@@ -988,24 +692,15 @@ class NexivraLiveAvatar extends HTMLElement {
             );
 
 
-            this.setDebug(
-                "NEXIVRA AUDIO + VISUAL ACTIVE"
-            );
-
-
             this.setStatus(
-                "Session active. NEXIVRA can hear and visually observe your practice."
+                "Session active."
             );
 
-
-            console.log(
-                "NEXIVRA learner session started."
-            );
 
         } catch (error) {
 
             console.error(
-                "NEXIVRA LEARNER SESSION ERROR:",
+                "NEXIVRA SESSION START ERROR:",
                 error
             );
 
@@ -1013,11 +708,6 @@ class NexivraLiveAvatar extends HTMLElement {
             sessionButton.disabled =
                 false;
 
-
-            /*
-             * Clean up partial camera connection
-             * if something failed.
-             */
 
             this.stopCameraOnly();
 
@@ -1033,7 +723,24 @@ class NexivraLiveAvatar extends HTMLElement {
     }
 
 
+    /*
+     * =====================================================
+     * AUTOMATIC INTEGRATED FEEDBACK
+     * =====================================================
+     */
+
     async endLearnerSession() {
+
+        if (
+            this._endingSession
+        ) {
+            return;
+        }
+
+
+        this._endingSession =
+            true;
+
 
         const sessionButton =
             this.shadowRoot.getElementById(
@@ -1045,41 +752,130 @@ class NexivraLiveAvatar extends HTMLElement {
             true;
 
 
-        /*
-         * Before shutting down the visual layer,
-         * create the final observation summary.
-         *
-         * For now we log it.
-         * Next step: automatically connect this
-         * to role-play feedback.
-         */
+        try {
 
-        if (
-            this._visualAnalysisRunning
-        ) {
+            /*
+             * Freeze visual measurements first.
+             */
 
-            const finalSummary =
+            this.stopVisualAnalysis();
+
+
+            const visualSummary =
                 this.buildVisualSummary();
 
 
             console.log(
-                "NEXIVRA FINAL VISUAL SUMMARY:",
-                finalSummary
+                "NEXIVRA AUTOMATIC VISUAL SUMMARY:",
+                visualSummary
+            );
+
+
+            /*
+             * Send visual context automatically.
+             */
+
+            this.setStatus(
+                "NEXIVRA is reviewing your practice..."
+            );
+
+
+            this._session.message(
+                visualSummary
+            );
+
+
+            /*
+             * Give the context message a moment to enter
+             * the conversation before requesting feedback.
+             */
+
+            await this.delay(800);
+
+
+            const feedbackRequest = `
+COACHING REQUEST:
+
+The learner has completed the current practice interaction.
+
+Using:
+1. the conversation you just had with the learner, and
+2. the observable visual coaching context just provided,
+
+give the learner concise, constructive, integrated feedback.
+
+Begin with what the learner did effectively.
+
+Then identify one or two useful opportunities for improvement.
+
+When visual behavior is relevant, describe only what was observable and explain how that behavior could potentially affect another person's experience.
+
+Do not infer emotions, confidence, honesty, deception, personality, intent, motivation, attentiveness, disability, medical condition, or psychological state from visual information.
+
+Do not read technical percentages aloud unless the learner specifically asks for the measurements.
+
+Do not say that the learner failed.
+
+Use Legacy Edge Partners coaching language such as:
+- "That's a good start."
+- "One thing I'd work on..."
+- "One thing you could experiment with..."
+- "Here's another way to approach it..."
+- "This is an area we can strengthen."
+
+Speak directly to the learner as their hospitality coach.
+            `.trim();
+
+
+            this._session.message(
+                feedbackRequest
+            );
+
+
+            this.setStatus(
+                "NEXIVRA is preparing your coaching feedback..."
+            );
+
+
+            /*
+             * Prototype behavior:
+             *
+             * Keep the session alive long enough for
+             * NEXIVRA to generate and speak feedback.
+             *
+             * Later we will replace this fixed window
+             * with actual avatar speaking events.
+             */
+
+            await this.delay(
+                18000
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "NEXIVRA FEEDBACK ERROR:",
+                error
+            );
+
+
+            this.setStatus(
+                "NEXIVRA could not complete the coaching review."
             );
         }
 
 
         /*
-         * Stop local visual analysis + camera.
+         * Shut down learner camera and visual layer
+         * after the feedback window.
          */
-
-        this.stopVisualAnalysis();
 
         this.stopCameraOnly();
 
 
         /*
-         * Stop voice chat if SDK supports stop().
+         * Stop voice if supported.
          */
 
         try {
@@ -1111,6 +907,10 @@ class NexivraLiveAvatar extends HTMLElement {
             false;
 
 
+        this._endingSession =
+            false;
+
+
         sessionButton.disabled =
             false;
 
@@ -1125,20 +925,96 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
         this.setStatus(
-            "Practice session ended."
-        );
-
-
-        this.setDebug(
-            "NEXIVRA SESSION READY"
-        );
-
-
-        console.log(
-            "NEXIVRA learner session ended."
+            "Practice session complete."
         );
     }
 
+
+    delay(milliseconds) {
+
+        return new Promise(
+            (resolve) =>
+                setTimeout(
+                    resolve,
+                    milliseconds
+                )
+        );
+    }
+
+
+    /*
+     * =====================================================
+     * TEXT
+     * =====================================================
+     */
+
+    async sendMessage() {
+
+        const input =
+            this.shadowRoot.getElementById(
+                "messageInput"
+            );
+
+
+        const message =
+            input.value.trim();
+
+
+        if (!message) {
+            return;
+        }
+
+
+        if (!this._session) {
+
+            this.setStatus(
+                "Please wait for NEXIVRA to connect."
+            );
+
+            return;
+        }
+
+
+        try {
+
+            this._session.message(
+                message
+            );
+
+
+            input.value =
+                "";
+
+
+            this.setStatus(
+                "NEXIVRA is responding..."
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "NEXIVRA TEXT ERROR:",
+                error
+            );
+
+
+            this.setStatus(
+                "TEXT ERROR: " +
+                (
+                    error?.message ||
+                    String(error)
+                )
+            );
+        }
+    }
+
+
+    /*
+     * =====================================================
+     * CAMERA CLEANUP
+     * =====================================================
+     */
 
     stopCameraOnly() {
 
@@ -1152,11 +1028,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 "learnerPreview"
             );
 
-        const visualPanel =
-            this.shadowRoot.getElementById(
-                "visualPanel"
-            );
-
 
         if (
             this._cameraStream
@@ -1165,11 +1036,8 @@ class NexivraLiveAvatar extends HTMLElement {
             this._cameraStream
                 .getTracks()
                 .forEach(
-                    (track) => {
-
-                        track.stop();
-
-                    }
+                    (track) =>
+                        track.stop()
                 );
 
 
@@ -1195,97 +1063,12 @@ class NexivraLiveAvatar extends HTMLElement {
                 );
 
         }
-
-
-        if (visualPanel) {
-
-            visualPanel
-                .classList
-                .remove(
-                    "active"
-                );
-
-        }
     }
 
 
     /*
      * =====================================================
-     * TEXT CHAT
-     * =====================================================
-     */
-
-    async sendMessage() {
-
-        const input =
-            this.shadowRoot.getElementById(
-                "messageInput"
-            );
-
-
-        const message =
-            input.value.trim();
-
-
-        if (!message) {
-
-            return;
-
-        }
-
-
-        if (!this._session) {
-
-            this.setStatus(
-                "Please wait for NEXIVRA to connect."
-            );
-
-            return;
-        }
-
-
-        try {
-
-            this.setStatus(
-                "NEXIVRA is thinking..."
-            );
-
-
-            this._session.message(
-                message
-            );
-
-
-            input.value =
-                "";
-
-
-            this.setStatus(
-                "AI Hospitality Coach is responding..."
-            );
-
-        } catch (error) {
-
-            console.error(
-                "NEXIVRA TEXT ERROR:",
-                error
-            );
-
-
-            this.setStatus(
-                "TEXT ERROR: " +
-                (
-                    error?.message ||
-                    String(error)
-                )
-            );
-        }
-    }
-
-
-    /*
-     * =====================================================
-     * MEDIAPIPE VISUAL ANALYSIS
+     * MEDIAPIPE
      * =====================================================
      */
 
@@ -1295,15 +1078,8 @@ class NexivraLiveAvatar extends HTMLElement {
             this._faceLandmarker &&
             this._poseLandmarker
         ) {
-
             return;
-
         }
-
-
-        this.setStatus(
-            "Loading visual coaching engine..."
-        );
 
 
         this._visionFileset =
@@ -1333,7 +1109,7 @@ class NexivraLiveAvatar extends HTMLElement {
                         runningMode:
                             "VIDEO",
 
-                        numFaces:
+                                               numFaces:
                             1,
 
                         outputFaceBlendshapes:
@@ -1378,11 +1154,14 @@ class NexivraLiveAvatar extends HTMLElement {
         if (
             this._visualAnalysisRunning
         ) {
-
             return;
-
         }
 
+
+        /*
+         * Every learner session starts with
+         * fresh visual observations.
+         */
 
         this._visualMetrics =
             this.createEmptyVisualMetrics();
@@ -1390,12 +1169,6 @@ class NexivraLiveAvatar extends HTMLElement {
 
         this._visualAnalysisRunning =
             true;
-
-
-        this.updateMetric(
-            "analysisStatus",
-            "Active"
-        );
 
 
         this._visualAnalysisTimer =
@@ -1407,6 +1180,11 @@ class NexivraLiveAvatar extends HTMLElement {
                 },
                 500
             );
+
+
+        console.log(
+            "NEXIVRA visual analysis started."
+        );
     }
 
 
@@ -1430,9 +1208,8 @@ class NexivraLiveAvatar extends HTMLElement {
         }
 
 
-        this.updateMetric(
-            "analysisStatus",
-            "Off"
+        console.log(
+            "NEXIVRA visual analysis stopped."
         );
     }
 
@@ -1441,17 +1218,23 @@ class NexivraLiveAvatar extends HTMLElement {
 
         return {
 
-            samples: 0,
+            samples:
+                0,
 
-            faceDetectedSamples: 0,
+            faceDetectedSamples:
+                0,
 
-            poseDetectedSamples: 0,
+            poseDetectedSamples:
+                0,
 
-            facingForwardSamples: 0,
+            facingForwardSamples:
+                0,
 
-            inFrameSamples: 0,
+            inFrameSamples:
+                0,
 
-            lookAwayEvents: 0,
+            lookAwayEvents:
+                0,
 
             previousFacingForward:
                 true,
@@ -1476,9 +1259,7 @@ class NexivraLiveAvatar extends HTMLElement {
         if (
             !this._visualAnalysisRunning
         ) {
-
             return;
-
         }
 
 
@@ -1492,9 +1273,7 @@ class NexivraLiveAvatar extends HTMLElement {
             !video ||
             video.readyState < 2
         ) {
-
             return;
-
         }
 
 
@@ -1549,7 +1328,9 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
         /*
-         * FACE
+         * =================================================
+         * FACE OBSERVATIONS
+         * =================================================
          */
 
         const faceLandmarks =
@@ -1591,6 +1372,16 @@ class NexivraLiveAvatar extends HTMLElement {
             }
 
 
+            /*
+             * Count a look-away event when the
+             * learner transitions from forward
+             * orientation to another orientation.
+             *
+             * This is an observable movement event.
+             * It is NOT interpreted as distraction,
+             * nervousness, avoidance, etc.
+             */
+
             if (
                 metrics.previousFacingForward &&
                 !faceData.facingForward
@@ -1616,7 +1407,7 @@ class NexivraLiveAvatar extends HTMLElement {
         } else {
 
             metrics.headOrientation =
-                "No face";
+                "No face detected";
 
 
             metrics.previousFacingForward =
@@ -1625,7 +1416,9 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
         /*
-         * POSE
+         * =================================================
+         * UPPER-BODY OBSERVATIONS
+         * =================================================
          */
 
         const poseLandmarks =
@@ -1657,17 +1450,24 @@ class NexivraLiveAvatar extends HTMLElement {
 
             metrics.posture =
                 "Not detected";
-
         }
-
-
-        this.updateVisualPanel();
     }
 
 
     evaluateFace(
         landmarks
     ) {
+
+        /*
+         * MediaPipe face landmark references:
+         *
+         * 1   = nose region
+         * 33  = eye corner
+         * 263 = opposite eye corner
+         *
+         * These measurements describe visible
+         * orientation only.
+         */
 
         const nose =
             landmarks[1];
@@ -1727,6 +1527,14 @@ class NexivraLiveAvatar extends HTMLElement {
             "Forward";
 
 
+        /*
+         * Intentionally broad thresholds.
+         *
+         * We are identifying approximate visible
+         * head orientation, not eye contact,
+         * attention, emotion, or intent.
+         */
+
         if (
             horizontalOffset > 0.035
         ) {
@@ -1754,7 +1562,6 @@ class NexivraLiveAvatar extends HTMLElement {
 
             orientation =
                 "Down";
-
         }
 
 
@@ -1785,6 +1592,16 @@ class NexivraLiveAvatar extends HTMLElement {
         landmarks
     ) {
 
+        /*
+         * MediaPipe Pose landmarks:
+         *
+         * 11 = left shoulder
+         * 12 = right shoulder
+         *
+         * We describe only visible upper-body
+         * alignment.
+         */
+
         const leftShoulder =
             landmarks[11];
 
@@ -1798,7 +1615,6 @@ class NexivraLiveAvatar extends HTMLElement {
         ) {
 
             return "Unknown";
-
         }
 
 
@@ -1814,7 +1630,6 @@ class NexivraLiveAvatar extends HTMLElement {
         ) {
 
             return "Mostly level";
-
         }
 
 
@@ -1822,112 +1637,9 @@ class NexivraLiveAvatar extends HTMLElement {
     }
 
 
-    updateVisualPanel() {
-
-        const metrics =
-            this._visualMetrics;
-
-
-        const sampleCount =
-            Math.max(
-                metrics.samples,
-                1
-            );
-
-
-        const facingPercent =
-            Math.round(
-                (
-                    metrics.facingForwardSamples /
-                    sampleCount
-                ) *
-                100
-            );
-
-
-        const inFramePercent =
-            Math.round(
-                (
-                    metrics.inFrameSamples /
-                    sampleCount
-                ) *
-                100
-            );
-
-
-        this.updateMetric(
-            "faceDetected",
-            metrics.faceDetected
-                ? "Yes"
-                : "No"
-        );
-
-
-        this.updateMetric(
-            "poseDetected",
-            metrics.poseDetected
-                ? "Yes"
-                : "No"
-        );
-
-
-        this.updateMetric(
-            "headOrientation",
-            metrics.headOrientation
-        );
-
-
-        this.updateMetric(
-            "posture",
-            metrics.posture
-        );
-
-
-        this.updateMetric(
-            "facingForward",
-            facingPercent + "%"
-        );
-
-
-        this.updateMetric(
-            "inFrame",
-            inFramePercent + "%"
-        );
-
-
-        this.updateMetric(
-            "lookAwayEvents",
-            String(
-                metrics.lookAwayEvents
-            )
-        );
-    }
-
-
-    updateMetric(
-        elementId,
-        value
-    ) {
-
-        const element =
-            this.shadowRoot
-                .getElementById(
-                    elementId
-                );
-
-
-        if (element) {
-
-            element.textContent =
-                value;
-
-        }
-    }
-
-
     /*
      * =====================================================
-     * VISUAL COACHING SUMMARY
+     * AUTOMATIC VISUAL COACHING SUMMARY
      * =====================================================
      */
 
@@ -1987,32 +1699,206 @@ class NexivraLiveAvatar extends HTMLElement {
         return `
 SYSTEM COACHING CONTEXT:
 
-Observable visual data from the learner's practice session:
+The following information contains observable visual measurements from the learner's current practice interaction.
 
-- Face was detected in approximately ${faceDetectedPercent}% of samples.
-- Upper-body pose was detected in approximately ${poseDetectedPercent}% of samples.
-- Learner remained within the central camera frame in approximately ${inFramePercent}% of samples.
-- Learner was approximately forward-facing in ${facingPercent}% of samples.
-- ${metrics.lookAwayEvents} transition(s) away from forward-facing orientation were observed.
+OBSERVATIONS:
+
+- Face was detected in approximately ${faceDetectedPercent}% of analyzed visual samples.
+- Upper-body pose was detected in approximately ${poseDetectedPercent}% of analyzed visual samples.
+- Learner remained within the central camera frame in approximately ${inFramePercent}% of analyzed samples.
+- Learner's visible head orientation was approximately forward-facing in ${facingPercent}% of analyzed samples.
+- ${metrics.lookAwayEvents} transition(s) from a forward-facing head orientation to another visible orientation were observed.
 - Final visible head orientation: ${metrics.headOrientation}.
 - Final visible upper-body alignment: ${metrics.posture}.
 
-COACHING RULES:
+IMPORTANT VISUAL COACHING RULES:
 
-Use these observations only when relevant.
+Treat these measurements only as supplemental observations about visible behavior.
 
-Describe observable behavior only.
+Do not infer or claim:
+- emotion
+- confidence
+- nervousness
+- honesty
+- deception
+- personality
+- intent
+- motivation
+- attentiveness
+- disability
+- psychological state
+- medical condition
 
-Do not infer emotion, confidence, honesty, deception, personality, intent, motivation, disability, medical condition, psychological state, or attentiveness.
+Do not describe the learner as distracted simply because they looked away.
 
-Do not treat looking away as inherently negative.
+Do not treat looking toward the camera as equivalent to eye contact with another person.
 
-Do not use these technical percentages as a hospitality score.
+Do not treat any percentage or count above as a score of hospitality, professionalism, communication ability, or performance.
 
-When relevant, explain how an observable behavior could be experienced by another person during the interaction.
+Natural conversation includes head movement and looking away.
 
-Do not announce the raw percentages unless the learner specifically asks for them.
+Use visual observations only when they are meaningfully relevant to the interaction.
+
+When an observation is relevant, describe the visible behavior and explain how that behavior could potentially be experienced by another person.
+
+Prefer coaching language such as:
+
+"I noticed..."
+
+"During part of that interaction..."
+
+"One thing you could experiment with..."
+
+"That could potentially come across as..."
+
+"One thing I'd work on..."
+
+Do not read the technical percentages or raw measurements aloud unless the learner specifically asks for them.
+
+Combine this visual information with the actual conversation and the learner's verbal performance.
+
+Do not let visual observations override stronger evidence from what the learner actually said or did.
         `.trim();
+    }
+
+
+    /*
+     * =====================================================
+     * AUTOMATIC FEEDBACK REQUEST
+     * =====================================================
+     */
+
+    buildIntegratedFeedbackRequest() {
+
+        return `
+COACHING REQUEST:
+
+The learner has completed the current hospitality practice interaction.
+
+Provide integrated coaching based on:
+
+1. The conversation you just had with the learner.
+2. The learner's verbal response and decisions.
+3. The observable visual coaching context supplied immediately before this request.
+
+COACHING STRUCTURE:
+
+First, briefly identify what the learner did effectively.
+
+Next, identify one or two meaningful opportunities to strengthen the interaction.
+
+If an observable visual behavior is genuinely relevant, incorporate it naturally into the coaching.
+
+Do not force visual feedback into the response if it would not be useful.
+
+Explain how communication choices or visible behaviors could potentially affect another person's experience.
+
+Use Legacy Edge Partners coaching language.
+
+Do not say the learner failed.
+
+Use language such as:
+
+"That's a good start."
+
+"One thing I'd work on..."
+
+"One thing you could experiment with..."
+
+"Here's another way to approach it..."
+
+"This is an area we can strengthen."
+
+Keep the coaching conversational and concise.
+
+Do not mention that you received a system message, visual data packet, MediaPipe measurements, percentages, or technical telemetry.
+
+Speak directly to the learner as their NEXIVRA hospitality coach.
+        `.trim();
+    }
+
+
+    /*
+     * =====================================================
+     * SEND AUTOMATIC COACHING CONTEXT
+     * =====================================================
+     */
+
+    async sendAutomaticCoachingContext() {
+
+        if (
+            !this._session
+        ) {
+
+            return;
+        }
+
+
+        const visualSummary =
+            this.buildVisualSummary();
+
+
+        const feedbackRequest =
+            this.buildIntegratedFeedbackRequest();
+
+
+        console.log(
+            "NEXIVRA AUTOMATIC VISUAL SUMMARY:",
+            visualSummary
+        );
+
+
+        /*
+         * First provide the observations.
+         */
+
+        this._session.message(
+            visualSummary
+        );
+
+
+        /*
+         * Small separation so the agent receives
+         * the context before the coaching request.
+         */
+
+        await this.delay(
+            800
+        );
+
+
+        /*
+         * Then request integrated feedback.
+         */
+
+        this._session.message(
+            feedbackRequest
+        );
+
+
+        console.log(
+            "NEXIVRA integrated feedback requested."
+        );
+    }
+
+    /*
+     * =====================================================
+     * HELPER
+     * =====================================================
+     */
+
+    delay(milliseconds) {
+
+        return new Promise(
+            (resolve) => {
+
+                setTimeout(
+                    resolve,
+                    milliseconds
+                );
+
+            }
+        );
     }
 
 
@@ -2024,6 +1910,10 @@ Do not announce the raw percentages unless the learner specifically asks for the
 
     disconnectedCallback() {
 
+        /*
+         * Stop avatar attach timer.
+         */
+
         if (
             this._attachTimer
         ) {
@@ -2032,17 +1922,28 @@ Do not announce the raw percentages unless the learner specifically asks for the
                 this._attachTimer
             );
 
-
             this._attachTimer =
                 null;
         }
 
 
+        /*
+         * Stop visual analysis.
+         */
+
         this.stopVisualAnalysis();
 
 
+        /*
+         * Stop learner camera.
+         */
+
         this.stopCameraOnly();
 
+
+        /*
+         * Close MediaPipe Face Landmarker.
+         */
 
         if (
             this._faceLandmarker
@@ -2056,9 +1957,9 @@ Do not announce the raw percentages unless the learner specifically asks for the
             } catch (error) {
 
                 console.warn(
+                    "NEXIVRA FACE LANDMARKER CLOSE WARNING:",
                     error
                 );
-
             }
 
 
@@ -2066,6 +1967,10 @@ Do not announce the raw percentages unless the learner specifically asks for the
                 null;
         }
 
+
+        /*
+         * Close MediaPipe Pose Landmarker.
+         */
 
         if (
             this._poseLandmarker
@@ -2079,9 +1984,9 @@ Do not announce the raw percentages unless the learner specifically asks for the
             } catch (error) {
 
                 console.warn(
+                    "NEXIVRA POSE LANDMARKER CLOSE WARNING:",
                     error
                 );
-
             }
 
 
@@ -2089,6 +1994,10 @@ Do not announce the raw percentages unless the learner specifically asks for the
                 null;
         }
 
+
+        /*
+         * Stop LiveAvatar session.
+         */
 
         if (
             this._session
@@ -2107,12 +2016,26 @@ Do not announce the raw percentages unless the learner specifically asks for the
                     }
                 );
         }
+
+
+        this._session =
+            null;
+
+
+        this._learnerSessionActive =
+            false;
+
+
+        this._endingSession =
+            false;
     }
 }
 
 
 /*
- * Register component once.
+ * =========================================================
+ * REGISTER NEXIVRA CUSTOM ELEMENT
+ * =========================================================
  */
 
 if (
