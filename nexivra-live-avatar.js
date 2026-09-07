@@ -1,3 +1,5 @@
+let LiveAvatarSessionClass = null;
+
 class NexivraLiveAvatar extends HTMLElement {
 
     static get observedAttributes() {
@@ -7,32 +9,27 @@ class NexivraLiveAvatar extends HTMLElement {
     constructor() {
         super();
 
-        this.session = null;
-        this.sessionToken = null;
-        this.sdk = null;
-        this.started = false;
-        this.attachTimer = null;
-
         this.attachShadow({ mode: "open" });
+
+        this._session = null;
+        this._sessionToken = null;
+        this._started = false;
+        this._attachTimer = null;
     }
 
     connectedCallback() {
 
         this.render();
-
-        this.sessionToken =
-            this.getAttribute("session-token");
-
         this.bindControls();
 
-        this.dispatchEvent(
-            new CustomEvent("nexivra-ready", {
-                bubbles: true,
-                composed: true
-            })
+        this._sessionToken =
+            this.getAttribute("session-token");
+
+        this.setDebug(
+            "NEXIVRA CUSTOM ELEMENT READY"
         );
 
-        if (this.sessionToken) {
+        if (this._sessionToken) {
             this.startNexivra();
         }
     }
@@ -49,7 +46,7 @@ class NexivraLiveAvatar extends HTMLElement {
             newValue !== oldValue
         ) {
 
-            this.sessionToken = newValue;
+            this._sessionToken = newValue;
 
             if (this.isConnected) {
                 this.startNexivra();
@@ -84,7 +81,7 @@ class NexivraLiveAvatar extends HTMLElement {
                     font-family: Arial, sans-serif;
                 }
 
-                video {
+                #avatarVideo {
                     width: 100%;
                     height: 100%;
                     min-height: 380px;
@@ -93,16 +90,13 @@ class NexivraLiveAvatar extends HTMLElement {
                     display: block;
                 }
 
-                .status {
+                .debug {
                     position: absolute;
-                    left: 16px;
-                    bottom: 16px;
-                    background: rgba(0,0,0,.78);
-                    color: white;
-                    padding: 9px 12px;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    z-index: 20;
+                    top: 8px;
+                    left: 8px;
+                    color: rgba(255,255,255,.45);
+                    font-size: 11px;
+                    z-index: 40;
                 }
 
                 .controls {
@@ -144,13 +138,18 @@ class NexivraLiveAvatar extends HTMLElement {
                     cursor: not-allowed;
                 }
 
-                .debug {
+                .status {
                     position: absolute;
-                    top: 8px;
-                    left: 8px;
-                    color: rgba(255,255,255,.45);
-                    font-size: 11px;
-                    z-index: 40;
+                    left: 16px;
+                    bottom: 16px;
+                    max-width: calc(100% - 32px);
+                    background: rgba(0,0,0,.82);
+                    color: white;
+                    padding: 9px 12px;
+                    border-radius: 6px;
+                    font-size: 14px;
+                    line-height: 1.25;
+                    z-index: 20;
                 }
 
             </style>
@@ -219,6 +218,11 @@ class NexivraLiveAvatar extends HTMLElement {
             () => this.sendMessage()
         );
 
+        voiceButton.addEventListener(
+            "click",
+            () => this.startVoice()
+        );
+
         messageInput.addEventListener(
             "keydown",
             (event) => {
@@ -226,12 +230,8 @@ class NexivraLiveAvatar extends HTMLElement {
                 if (event.key === "Enter") {
                     this.sendMessage();
                 }
-            }
-        );
 
-        voiceButton.addEventListener(
-            "click",
-            () => this.startVoice()
+            }
         );
     }
 
@@ -268,119 +268,112 @@ class NexivraLiveAvatar extends HTMLElement {
             debug.textContent = message;
         }
     }
-async startNexivra() {
 
-    if (
-        this.started ||
-        !this.sessionToken
-    ) {
-        return;
-    }
+    async loadSDK() {
 
-    this.started = true;
-
-    let stage = "starting";
-
-    try {
-
-        stage = "loading SDK";
+        if (LiveAvatarSessionClass) {
+            return;
+        }
 
         this.setStatus(
             "Loading LiveAvatar SDK..."
         );
 
-        await this.loadSDK();
-
-        stage = "SDK loaded";
-
-        this.setStatus(
-            "LiveAvatar SDK loaded."
+        this.setDebug(
+            "Loading LiveAvatar SDK..."
         );
 
-        stage = "creating session";
+        try {
 
-        this.setStatus(
-            "Creating LiveAvatar session..."
-        );
-
-        const newSession =
-            new this.sdk.LiveAvatarSession(
-                this.sessionToken,
-                {
-                    voiceChat: false
-                }
+            const sdk = await import(
+                "https://cdn.jsdelivr.net/npm/@heygen/liveavatar-web-sdk@0.0.18/+esm"
             );
 
-        stage = "assigning session";
+            if (
+                !sdk ||
+                typeof sdk.LiveAvatarSession !== "function"
+            ) {
 
-        this.session = newSession;
+                throw new Error(
+                    "LiveAvatarSession was not found in the SDK."
+                );
+            }
 
-        stage = "starting session";
+            LiveAvatarSessionClass =
+                sdk.LiveAvatarSession;
 
-        this.setStatus(
-            "Starting AI Hospitality Coach..."
-        );
+            this.setDebug(
+                "LiveAvatar SDK loaded."
+            );
 
-        await this.session.start();
+            console.log(
+                "NEXIVRA: LiveAvatar SDK loaded."
+            );
 
-        stage = "session started";
+        } catch (error) {
 
-        this.setDebug(
-            "LiveAvatar session started."
-        );
+            console.error(
+                "NEXIVRA SDK ERROR:",
+                error
+            );
 
-        this.waitForVideo();
-
-    } catch (error) {
-
-        this.started = false;
-
-        console.error(
-            "NEXIVRA SESSION ERROR:",
-            stage,
-            error
-        );
-
-        this.setStatus(
-            "ERROR AT " +
-            stage +
-            ": " +
-            (
-                error?.message ||
-                String(error)
-            )
-        );
+            throw new Error(
+                "SDK LOAD FAILED: " +
+                (
+                    error?.message ||
+                    String(error)
+                )
+            );
+        }
     }
-}
 
     async startNexivra() {
 
         if (
-            this.started ||
-            !this.sessionToken
+            this._started ||
+            !this._sessionToken
         ) {
             return;
         }
 
-        this.started = true;
+        this._started = true;
+
+        let stage = "initializing";
 
         try {
 
+            stage = "loading SDK";
+
             await this.loadSDK();
 
+            stage = "creating LiveAvatar session";
+
             this.setStatus(
-                "Starting AI Hospitality Coach..."
+                "Creating LiveAvatar session..."
             );
 
-            this.session =
-                new this.sdk.LiveAvatarSession(
-                    this.sessionToken,
+            const newSession =
+                new LiveAvatarSessionClass(
+                    this._sessionToken,
                     {
                         voiceChat: false
                     }
                 );
 
-            await this.session.start();
+            stage = "storing LiveAvatar session";
+
+            this._session =
+                newSession;
+
+            stage = "starting LiveAvatar session";
+
+            this.setStatus(
+                "Starting AI Hospitality Coach..."
+            );
+
+            await this._session.start();
+
+            stage = "waiting for avatar video";
 
             this.setDebug(
                 "LiveAvatar session started."
@@ -390,19 +383,26 @@ async startNexivra() {
 
         } catch (error) {
 
-            this.started = false;
+            this._started = false;
 
             console.error(
                 "NEXIVRA SESSION ERROR:",
+                stage,
                 error
             );
 
             this.setStatus(
-                "SESSION ERROR: " +
+                "ERROR AT " +
+                stage +
+                ": " +
                 (
                     error?.message ||
                     String(error)
                 )
+            );
+
+            this.setDebug(
+                "NEXIVRA SESSION ERROR"
             );
         }
     }
@@ -416,14 +416,20 @@ async startNexivra() {
 
         let attempts = 0;
 
-        this.attachTimer =
+        if (this._attachTimer) {
+            clearInterval(
+                this._attachTimer
+            );
+        }
+
+        this._attachTimer =
             setInterval(() => {
 
                 attempts++;
 
                 try {
 
-                    this.session.attach(
+                    this._session.attach(
                         video
                     );
 
@@ -436,10 +442,10 @@ async startNexivra() {
                     ) {
 
                         clearInterval(
-                            this.attachTimer
+                            this._attachTimer
                         );
 
-                        this.attachTimer = null;
+                        this._attachTimer = null;
 
                         this.setDebug(
                             "NEXIVRA VIDEO CONNECTED"
@@ -453,9 +459,10 @@ async startNexivra() {
                             (error) => {
 
                                 console.warn(
-                                    "NEXIVRA playback warning:",
+                                    "NEXIVRA VIDEO PLAYBACK WARNING:",
                                     error
                                 );
+
                             }
                         );
                     }
@@ -463,17 +470,18 @@ async startNexivra() {
                 } catch (error) {
 
                     console.log(
-                        "Waiting for avatar stream..."
+                        "NEXIVRA waiting for avatar stream..."
                     );
+
                 }
 
                 if (attempts >= 60) {
 
                     clearInterval(
-                        this.attachTimer
+                        this._attachTimer
                     );
 
-                    this.attachTimer = null;
+                    this._attachTimer = null;
 
                     this.setStatus(
                         "Avatar stream timed out."
@@ -497,7 +505,7 @@ async startNexivra() {
             return;
         }
 
-        if (!this.session) {
+        if (!this._session) {
 
             this.setStatus(
                 "Please wait for the coach to connect."
@@ -512,7 +520,7 @@ async startNexivra() {
                 "NEXIVRA is thinking..."
             );
 
-            this.session.message(
+            this._session.message(
                 message
             );
 
@@ -546,7 +554,7 @@ async startNexivra() {
                 "voiceButton"
             );
 
-        if (!this.session) {
+        if (!this._session) {
 
             this.setStatus(
                 "Please wait for the coach to connect."
@@ -560,10 +568,47 @@ async startNexivra() {
             voiceButton.disabled = true;
 
             this.setStatus(
-                "Starting microphone..."
+                "Requesting microphone..."
             );
 
-            await this.session
+            if (
+                !navigator.mediaDevices ||
+                !navigator.mediaDevices.getUserMedia
+            ) {
+
+                throw new Error(
+                    "This browser does not provide microphone access."
+                );
+            }
+
+            /*
+             * Ask the browser for microphone permission
+             * directly from the user's button click.
+             */
+
+            const permissionStream =
+                await navigator.mediaDevices
+                    .getUserMedia({
+                        audio: true
+                    });
+
+            /*
+             * We only needed this stream to establish
+             * browser permission. LiveAvatar will create
+             * its own microphone stream.
+             */
+
+            permissionStream
+                .getTracks()
+                .forEach(
+                    (track) => track.stop()
+                );
+
+            this.setStatus(
+                "Starting NEXIVRA voice chat..."
+            );
+
+            await this._session
                 .voiceChat
                 .start();
 
@@ -595,16 +640,19 @@ async startNexivra() {
 
     disconnectedCallback() {
 
-        if (this.attachTimer) {
+        if (this._attachTimer) {
 
             clearInterval(
-                this.attachTimer
+                this._attachTimer
             );
+
+            this._attachTimer = null;
         }
 
-        if (this.session) {
+        if (this._session) {
 
-            this.session.stop()
+            this._session
+                .stop()
                 .catch(
                     (error) => {
 
@@ -612,13 +660,22 @@ async startNexivra() {
                             "NEXIVRA STOP ERROR:",
                             error
                         );
+
                     }
                 );
         }
     }
 }
 
-customElements.define(
-    "nexivra-live-avatar",
-    NexivraLiveAvatar
-);
+if (
+    !customElements.get(
+        "nexivra-live-avatar"
+    )
+) {
+
+    customElements.define(
+        "nexivra-live-avatar",
+        NexivraLiveAvatar
+    );
+
+}
