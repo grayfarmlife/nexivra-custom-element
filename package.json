@@ -1,0 +1,15 @@
+{
+  "name": "nexivra-custom-element",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/nexivra-live-avatar.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-live-avatar.js"
+  },
+  "dependencies": {
+    "@heygen/liveavatar-web-sdk": "0.0.18"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
