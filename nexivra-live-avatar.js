@@ -268,23 +268,24 @@ class NexivraLiveAvatar extends HTMLElement {
             debug.textContent = message;
         }
     }
+async loadSDK() {
 
-    async loadSDK() {
+    if (this.sdk) {
+        return;
+    }
 
-        if (this.sdk) {
-            return;
-        }
+    this.setStatus(
+        "Loading LiveAvatar..."
+    );
 
-        this.setStatus(
-            "Loading LiveAvatar..."
-        );
+    this.setDebug(
+        "Loading LiveAvatar SDK..."
+    );
 
-        this.setDebug(
-            "Loading LiveAvatar SDK..."
-        );
+    try {
 
         const sdk = await import(
-            "https://esm.sh/@heygen/liveavatar-web-sdk@0.0.18?bundle"
+            "https://cdn.jsdelivr.net/npm/@heygen/liveavatar-web-sdk@0.0.18/+esm"
         );
 
         if (
@@ -302,7 +303,33 @@ class NexivraLiveAvatar extends HTMLElement {
         this.setDebug(
             "LiveAvatar SDK loaded."
         );
+
+        console.log(
+            "NEXIVRA: LiveAvatar SDK loaded from jsDelivr."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "NEXIVRA SDK ERROR:",
+            error
+        );
+
+        this.setStatus(
+            "SDK ERROR: " +
+            (
+                error?.message ||
+                String(error)
+            )
+        );
+
+        this.setDebug(
+            "SDK ERROR"
+        );
+
+        throw error;
     }
+}
 
     async startNexivra() {
 
