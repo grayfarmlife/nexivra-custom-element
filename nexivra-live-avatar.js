@@ -268,66 +268,88 @@ class NexivraLiveAvatar extends HTMLElement {
             debug.textContent = message;
         }
     }
-async loadSDK() {
+async startNexivra() {
 
-    if (this.sdk) {
+    if (
+        this.started ||
+        !this.sessionToken
+    ) {
         return;
     }
 
-    this.setStatus(
-        "Loading LiveAvatar..."
-    );
+    this.started = true;
 
-    this.setDebug(
-        "Loading LiveAvatar SDK..."
-    );
+    let stage = "starting";
 
     try {
 
-        const sdk = await import(
-            "https://cdn.jsdelivr.net/npm/@heygen/liveavatar-web-sdk@0.0.18/+esm"
+        stage = "loading SDK";
+
+        this.setStatus(
+            "Loading LiveAvatar SDK..."
         );
 
-        if (
-            !sdk ||
-            !sdk.LiveAvatarSession
-        ) {
+        await this.loadSDK();
 
-            throw new Error(
-                "LiveAvatarSession was not found."
-            );
-        }
+        stage = "SDK loaded";
 
-        this.sdk = sdk;
-
-        this.setDebug(
+        this.setStatus(
             "LiveAvatar SDK loaded."
         );
 
-        console.log(
-            "NEXIVRA: LiveAvatar SDK loaded from jsDelivr."
+        stage = "creating session";
+
+        this.setStatus(
+            "Creating LiveAvatar session..."
         );
+
+        const newSession =
+            new this.sdk.LiveAvatarSession(
+                this.sessionToken,
+                {
+                    voiceChat: false
+                }
+            );
+
+        stage = "assigning session";
+
+        this.session = newSession;
+
+        stage = "starting session";
+
+        this.setStatus(
+            "Starting AI Hospitality Coach..."
+        );
+
+        await this.session.start();
+
+        stage = "session started";
+
+        this.setDebug(
+            "LiveAvatar session started."
+        );
+
+        this.waitForVideo();
 
     } catch (error) {
 
+        this.started = false;
+
         console.error(
-            "NEXIVRA SDK ERROR:",
+            "NEXIVRA SESSION ERROR:",
+            stage,
             error
         );
 
         this.setStatus(
-            "SDK ERROR: " +
+            "ERROR AT " +
+            stage +
+            ": " +
             (
                 error?.message ||
                 String(error)
             )
         );
-
-        this.setDebug(
-            "SDK ERROR"
-        );
-
-        throw error;
     }
 }
 
