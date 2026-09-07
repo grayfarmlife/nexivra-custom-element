@@ -70,7 +70,6 @@ class NexivraLiveAvatar extends HTMLElement {
     connectedCallback() {
 
         this.render();
-
         this.bindControls();
 
         this._sessionToken =
@@ -121,7 +120,7 @@ class NexivraLiveAvatar extends HTMLElement {
                     display: block;
                     width: 100%;
                     height: 100%;
-                    min-height: 460px;
+                    min-height: 500px;
                     box-sizing: border-box;
                 }
 
@@ -133,30 +132,22 @@ class NexivraLiveAvatar extends HTMLElement {
                     position: relative;
                     width: 100%;
                     height: 100%;
-                    min-height: 460px;
+                    min-height: 500px;
                     background: #111;
                     overflow: hidden;
                     font-family: Arial, sans-serif;
                 }
 
 
-                /*
-                 * NEXIVRA / Elenora
-                 */
-
                 #avatarVideo {
                     width: 100%;
                     height: 100%;
-                    min-height: 460px;
+                    min-height: 500px;
                     object-fit: contain;
                     background: #111;
                     display: block;
                 }
 
-
-                /*
-                 * Learner preview
-                 */
 
                 .learner-preview {
                     position: absolute;
@@ -198,16 +189,12 @@ class NexivraLiveAvatar extends HTMLElement {
                 }
 
 
-                /*
-                 * Visual coaching developer panel
-                 */
-
                 .visual-panel {
                     position: absolute;
                     top: 170px;
                     right: 16px;
-                    width: 215px;
-                    background: rgba(0,0,0,.82);
+                    width: 225px;
+                    background: rgba(0,0,0,.84);
                     color: white;
                     border: 1px solid rgba(255,255,255,.35);
                     border-radius: 8px;
@@ -240,10 +227,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 }
 
 
-                /*
-                 * Debug text
-                 */
-
                 .debug {
                     position: absolute;
                     top: 8px;
@@ -254,10 +237,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 }
 
 
-                /*
-                 * Learner controls
-                 */
-
                 .controls {
                     position: absolute;
                     left: 16px;
@@ -266,11 +245,12 @@ class NexivraLiveAvatar extends HTMLElement {
                     display: flex;
                     gap: 8px;
                     z-index: 70;
+                    flex-wrap: wrap;
                 }
 
                 input {
                     flex: 1;
-                    min-width: 0;
+                    min-width: 220px;
                     padding: 11px 12px;
                     border: none;
                     border-radius: 6px;
@@ -304,10 +284,10 @@ class NexivraLiveAvatar extends HTMLElement {
                     border: 1px solid white;
                 }
 
+                #visualSummaryButton {
+                    background: #e8e8e8;
+                }
 
-                /*
-                 * Status
-                 */
 
                 .status {
                     position: absolute;
@@ -326,14 +306,6 @@ class NexivraLiveAvatar extends HTMLElement {
 
                 @media (max-width: 700px) {
 
-                    .controls {
-                        flex-wrap: wrap;
-                    }
-
-                    input {
-                        flex-basis: 100%;
-                    }
-
                     .learner-preview {
                         width: 125px;
                         height: 95px;
@@ -343,6 +315,10 @@ class NexivraLiveAvatar extends HTMLElement {
                         width: 180px;
                         top: 125px;
                     }
+
+                    input {
+                        flex-basis: 100%;
+                    }
                 }
 
             </style>
@@ -350,17 +326,12 @@ class NexivraLiveAvatar extends HTMLElement {
 
             <div class="wrap">
 
-
-                <!-- NEXIVRA / Elenora -->
-
                 <video
                     id="avatarVideo"
                     autoplay
                     playsinline>
                 </video>
 
-
-                <!-- Learner Camera -->
 
                 <div
                     class="learner-preview"
@@ -380,8 +351,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 </div>
 
 
-                <!-- Visual Coaching Developer Panel -->
-
                 <div
                     class="visual-panel"
                     id="visualPanel">
@@ -392,72 +361,56 @@ class NexivraLiveAvatar extends HTMLElement {
 
                     <div class="metric">
                         <span>Analysis:</span>
-                        <span
-                            class="metric-value"
-                            id="analysisStatus">
+                        <span class="metric-value" id="analysisStatus">
                             Off
                         </span>
                     </div>
 
                     <div class="metric">
                         <span>Face detected:</span>
-                        <span
-                            class="metric-value"
-                            id="faceDetected">
+                        <span class="metric-value" id="faceDetected">
                             No
                         </span>
                     </div>
 
                     <div class="metric">
                         <span>Pose detected:</span>
-                        <span
-                            class="metric-value"
-                            id="poseDetected">
+                        <span class="metric-value" id="poseDetected">
                             No
                         </span>
                     </div>
 
                     <div class="metric">
                         <span>Head:</span>
-                        <span
-                            class="metric-value"
-                            id="headOrientation">
+                        <span class="metric-value" id="headOrientation">
                             Unknown
                         </span>
                     </div>
 
                     <div class="metric">
                         <span>Posture:</span>
-                        <span
-                            class="metric-value"
-                            id="posture">
+                        <span class="metric-value" id="posture">
                             Unknown
                         </span>
                     </div>
 
                     <div class="metric">
                         <span>Facing forward:</span>
-                        <span
-                            class="metric-value"
-                            id="facingForward">
+                        <span class="metric-value" id="facingForward">
                             0%
                         </span>
                     </div>
 
                     <div class="metric">
                         <span>In frame:</span>
-                        <span
-                            class="metric-value"
-                            id="inFrame">
+                        <span class="metric-value" id="inFrame">
                             0%
                         </span>
                     </div>
 
                     <div class="metric">
                         <span>Look-away events:</span>
-                        <span
-                            class="metric-value"
-                            id="lookAwayEvents">
+                        <span class="metric-value" id="lookAwayEvents">
                             0
                         </span>
                     </div>
@@ -465,14 +418,10 @@ class NexivraLiveAvatar extends HTMLElement {
                 </div>
 
 
-                <div
-                    class="debug"
-                    id="debug">
+                <div class="debug" id="debug">
                     NEXIVRA CUSTOM ELEMENT READY
                 </div>
 
-
-                <!-- Controls -->
 
                 <div class="controls">
 
@@ -494,12 +443,14 @@ class NexivraLiveAvatar extends HTMLElement {
                         Enable Camera
                     </button>
 
+                    <button id="visualSummaryButton">
+                        Send Visual Summary
+                    </button>
+
                 </div>
 
 
-                <div
-                    class="status"
-                    id="status">
+                <div class="status" id="status">
                     Waiting for NEXIVRA session...
                 </div>
 
@@ -525,6 +476,11 @@ class NexivraLiveAvatar extends HTMLElement {
                 "cameraButton"
             );
 
+        const visualSummaryButton =
+            this.shadowRoot.getElementById(
+                "visualSummaryButton"
+            );
+
         const messageInput =
             this.shadowRoot.getElementById(
                 "messageInput"
@@ -546,6 +502,12 @@ class NexivraLiveAvatar extends HTMLElement {
         cameraButton.addEventListener(
             "click",
             () => this.toggleCamera()
+        );
+
+
+        visualSummaryButton.addEventListener(
+            "click",
+            () => this.sendVisualSummary()
         );
 
 
@@ -1475,12 +1437,6 @@ class NexivraLiveAvatar extends HTMLElement {
         metrics.samples++;
 
 
-        /*
-         * ---------------------------------------------
-         * FACE
-         * ---------------------------------------------
-         */
-
         const faceLandmarks =
             faceResult?.faceLandmarks?.[0];
 
@@ -1520,12 +1476,6 @@ class NexivraLiveAvatar extends HTMLElement {
             }
 
 
-            /*
-             * Count a look-away event only
-             * when learner transitions from
-             * forward-facing to not forward-facing.
-             */
-
             if (
                 metrics.previousFacingForward &&
                 !faceData.facingForward
@@ -1558,12 +1508,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 false;
         }
 
-
-        /*
-         * ---------------------------------------------
-         * POSE
-         * ---------------------------------------------
-         */
 
         const poseLandmarks =
             poseResult?.landmarks?.[0];
@@ -1604,17 +1548,6 @@ class NexivraLiveAvatar extends HTMLElement {
     evaluateFace(
         landmarks
     ) {
-
-        /*
-         * MediaPipe face indices used:
-         *
-         * 1   = nose area
-         * 33  = one eye corner
-         * 263 = opposite eye corner
-         *
-         * We use geometry only.
-         * No emotion inference.
-         */
 
         const nose =
             landmarks[1];
@@ -1674,12 +1607,6 @@ class NexivraLiveAvatar extends HTMLElement {
             "Forward";
 
 
-        /*
-         * These are intentionally broad.
-         * We are measuring visible orientation,
-         * not determining attention or emotion.
-         */
-
         if (
             horizontalOffset > 0.035
         ) {
@@ -1736,16 +1663,6 @@ class NexivraLiveAvatar extends HTMLElement {
     evaluatePosture(
         landmarks
     ) {
-
-        /*
-         * MediaPipe Pose:
-         *
-         * 11 = left shoulder
-         * 12 = right shoulder
-         *
-         * We only describe visible
-         * upper-body alignment.
-         */
 
         const leftShoulder =
             landmarks[11];
@@ -1887,6 +1804,178 @@ class NexivraLiveAvatar extends HTMLElement {
 
     /*
      * =====================================================
+     * VISUAL SUMMARY BRIDGE
+     * =====================================================
+     */
+
+    buildVisualSummary() {
+
+        const metrics =
+            this._visualMetrics;
+
+
+        const sampleCount =
+            Math.max(
+                metrics.samples,
+                1
+            );
+
+
+        const faceDetectedPercent =
+            Math.round(
+                (
+                    metrics.faceDetectedSamples /
+                    sampleCount
+                ) *
+                100
+            );
+
+
+        const poseDetectedPercent =
+            Math.round(
+                (
+                    metrics.poseDetectedSamples /
+                    sampleCount
+                ) *
+                100
+            );
+
+
+        const facingPercent =
+            Math.round(
+                (
+                    metrics.facingForwardSamples /
+                    sampleCount
+                ) *
+                100
+            );
+
+
+        const inFramePercent =
+            Math.round(
+                (
+                    metrics.inFrameSamples /
+                    sampleCount
+                ) *
+                100
+            );
+
+
+        return `
+SYSTEM COACHING CONTEXT:
+
+Observable visual data from the learner's current practice session:
+
+- Face detected in approximately ${faceDetectedPercent}% of visual samples.
+- Upper-body pose detected in approximately ${poseDetectedPercent}% of visual samples.
+- Learner remained within the central camera frame in approximately ${inFramePercent}% of samples.
+- Learner was approximately forward-facing in ${facingPercent}% of samples.
+- ${metrics.lookAwayEvents} transition(s) away from a forward-facing head orientation were observed.
+- Current visible head orientation: ${metrics.headOrientation}.
+- Current visible upper-body alignment: ${metrics.posture}.
+
+VISUAL COACHING RULES:
+
+Use this information only when it is relevant to the learner's communication practice.
+
+Describe observable behavior only.
+
+Do not infer or claim emotion, confidence, honesty, deception, personality, intent, motivation, disability, psychological state, medical condition, or attentiveness from camera data.
+
+Do not treat looking away as inherently negative.
+
+Do not treat any single visual metric as a score of hospitality or communication ability.
+
+If visual behavior is relevant, explain how it could be experienced by another person in the specific interaction.
+
+Use phrases such as:
+- "I noticed..."
+- "During that part of the interaction..."
+- "That could come across as..."
+- "One thing you could experiment with..."
+
+Avoid absolute statements about what the learner was feeling or intending.
+
+Do not announce these technical percentages unless the learner specifically asks for the measurements.
+
+Use the observations naturally as coaching context.
+        `.trim();
+    }
+
+
+    async sendVisualSummary() {
+
+        if (!this._session) {
+
+            this.setStatus(
+                "Please wait for the coach to connect."
+            );
+
+            return;
+        }
+
+
+        if (
+            !this._cameraEnabled ||
+            !this._visualAnalysisRunning
+        ) {
+
+            this.setStatus(
+                "Enable the camera before sending visual coaching data."
+            );
+
+            return;
+        }
+
+
+        try {
+
+            const summary =
+                this.buildVisualSummary();
+
+
+            console.log(
+                "NEXIVRA VISUAL SUMMARY:",
+                summary
+            );
+
+
+            this.setStatus(
+                "Sending visual coaching observations to NEXIVRA..."
+            );
+
+
+            this._session.message(
+                summary
+            );
+
+
+            this.setStatus(
+                "Visual coaching observations sent."
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                "NEXIVRA VISUAL SUMMARY ERROR:",
+                error
+            );
+
+
+            this.setStatus(
+                "VISUAL SUMMARY ERROR: " +
+                (
+                    error?.message ||
+                    String(error)
+                )
+            );
+        }
+    }
+
+
+    /*
+     * =====================================================
      * CLEANUP
      * =====================================================
      */
@@ -1991,10 +2080,6 @@ class NexivraLiveAvatar extends HTMLElement {
     }
 }
 
-
-/*
- * Register Custom Element once.
- */
 
 if (
     !customElements.get(
