@@ -1,0 +1,36 @@
+name: Build NEXIVRA Custom Element
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build NEXIVRA bundle
+        run: npm run build
+
+      - name: Commit built file
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dist/nexivra-live-avatar.js
+          git diff --cached --quiet || git commit -m "Build NEXIVRA custom element"
+          git push
