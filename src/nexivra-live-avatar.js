@@ -1693,7 +1693,33 @@ class NexivraLiveAvatar extends HTMLElement {
                     this._thresholds.absent
             ) {
 
-                this.handleLearnerAbsent();
+async handleLearnerAbsent() {
+
+    if (
+        this._trainingState ===
+        "PAUSED_ABSENT"
+    ) {
+        return;
+    }
+
+
+    this.setTrainingState(
+        "PAUSED_ABSENT"
+    );
+
+
+    this.setStatus(
+        "Training paused while you are away."
+    );
+
+
+    await this.speakLiveCoach(
+        "It looks like you've stepped away. I'll pause here and wait for you to come back.",
+        {
+            resumeListening: false
+        }
+    );
+}
             }
 
 
@@ -1883,7 +1909,43 @@ class NexivraLiveAvatar extends HTMLElement {
                         .turnedAway
             ) {
 
-                this.handleSustainedOrientationAway(
+async handleSustainedOrientationAway(
+    orientation
+) {
+
+    this._lastVisualCoachingAt =
+        Date.now();
+
+
+    this._turnedAwayStartedAt =
+        null;
+
+
+    this._waitingForOrientationCorrection =
+        true;
+
+
+    this._visualCorrectionStartedAt =
+        null;
+
+
+    this.setTrainingState(
+        "WAITING_FOR_CORRECTION"
+    );
+
+
+    this.setStatus(
+        "NEXIVRA is coaching visual presence."
+    );
+
+
+    await this.speakLiveCoach(
+        "I'm going to pause us for a moment. I've noticed you've been turned away from our interaction for a little while. In face-to-face hospitality, appropriate eye contact and visual engagement can help another person feel heard and respected. You don't need to stare at someone constantly, but try turning back toward the interaction and staying visually present.",
+        {
+            resumeListening: true
+        }
+    );
+}
                     observation.faceData
                         .orientation
                 );
@@ -2011,8 +2073,37 @@ Do not speculate about why the learner stepped away.
         `);
     }
 
+async handleLearnerReturned() {
 
-    handleLearnerReturned() {
+    if (
+        this._trainingState !==
+        "PAUSED_ABSENT"
+    ) {
+        return;
+    }
+
+
+    this._returnStartedAt =
+        null;
+
+
+    this.setTrainingState(
+        "ACTIVE"
+    );
+
+
+    this.setStatus(
+        "Session active."
+    );
+
+
+    await this.speakLiveCoach(
+        "Welcome back. Let's pick up where we left off.",
+        {
+            resumeListening: true
+        }
+    );
+}
 
         if (
             this._trainingState !==
@@ -2108,7 +2199,33 @@ Wait for a VISUAL CORRECTION event before continuing.
     }
 
 
-    handleOrientationCorrected() {
+async handleOrientationCorrected() {
+
+    this._waitingForOrientationCorrection =
+        false;
+
+
+    this._visualCorrectionStartedAt =
+        null;
+
+
+    this.setTrainingState(
+        "ACTIVE"
+    );
+
+
+    this.setStatus(
+        "Session active."
+    );
+
+
+    await this.speakLiveCoach(
+        "There you go. That's a more visually engaged presence. Let's continue.",
+        {
+            resumeListening: true
+        }
+    );
+}
 
         this._waitingForOrientationCorrection =
             false;
@@ -2142,7 +2259,43 @@ Keep the acknowledgment natural and brief.
     }
 
 
-    handlePostureConcern(
+async handlePostureConcern(
+    postureLabel
+) {
+
+    this._lastPostureCoachingAt =
+        Date.now();
+
+
+    this._postureIssueStartedAt =
+        null;
+
+
+    this._waitingForPostureCorrection =
+        true;
+
+
+    this._visualCorrectionStartedAt =
+        null;
+
+
+    this.setTrainingState(
+        "WAITING_FOR_CORRECTION"
+    );
+
+
+    this.setStatus(
+        "NEXIVRA is coaching physical presence."
+    );
+
+
+    await this.speakLiveCoach(
+        "Let's pause for a second and work on physical presence. Try moving into a comfortable, more open and upright position. In hospitality, our posture can influence how engaged and approachable we appear to another person. Find a position that feels natural and professional for you.",
+        {
+            resumeListening: true
+        }
+    );
+}
         postureLabel
     ) {
 
@@ -2196,7 +2349,33 @@ Wait for a POSTURE CORRECTION event before continuing.
     }
 
 
-    handlePostureCorrected() {
+async handlePostureCorrected() {
+
+    this._waitingForPostureCorrection =
+        false;
+
+
+    this._visualCorrectionStartedAt =
+        null;
+
+
+    this.setTrainingState(
+        "ACTIVE"
+    );
+
+
+    this.setStatus(
+        "Session active."
+    );
+
+
+    await this.speakLiveCoach(
+        "That's better. Notice how that creates a more open presence. Let's keep going.",
+        {
+            resumeListening: true
+        }
+    );
+}
 
         this._waitingForPostureCorrection =
             false;
@@ -2228,9 +2407,142 @@ Then resume the training.
     }
 
 
-    sendLiveCoachInstruction(
-        instruction
-    ) {
+async speakLiveCoach(
+    text,
+    {
+        resumeListening = true
+    } = {}
+) {
+
+    if (!this._session) {
+        return;
+    }
+
+    try {
+
+        /*
+         * Stop NEXIVRA from listening while
+         * she delivers the coaching intervention.
+         */
+
+        if (
+            typeof this._session
+                .stopListening ===
+            "function"
+        ) {
+
+            this._session
+                .stopListening();
+        }
+
+
+        /*
+         * Stop anything she may currently
+         * be saying.
+         */
+
+        if (
+            typeof this._session
+                .interrupt ===
+            "function"
+        ) {
+
+            try {
+
+                this._session
+                    .interrupt();
+
+            } catch (error) {
+
+                console.warn(
+                    "NEXIVRA INTERRUPT WARNING:",
+                    error
+                );
+            }
+        }
+
+
+        /*
+         * Speak exact coaching text immediately.
+         */
+
+        this._session.repeat(
+            text.trim()
+        );
+
+
+        console.log(
+            "NEXIVRA LIVE COACHING SPOKEN:",
+            text.trim()
+        );
+
+
+        /*
+         * Estimate how long the spoken message
+         * will take before listening resumes.
+         *
+         * Roughly 155 words per minute.
+         */
+
+        const words =
+            text
+                .trim()
+                .split(/\s+/)
+                .length;
+
+
+        const estimatedDuration =
+            Math.max(
+                2500,
+                (
+                    words /
+                    155
+                ) *
+                60000 +
+                750
+            );
+
+
+        if (resumeListening) {
+
+            setTimeout(
+                () => {
+
+                    try {
+
+                        if (
+                            this._session &&
+                            typeof this._session
+                                .startListening ===
+                            "function"
+                        ) {
+
+                            this._session
+                                .startListening();
+                        }
+
+                    } catch (error) {
+
+                        console.warn(
+                            "NEXIVRA LISTENING RESUME WARNING:",
+                            error
+                        );
+                    }
+
+                },
+                estimatedDuration
+            );
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "NEXIVRA LIVE COACHING ERROR:",
+            error
+        );
+    }
+}
 
         if (!this._session) {
             return;
@@ -2708,7 +3020,48 @@ Then resume the training.
     }
 
 
-    handleRepeatedInterruption() {
+async handleRepeatedInterruption() {
+
+    this.setTrainingState(
+        "COACHING_INTERRUPTION"
+    );
+
+
+    this.setStatus(
+        "NEXIVRA is coaching listening skills."
+    );
+
+
+    await this.speakLiveCoach(
+        "I'm going to pause us for a second. You've started responding before I've finished speaking a few times. In hospitality, allowing someone to finish helps them feel heard and gives us the chance to fully understand before we respond. Brief acknowledgments are perfectly natural, but let's practice allowing the speaker to finish their thought before beginning our full response.",
+        {
+            resumeListening: true
+        }
+    );
+
+
+    setTimeout(
+        () => {
+
+            if (
+                this._trainingState ===
+                "COACHING_INTERRUPTION"
+            ) {
+
+                this.setTrainingState(
+                    "ACTIVE"
+                );
+
+
+                this.setStatus(
+                    "Session active."
+                );
+            }
+
+        },
+        9000
+    );
+}
 
         this.setTrainingState(
             "COACHING_INTERRUPTION"
