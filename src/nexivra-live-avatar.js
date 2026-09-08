@@ -1,127 +1,676 @@
-                                    ideal:
-                                        720
-                                }
-                            }
-                        }
-                    );
+import { LiveAvatarSession } from "@heygen/liveavatar-web-sdk";
+
+import {
+    FilesetResolver,
+    FaceLandmarker,
+    PoseLandmarker
+} from "@mediapipe/tasks-vision";
 
 
-            this._cameraStream =
-                mediaStream;
+class NexivraLiveAvatar extends HTMLElement {
+
+    static get observedAttributes() {
+        return ["session-token"];
+    }
+
+    constructor() {
+        super();
+
+        this.attachShadow({ mode: "open" });
+
+        /*
+         * =================================================
+         * LIVEAVATAR
+         * =================================================
+         */
+
+        this._session = null;
+        this._sessionToken = null;
+        this._avatarStarted = false;
+        this._attachTimer = null;
 
 
-            learnerVideo.srcObject =
-                mediaStream;
+        /*
+         * =================================================
+         * LEARNER SESSION
+         * =================================================
+         */
+
+        this._learnerSessionActive = false;
+        this._endingSession = false;
+        this._cameraStream = null;
+
+        this._trainingState = "READY";
 
 
-            await learnerVideo.play();
+        /*
+         * =================================================
+         * MEDIAPIPE
+         * =================================================
+         */
+
+        this._visionFileset = null;
+        this._faceLandmarker = null;
+        this._poseLandmarker = null;
+
+        this._visualAnalysisTimer = null;
+        this._visualAnalysisRunning = false;
+
+        this._visualMetrics =
+            this.createEmptyVisualMetrics();
 
 
-            learnerPreview.classList
-                .add(
-                    "active"
-                );
+        /*
+         * =================================================
+         * LIVE VISUAL EVENTS
+         * =================================================
+         */
+
+        this._absenceStartedAt = null;
+        this._returnStartedAt = null;
+
+        this._turnedAwayStartedAt = null;
+        this._postureIssueStartedAt = null;
+
+        this._visualCorrectionStartedAt = null;
+
+        this._waitingForOrientationCorrection = false;
+        this._waitingForPostureCorrection = false;
+
+        this._lastVisualCoachingAt = 0;
+        this._lastPostureCoachingAt = 0;
+
+        this._thresholds = {
+            absent: 3000,
+            returned: 2000,
+
+            turnedAway: 6000,
+            posture: 8000,
+
+            orientationCorrection: 2000,
+            postureCorrection: 3000,
+
+            visualCooldown: 30000,
+            postureCooldown: 30000
+        };
 
 
-            /*
-             * Browser microphone permission is now
-             * established. LiveAvatar manages the
-             * microphone used for conversation.
-             */
+        /*
+         * =================================================
+         * AUDIO / INTERRUPTION DETECTION
+         * =================================================
+         */
 
-            mediaStream
-                .getAudioTracks()
-                .forEach(
-                    (track) => {
+        this._learnerAudioContext = null;
+        this._learnerMicSource = null;
+        this._learnerAnalyser = null;
+        this._learnerAudioTimer = null;
 
-                        track.stop();
+        this._avatarAudioContext = null;
+        this._avatarAudioSource = null;
+        this._avatarAnalyser = null;
+        this._avatarAudioTimer = null;
 
+        this._learnerSpeaking = false;
+        this._avatarSpeaking = false;
+
+        this._overlapStartedAt = null;
+        this._interruptionEvents = [];
+        this._lastInterruptionCoachingAt = 0;
+
+        this._interruptionThresholds = {
+            learnerSpeechRms: 0.045,
+            avatarSpeechRms: 0.018,
+
+            minimumOverlap: 900,
+            rollingWindow: 30000,
+            eventsBeforeCoaching: 2,
+            coachingCooldown: 45000
+        };
+    }
+
+
+    /*
+     * =====================================================
+     * CUSTOM ELEMENT
+     * =====================================================
+     */
+
+    connectedCallback() {
+        this.render();
+        this.bindControls();
+
+        this._sessionToken =
+            this.getAttribute("session-token");
+
+        if (this._sessionToken) {
+            this.startNexivra();
+        }
+    }
+
+
+    attributeChangedCallback(
+        name,
+        oldValue,
+        newValue
+    ) {
+        if (
+            name === "session-token" &&
+            newValue &&
+            newValue !== oldValue
+        ) {
+            this._sessionToken = newValue;
+
+            if (this.isConnected) {
+                this.startNexivra();
+            }
+        }
+    }
+
+
+    /*
+     * =====================================================
+     * UI
+     * =====================================================
+     */
+
+    render() {
+        this.shadowRoot.innerHTML = `
+            <style>
+
+                :host {
+                    display: block;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 500px;
+                    box-sizing: border-box;
+                }
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                .wrap {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    min-height: 500px;
+                    background: #111;
+                    overflow: hidden;
+                    font-family: Arial, sans-serif;
+                }
+
+                #avatarVideo {
+                    width: 100%;
+                    height: 100%;
+                    min-height: 500px;
+                    object-fit: contain;
+                    background: #111;
+                    display: block;
+                }
+
+                .learner-preview {
+                    position: absolute;
+                    top: 16px;
+                    right: 16px;
+
+                    width: 190px;
+                    height: 140px;
+
+                    border-radius: 10px;
+                    overflow: hidden;
+
+                    background: #222;
+
+                    border: 2px solid rgba(255,255,255,.85);
+
+                    box-shadow:
+                        0 4px 14px rgba(0,0,0,.35);
+
+                    display: none;
+
+                    z-index: 60;
+                }
+
+                .learner-preview.active {
+                    display: block;
+                }
+
+                #learnerVideo {
+                    width: 100%;
+                    height: 100%;
+
+                    object-fit: cover;
+
+                    transform: scaleX(-1);
+
+                    background: #222;
+
+                    display: block;
+                }
+
+                .preview-label {
+                    position: absolute;
+
+                    left: 6px;
+                    bottom: 5px;
+
+                    padding: 3px 6px;
+
+                    border-radius: 4px;
+
+                    background: rgba(0,0,0,.68);
+
+                    color: white;
+
+                    font-size: 10px;
+                }
+
+                .session-indicator {
+                    position: absolute;
+
+                    top: 16px;
+                    left: 16px;
+
+                    display: none;
+                    align-items: center;
+
+                    gap: 7px;
+
+                    padding: 7px 10px;
+
+                    border-radius: 999px;
+
+                    background: rgba(0,0,0,.72);
+
+                    color: white;
+
+                    font-size: 12px;
+
+                    z-index: 65;
+                }
+
+                .session-indicator.active {
+                    display: flex;
+                }
+
+                .indicator-dot {
+                    width: 8px;
+                    height: 8px;
+
+                    border-radius: 50%;
+
+                    background: white;
+                }
+
+                .controls {
+                    position: absolute;
+
+                    left: 16px;
+                    right: 16px;
+                    bottom: 60px;
+
+                    display: flex;
+
+                    gap: 8px;
+
+                    flex-wrap: wrap;
+
+                    z-index: 70;
+                }
+
+                input {
+                    flex: 1;
+
+                    min-width: 220px;
+
+                    padding: 11px 12px;
+
+                    border: none;
+
+                    border-radius: 6px;
+
+                    font-size: 15px;
+
+                    outline: none;
+                }
+
+                button {
+                    border: none;
+
+                    border-radius: 6px;
+
+                    padding: 10px 14px;
+
+                    background: white;
+
+                    color: #111;
+
+                    font-weight: 600;
+
+                    cursor: pointer;
+
+                    white-space: nowrap;
+                }
+
+                button:hover {
+                    opacity: .9;
+                }
+
+                button:disabled {
+                    opacity: .5;
+                    cursor: not-allowed;
+                }
+
+                #sessionButton.session-active {
+                    background: #222;
+
+                    color: white;
+
+                    border: 1px solid white;
+                }
+
+                .status {
+                    position: absolute;
+
+                    left: 16px;
+                    bottom: 16px;
+
+                    max-width: calc(100% - 32px);
+
+                    background: rgba(0,0,0,.82);
+
+                    color: white;
+
+                    padding: 9px 12px;
+
+                    border-radius: 6px;
+
+                    font-size: 14px;
+
+                    line-height: 1.25;
+
+                    z-index: 60;
+                }
+
+                @media (max-width: 700px) {
+
+                    .learner-preview {
+                        width: 125px;
+                        height: 95px;
+                    }
+
+                    input {
+                        flex-basis: 100%;
+                    }
+                }
+
+            </style>
+
+
+            <div class="wrap">
+
+                <video
+                    id="avatarVideo"
+                    autoplay
+                    playsinline>
+                </video>
+
+
+                <div
+                    class="learner-preview"
+                    id="learnerPreview">
+
+                    <video
+                        id="learnerVideo"
+                        autoplay
+                        muted
+                        playsinline>
+                    </video>
+
+                    <div class="preview-label">
+                        You
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="session-indicator"
+                    id="sessionIndicator">
+
+                    <div class="indicator-dot">
+                    </div>
+
+                    <span id="sessionIndicatorText">
+                        Session Active
+                    </span>
+
+                </div>
+
+
+                <div class="controls">
+
+                    <input
+                        id="messageInput"
+                        type="text"
+                        placeholder="Type to your coach..."
+                    >
+
+                    <button id="sendButton">
+                        Send
+                    </button>
+
+                    <button id="sessionButton">
+                        Start Session
+                    </button>
+
+                </div>
+
+
+                <div
+                    class="status"
+                    id="status">
+                    Connecting to NEXIVRA...
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    bindControls() {
+
+        const sendButton =
+            this.shadowRoot.getElementById(
+                "sendButton"
+            );
+
+        const sessionButton =
+            this.shadowRoot.getElementById(
+                "sessionButton"
+            );
+
+        const messageInput =
+            this.shadowRoot.getElementById(
+                "messageInput"
+            );
+
+
+        sendButton.addEventListener(
+            "click",
+            () => this.sendMessage()
+        );
+
+
+        sessionButton.addEventListener(
+            "click",
+            () => this.toggleLearnerSession()
+        );
+
+
+        messageInput.addEventListener(
+            "keydown",
+            (event) => {
+
+                if (event.key === "Enter") {
+                    this.sendMessage();
+                }
+
+            }
+        );
+    }
+
+
+    setStatus(message) {
+
+        console.log(
+            "NEXIVRA STATUS:",
+            message
+        );
+
+        const status =
+            this.shadowRoot.getElementById(
+                "status"
+            );
+
+        if (status) {
+            status.textContent =
+                message;
+        }
+    }
+
+
+    setTrainingState(state) {
+
+        this._trainingState =
+            state;
+
+
+        console.log(
+            "NEXIVRA TRAINING STATE:",
+            state
+        );
+
+
+        const indicator =
+            this.shadowRoot.getElementById(
+                "sessionIndicator"
+            );
+
+        const indicatorText =
+            this.shadowRoot.getElementById(
+                "sessionIndicatorText"
+            );
+
+
+        if (
+            !indicator ||
+            !indicatorText
+        ) {
+            return;
+        }
+
+
+        if (state === "READY") {
+
+            indicator.classList.remove(
+                "active"
+            );
+
+            return;
+        }
+
+
+        indicator.classList.add(
+            "active"
+        );
+
+
+        const labels = {
+
+            ACTIVE:
+                "Session Active",
+
+            PAUSED_ABSENT:
+                "Session Paused",
+
+            COACHING_VISUAL:
+                "Visual Coaching",
+
+            COACHING_INTERRUPTION:
+                "Listening Coaching",
+
+            WAITING_FOR_CORRECTION:
+                "Practice Adjustment",
+
+            ENDING:
+                "Reviewing Practice"
+        };
+
+
+        indicatorText.textContent =
+            labels[state] ||
+            "Session Active";
+    }
+
+
+    /*
+     * =====================================================
+     * LIVEAVATAR
+     * =====================================================
+     */
+
+    async startNexivra() {
+
+        if (
+            this._avatarStarted ||
+            !this._sessionToken
+        ) {
+            return;
+        }
+
+
+        this._avatarStarted =
+            true;
+
+
+        try {
+
+            this.setStatus(
+                "Starting AI Hospitality Coach..."
+            );
+
+
+            this._session =
+                new LiveAvatarSession(
+                    this._sessionToken,
+                    {
+                        voiceChat: false
                     }
                 );
 
 
-            /*
-             * Start visual analysis.
-             */
-
-            this.setStatus(
-                "Starting live coaching..."
-            );
+            await this._session.start();
 
 
-            await this.initializeVisualAnalysis();
-
-
-            this.startVisualAnalysis();
-
-
-            /*
-             * Start voice conversation.
-             */
-
-            await this._session
-                .voiceChat
-                .start();
-
-
-            this._learnerSessionActive =
-                true;
-
-
-            sessionButton.disabled =
-                false;
-
-
-            sessionButton.textContent =
-                "End Session";
-
-
-            sessionButton.classList
-                .add(
-                    "session-active"
-                );
-
-
-            this.setTrainingState(
-                "ACTIVE"
-            );
-
-
-            this.setStatus(
-                "Session active."
-            );
-
-
-            console.log(
-                "NEXIVRA live coaching session started."
-            );
+            this.waitForVideo();
 
 
         } catch (error) {
 
+            this._avatarStarted =
+                false;
+
+
             console.error(
-                "NEXIVRA SESSION START ERROR:",
+                "NEXIVRA SESSION ERROR:",
                 error
             );
 
 
-            sessionButton.disabled =
-                false;
-
-
-            this.stopVisualAnalysis();
-
-
-            this.stopCameraOnly();
-
-
-            this.setTrainingState(
-                "READY"
-            );
-
-
             this.setStatus(
-                "SESSION START ERROR: " +
+                "Unable to start NEXIVRA: " +
                 (
                     error?.message ||
                     String(error)
@@ -131,1109 +680,201 @@
     }
 
 
-    /*
-     * =====================================================
-     * LIVE VISUAL ANALYSIS
-     * =====================================================
-     */
+    waitForVideo() {
 
-    async initializeVisualAnalysis() {
+        const video =
+            this.shadowRoot.getElementById(
+                "avatarVideo"
+            );
 
-        if (
-            this._faceLandmarker &&
-            this._poseLandmarker
-        ) {
 
-            return;
+        let attempts =
+            0;
 
+
+        if (this._attachTimer) {
+
+            clearInterval(
+                this._attachTimer
+            );
         }
 
 
-        this._visionFileset =
-            await FilesetResolver
-                .forVisionTasks(
-
-                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm"
-
-                );
-
-
-        this._faceLandmarker =
-            await FaceLandmarker
-                .createFromOptions(
-
-                    this._visionFileset,
-
-                    {
-
-                        baseOptions: {
-
-                            modelAssetPath:
-                                "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
-
-                        },
-
-                        runningMode:
-                            "VIDEO",
-
-                        numFaces:
-                            1,
-
-                        outputFaceBlendshapes:
-                            false,
-
-                        outputFacialTransformationMatrixes:
-                            false
-                    }
-                );
-
-
-        this._poseLandmarker =
-            await PoseLandmarker
-                .createFromOptions(
-
-                    this._visionFileset,
-
-                    {
-
-                        baseOptions: {
-
-                            modelAssetPath:
-                                "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
-
-                        },
-
-                        runningMode:
-                            "VIDEO",
-
-                        numPoses:
-                            1,
-
-                        outputSegmentationMasks:
-                            false
-                    }
-                );
-    }
-
-
-    startVisualAnalysis() {
-
-        if (
-            this._visualAnalysisRunning
-        ) {
-
-            return;
-
-        }
-
-
-        this._visualMetrics =
-            this.createEmptyVisualMetrics();
-
-
-        this.resetLiveEventTracking();
-
-
-        this._visualAnalysisRunning =
-            true;
-
-
-        this._visualAnalysisTimer =
+        this._attachTimer =
             setInterval(
                 () => {
 
-                    this.analyzeLearnerFrame();
+                    attempts++;
+
+
+                    try {
+
+                        this._session.attach(
+                            video
+                        );
+
+
+                        if (
+                            video.srcObject &&
+                            video.srcObject.getTracks &&
+                            video.srcObject
+                                .getTracks()
+                                .length > 0
+                        ) {
+
+                            clearInterval(
+                                this._attachTimer
+                            );
+
+
+                            this._attachTimer =
+                                null;
+
+
+                            this.setStatus(
+                                "NEXIVRA is ready. Click Start Session."
+                            );
+
+
+                            video.play()
+                                .catch(
+                                    () => {}
+                                );
+
+
+                            /*
+                             * Monitor NEXIVRA's own audio
+                             * so we know when the trainer
+                             * is actually speaking.
+                             */
+
+                            this.startAvatarAudioMonitor(
+                                video.srcObject
+                            );
+                        }
+
+                    } catch (error) {
+
+                        console.log(
+                            "Waiting for NEXIVRA video..."
+                        );
+
+                    }
+
+
+                    if (
+                        attempts >= 60
+                    ) {
+
+                        clearInterval(
+                            this._attachTimer
+                        );
+
+
+                        this._attachTimer =
+                            null;
+
+
+                        this.setStatus(
+                            "Avatar stream timed out."
+                        );
+                    }
 
                 },
                 500
             );
-
-
-        console.log(
-            "NEXIVRA live visual awareness started."
-        );
     }
 
 
-    stopVisualAnalysis() {
+    /*
+     * =====================================================
+     * ONE-CLICK SESSION
+     * =====================================================
+     */
 
-        this._visualAnalysisRunning =
-            false;
+    async toggleLearnerSession() {
+
+        if (this._endingSession) {
+            return;
+        }
 
 
-        if (
-            this._visualAnalysisTimer
-        ) {
+        if (this._learnerSessionActive) {
 
-            clearInterval(
-                this._visualAnalysisTimer
+            await this.endLearnerSession();
+
+        } else {
+
+            await this.startLearnerSession();
+
+        }
+    }
+
+
+    async startLearnerSession() {
+
+        const sessionButton =
+            this.shadowRoot.getElementById(
+                "sessionButton"
+            );
+
+        const learnerVideo =
+            this.shadowRoot.getElementById(
+                "learnerVideo"
+            );
+
+        const learnerPreview =
+            this.shadowRoot.getElementById(
+                "learnerPreview"
             );
 
 
-            this._visualAnalysisTimer =
-                null;
-        }
-    }
+        if (!this._session) {
 
-
-    createEmptyVisualMetrics() {
-
-        return {
-
-            samples:
-                0,
-
-            faceDetectedSamples:
-                0,
-
-            poseDetectedSamples:
-                0,
-
-            facingForwardSamples:
-                0,
-
-            inFrameSamples:
-                0,
-
-            lookAwayEvents:
-                0,
-
-            previousFacingForward:
-                true,
-
-            faceDetected:
-                false,
-
-            poseDetected:
-                false,
-
-            headOrientation:
-                "Unknown",
-
-            posture:
-                "Unknown"
-        };
-    }
-
-
-    resetLiveEventTracking() {
-
-        this._absenceStartedAt =
-            null;
-
-        this._returnStartedAt =
-            null;
-
-        this._turnedAwayStartedAt =
-            null;
-
-        this._postureIssueStartedAt =
-            null;
-
-        this._visualCorrectionStartedAt =
-            null;
-
-        this._waitingForOrientationCorrection =
-            false;
-
-        this._waitingForPostureCorrection =
-            false;
-    }
-
-
-    analyzeLearnerFrame() {
-
-        if (
-            !this._visualAnalysisRunning ||
-            !this._learnerSessionActive
-        ) {
+            this.setStatus(
+                "Please wait for NEXIVRA to connect."
+            );
 
             return;
-
         }
-
-
-        const video =
-            this.shadowRoot
-                .getElementById(
-                    "learnerVideo"
-                );
-
-
-        if (
-            !video ||
-            video.readyState < 2
-        ) {
-
-            return;
-
-        }
-
-
-        const timestamp =
-            performance.now();
 
 
         try {
 
-            const faceResult =
-                this._faceLandmarker
-                    .detectForVideo(
-                        video,
-                        timestamp
-                    );
+            sessionButton.disabled =
+                true;
 
 
-            const poseResult =
-                this._poseLandmarker
-                    .detectForVideo(
-                        video,
-                        timestamp
-                    );
-
-
-            this.processVisualResults(
-                faceResult,
-                poseResult
+            this.setStatus(
+                "Connecting microphone and camera..."
             );
 
 
-        } catch (error) {
-
-            console.warn(
-                "NEXIVRA VISUAL FRAME ERROR:",
-                error
-            );
-        }
-    }
-
-
-    processVisualResults(
-        faceResult,
-        poseResult
-    ) {
-
-        const metrics =
-            this._visualMetrics;
-
-
-        metrics.samples++;
-
-
-        const faceLandmarks =
-            faceResult?.faceLandmarks?.[0];
-
-
-        const poseLandmarks =
-            poseResult?.landmarks?.[0];
-
-
-        const faceDetected =
-            Boolean(
-                faceLandmarks &&
-                faceLandmarks.length
-            );
-
-
-        const poseDetected =
-            Boolean(
-                poseLandmarks &&
-                poseLandmarks.length
-            );
-
-
-        metrics.faceDetected =
-            faceDetected;
-
-
-        metrics.poseDetected =
-            poseDetected;
-
-
-        let faceData = {
-
-            orientation:
-                "No face",
-
-            facingForward:
-                false,
-
-            inFrame:
-                false
-        };
-
-
-        if (faceDetected) {
-
-            metrics.faceDetectedSamples++;
-
-
-            faceData =
-                this.evaluateFace(
-                    faceLandmarks
-                );
-
-
-            metrics.headOrientation =
-                faceData.orientation;
-
-
-            if (
-                faceData.facingForward
-            ) {
-
-                metrics.facingForwardSamples++;
-
-            }
-
-
-            if (
-                metrics.previousFacingForward &&
-                !faceData.facingForward
-            ) {
-
-                metrics.lookAwayEvents++;
-
-            }
-
-
-            metrics.previousFacingForward =
-                faceData.facingForward;
-
-
-            if (
-                faceData.inFrame
-            ) {
-
-                metrics.inFrameSamples++;
-
-            }
-
-        } else {
-
-            metrics.headOrientation =
-                "No face";
-
-
-            metrics.previousFacingForward =
-                false;
-        }
-
-
-        if (poseDetected) {
-
-            metrics.poseDetectedSamples++;
-
-
-            metrics.posture =
-                this.evaluatePosture(
-                    poseLandmarks
-                );
-
-        } else {
-
-            metrics.posture =
-                "Not detected";
-        }
-
-
-        /*
-         * Now convert raw measurements into
-         * meaningful live coaching events.
-         */
-
-        this.evaluateLiveVisualEvents(
-            {
-                faceDetected,
-                poseDetected,
-                faceData,
-                posture:
-                    metrics.posture
-            }
-        );
-    }
-
-
-    evaluateFace(
-        landmarks
-    ) {
-
-        const nose =
-            landmarks[1];
-
-        const eyeA =
-            landmarks[33];
-
-        const eyeB =
-            landmarks[263];
-
-
-        if (
-            !nose ||
-            !eyeA ||
-            !eyeB
-        ) {
-
-            return {
-
-                orientation:
-                    "Unknown",
-
-                facingForward:
-                    false,
-
-                inFrame:
-                    false
-            };
-        }
-
-
-        const eyeCenterX =
-            (
-                eyeA.x +
-                eyeB.x
-            ) / 2;
-
-
-        const eyeCenterY =
-            (
-                eyeA.y +
-                eyeB.y
-            ) / 2;
-
-
-        const horizontalOffset =
-            nose.x -
-            eyeCenterX;
-
-
-        const verticalOffset =
-            nose.y -
-            eyeCenterY;
-
-
-        let orientation =
-            "Forward";
-
-
-        if (
-            horizontalOffset > 0.035
-        ) {
-
-            orientation =
-                "Right";
-
-        } else if (
-            horizontalOffset < -0.035
-        ) {
-
-            orientation =
-                "Left";
-
-        } else if (
-            verticalOffset < 0.035
-        ) {
-
-            orientation =
-                "Up";
-
-        } else if (
-            verticalOffset > 0.12
-        ) {
-
-            orientation =
-                "Down";
-        }
-
-
-        return {
-
-            orientation,
-
-            facingForward:
-                orientation ===
-                "Forward",
-
-            inFrame:
-                nose.x > 0.08 &&
-                nose.x < 0.92 &&
-                nose.y > 0.08 &&
-                nose.y < 0.92
-        };
-    }
-
-
-    evaluatePosture(
-        landmarks
-    ) {
-
-        const leftShoulder =
-            landmarks[11];
-
-        const rightShoulder =
-            landmarks[12];
-
-
-        if (
-            !leftShoulder ||
-            !rightShoulder
-        ) {
-
-            return "Unknown";
-        }
-
-
-        const shoulderDifference =
-            Math.abs(
-                leftShoulder.y -
-                rightShoulder.y
-            );
-
-
-        if (
-            shoulderDifference < 0.045
-        ) {
-
-            return "Mostly level";
-        }
-
-
-        return "Leaning";
-    }
-
-
-    /*
-     * =====================================================
-     * LIVE EVENT ENGINE
-     * =====================================================
-     */
-
-    evaluateLiveVisualEvents(
-        observation
-    ) {
-
-        if (
-            this._trainingState ===
-                "ENDING"
-        ) {
-
-            return;
-
-        }
-
-
-        const now =
-            Date.now();
-
-
-        const learnerVisible =
-            observation.faceDetected ||
-            observation.poseDetected;
-
-
-        /*
-         * -------------------------------------------------
-         * LEARNER ABSENT
-         * -------------------------------------------------
-         */
-
-        if (!learnerVisible) {
-
-            this._returnStartedAt =
-                null;
-
-
-            if (
-                this._absenceStartedAt ===
-                null
-            ) {
-
-                this._absenceStartedAt =
-                    now;
-
-            }
-
-
-            if (
-                this._trainingState ===
-                    "ACTIVE" &&
-                now -
-                    this._absenceStartedAt >=
-                    this._thresholds.absent
-            ) {
-
-                this.handleLearnerAbsent();
-
-            }
-
-
-            return;
-        }
-
-
-        /*
-         * Learner is visible again.
-         */
-
-        this._absenceStartedAt =
-            null;
-
-
-        if (
-            this._trainingState ===
-                "PAUSED_ABSENT"
-        ) {
-
-            if (
-                this._returnStartedAt ===
-                    null
-            ) {
-
-                this._returnStartedAt =
-                    now;
-
-            }
-
-
-            if (
-                now -
-                    this._returnStartedAt >=
-                    this._thresholds.returned
-            ) {
-
-                this.handleLearnerReturned();
-
-            }
-
-
-            return;
-        }
-
-
-        this._returnStartedAt =
-            null;
-
-
-        /*
-         * Don't start another visual coaching
-         * intervention while one is already active.
-         */
-
-        if (
-            this._trainingState !==
-                "ACTIVE" &&
-            this._trainingState !==
-                "WAITING_FOR_CORRECTION"
-        ) {
-
-            return;
-        }
-
-
-        /*
-         * -------------------------------------------------
-         * ORIENTATION / VISUAL ENGAGEMENT
-         * -------------------------------------------------
-         */
-
-        if (
-            observation.faceDetected &&
-            !observation.faceData
-                .facingForward
-        ) {
-
-            this._visualCorrectionStartedAt =
-                null;
-
-
-            if (
-                this._turnedAwayStartedAt ===
-                    null
-            ) {
-
-                this._turnedAwayStartedAt =
-                    now;
-
-            }
-
-
-            const cooldownPassed =
-                now -
-                    this._lastVisualCoachingAt >=
-                    this._thresholds
-                        .visualCooldown;
-
-
-            if (
-                !this._waitingForOrientationCorrection &&
-                cooldownPassed &&
-                now -
-                    this._turnedAwayStartedAt >=
-                    this._thresholds
-                        .turnedAway
-            ) {
-
-                this.handleSustainedTurnAway(
-                    observation
-                        .faceData
-                        .orientation
-                );
-
-            }
-
-        } else {
-
-            this._turnedAwayStartedAt =
-                null;
-
-
-            if (
-                this._waitingForOrientationCorrection
-            ) {
-
-                if (
-                    this._visualCorrectionStartedAt ===
-                        null
-                ) {
-
-                    this._visualCorrectionStartedAt =
-                        now;
-
-                }
-
-
-                if (
-                    now -
-                        this._visualCorrectionStartedAt >=
-                        this._thresholds
-                            .orientationCorrection
-                ) {
-
-                    this.handleOrientationCorrected();
-
-                }
-
-            } else {
-
-                this._visualCorrectionStartedAt =
-                    null;
-
-            }
-        }
-
-
-        /*
-         * -------------------------------------------------
-         * POSTURE / PHYSICAL PRESENCE
-         * -------------------------------------------------
-         */
-
-        if (
-            observation.posture ===
-                "Leaning"
-        ) {
-
-            if (
-                this._postureIssueStartedAt ===
-                    null
-            ) {
-
-                this._postureIssueStartedAt =
-                    now;
-
-            }
-
-
-            const cooldownPassed =
-                now -
-                    this._lastPostureCoachingAt >=
-                    this._thresholds
-                        .postureCooldown;
-
-
-            if (
-                !this._waitingForPostureCorrection &&
-                cooldownPassed &&
-                now -
-                    this._postureIssueStartedAt >=
-                    this._thresholds
-                        .posture
-            ) {
-
-                this.handlePostureIssue();
-
-            }
-
-        } else {
-
-            this._postureIssueStartedAt =
-                null;
-
-
-            if (
-                this._waitingForPostureCorrection
-            ) {
-
-                this.handlePossiblePostureCorrection(
-                    now
-                );
-
-            }
-        }
-    }
-
-
-    /*
-     * =====================================================
-     * LIVE VISUAL INTERVENTIONS
-     * =====================================================
-     */
-
-    handleLearnerAbsent() {
-
-        if (
-            this._trainingState ===
-                "PAUSED_ABSENT"
-        ) {
-
-            return;
-
-        }
-
-
-        this.setTrainingState(
-            "PAUSED_ABSENT"
-        );
-
-
-        this.setStatus(
-            "Training paused while you are away."
-        );
-
-
-        this.sendCoachEvent(`
-LIVE TRAINING EVENT:
-
-The learner has not been visible in the camera for several seconds.
-
-Pause the current training interaction.
-
-Briefly tell the learner that you will wait for them to return.
-
-Do not continue teaching, ask the next training question, or advance the scenario until a learner-returned event is received.
-
-Do not infer why the learner stepped away.
-        `);
-
-
-        console.log(
-            "NEXIVRA EVENT: learner absent."
-        );
-    }
-
-
-    handleLearnerReturned() {
-
-        this._returnStartedAt =
-            null;
-
-
-        this.setTrainingState(
-            "ACTIVE"
-        );
-
-
-        this.setStatus(
-            "Session active."
-        );
-
-
-        this.sendCoachEvent(`
-LIVE TRAINING EVENT:
-
-The learner is visible again and has remained visible long enough to confirm they have returned.
-
-Briefly welcome the learner back.
-
-Resume the training interaction from the point where it was paused.
-
-Do not restart the entire lesson unless necessary.
-        `);
-
-
-        console.log(
-            "NEXIVRA EVENT: learner returned."
-        );
-    }
-
-
-    handleSustainedTurnAway(
-        orientation
-    ) {
-
-        this._lastVisualCoachingAt =
-            Date.now();
-
-
-        this._waitingForOrientationCorrection =
-            true;
-
-
-        this.setTrainingState(
-            "COACHING_VISUAL"
-        );
-
-
-        this.setStatus(
-            "NEXIVRA is coaching visual presence."
-        );
-
-
-        this.sendCoachEvent(`
-LIVE VISUAL COACHING EVENT:
-
-The learner's head has remained visibly oriented ${orientation.toLowerCase()} rather than approximately toward the interaction for a sustained period.
-
-Pause the training content briefly.
-
-Teach the importance of appropriate visual engagement and eye contact in face-to-face hospitality interactions.
-
-Explain that appropriate eye contact and facing the person can help communicate presence, listening, and respect.
-
-Do not claim the learner is distracted, uninterested, nervous, dishonest, or inattentive.
-
-Do not insist on constant eye contact.
-
-Acknowledge that natural conversation includes looking away and that appropriate eye contact can vary by person, culture, accessibility needs, and situation.
-
-Ask the learner to reorient toward the interaction so they can practice a more engaged physical presence.
-
-Then wait for a correction event before continuing the training.
-        `);
-
-
-        this.setTrainingState(
-            "WAITING_FOR_CORRECTION"
-        );
-
-
-        console.log(
-            "NEXIVRA EVENT: sustained orientation away."
-        );
-    }
-
-
-    handleOrientationCorrected() {
-
-        this._waitingForOrientationCorrection =
-            false;
-
-
-        this._visualCorrectionStartedAt =
-            null;
-
-
-        this.setTrainingState(
-            "ACTIVE"
-        );
-
-
-        this.setStatus(
-            "Session active."
-        );
-
-
-        this.sendCoachEvent(`
-LIVE VISUAL CORRECTION EVENT:
-
-The learner has reoriented toward the interaction and maintained that position long enough to confirm the adjustment.
-
-Briefly acknowledge the improvement in visual presence.
-
-Then continue the training from where it paused.
-
-Keep the acknowledgment encouraging and concise.
-        `);
-
-
-        console.log(
-            "NEXIVRA EVENT: orientation corrected."
-        );
-    }
-
-
-    handlePostureIssue() {
-
-        this._lastPostureCoachingAt =
-            Date.now();
-
-
-        this._waitingForPostureCorrection =
-            true;
-
-
-        this.setTrainingState(
-            "COACHING_VISUAL"
-        );
-
-
-        this.setStatus(
-            "NEXIVRA is coaching physical presence."
-        );
-
-
-        this.sendCoachEvent(`
-LIVE VISUAL COACHING EVENT:
-
-The learner's visible shoulder alignment has remained noticeably uneven or leaning for a sustained period.
-
-Pause the training content briefly.
-
-Coach the learner on professional physical presence.
-
-Explain that an open, engaged posture can influence how another person experiences the interaction.
-
-Do not demand rigid posture.
-
-Do not infer laziness, confidence, mood, disability, health, or attitude.
-
-Frame the coaching as an opportunity to experiment with a more open and engaged physical presence appropriate to the learner's abilities and circumstances.
-
-Ask the learner to adjust if they comfortably can.
-
-Wait for the visual system to confirm a sustained adjustment before continuing.
-        `);
-
-
-        this.setTrainingState(
-            "WAITING_FOR_CORRECTION"
-        );
-
-
-        console.log(
-            "NEXIVRA EVENT: posture coaching."
-        );
-    }
-
-
-    handlePossiblePostureCorrection(
-        now
-    ) {
-
-        if (
-            this._visualCorrectionStartedAt
-                                                    720
-                                }
+            const mediaStream =
+                await navigator.mediaDevices
+                    .getUserMedia({
+
+                        audio: {
+                            echoCancellation: true,
+                            noiseSuppression: true,
+                            autoGainControl: true
+                        },
+
+                        video: {
+
+                            facingMode:
+                                "user",
+
+                            width: {
+                                ideal: 1280
+                            },
+
+                            height: {
+                                ideal: 720
                             }
                         }
-                    );
+                    });
 
-
-            /*
-             * Keep the combined media stream.
-             * Video drives the learner preview.
-             * Audio is used for interruption detection.
-             */
 
             this._cameraStream =
                 mediaStream;
@@ -1246,14 +887,24 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             await learnerVideo.play();
 
 
-            learnerPreview.classList
-                .add(
-                    "active"
-                );
+            learnerPreview.classList.add(
+                "active"
+            );
 
 
             /*
-             * Initialize visual coaching.
+             * Start learner microphone activity
+             * monitoring before LiveAvatar opens
+             * its own microphone connection.
+             */
+
+            await this.startLearnerAudioMonitor(
+                mediaStream
+            );
+
+
+            /*
+             * Start visual engine.
              */
 
             this.setStatus(
@@ -1268,20 +919,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
             /*
-             * Start microphone activity monitoring.
-             *
-             * This does NOT transcribe the learner.
-             * It only helps detect meaningful speech
-             * overlap while NEXIVRA is speaking.
-             */
-
-            await this.startMicrophoneMonitor(
-                mediaStream
-            );
-
-
-            /*
-             * Start LiveAvatar voice conversation.
+             * Start LiveAvatar voice.
              */
 
             this.setStatus(
@@ -1314,19 +952,13 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                 "End Session";
 
 
-            sessionButton.classList
-                .add(
-                    "session-active"
-                );
+            sessionButton.classList.add(
+                "session-active"
+            );
 
 
             this.setStatus(
                 "Session active."
-            );
-
-
-            console.log(
-                "NEXIVRA live coaching session active."
             );
 
 
@@ -1344,7 +976,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
             this.stopVisualAnalysis();
 
-            this.stopMicrophoneMonitor();
+            this.stopLearnerAudioMonitor();
 
             this.stopCameraOnly();
 
@@ -1364,12 +996,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
         }
     }
 
-
-    /*
-     * =====================================================
-     * LIVE EVENT RESET
-     * =====================================================
-     */
 
     resetLiveEventTracking() {
 
@@ -1404,7 +1030,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
     /*
      * =====================================================
-     * MEDIAPIPE INITIALIZATION
+     * MEDIAPIPE
      * =====================================================
      */
 
@@ -1414,7 +1040,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             this._faceLandmarker &&
             this._poseLandmarker
         ) {
-
             return;
         }
 
@@ -1486,18 +1111,9 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
     }
 
 
-    /*
-     * =====================================================
-     * VISUAL ANALYSIS LOOP
-     * =====================================================
-     */
-
     startVisualAnalysis() {
 
-        if (
-            this._visualAnalysisRunning
-        ) {
-
+        if (this._visualAnalysisRunning) {
             return;
         }
 
@@ -1519,11 +1135,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                 },
                 500
             );
-
-
-        console.log(
-            "NEXIVRA live visual analysis started."
-        );
     }
 
 
@@ -1533,9 +1144,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             false;
 
 
-        if (
-            this._visualAnalysisTimer
-        ) {
+        if (this._visualAnalysisTimer) {
 
             clearInterval(
                 this._visualAnalysisTimer
@@ -1594,23 +1203,20 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             !this._visualAnalysisRunning ||
             !this._learnerSessionActive
         ) {
-
             return;
         }
 
 
         const video =
-            this.shadowRoot
-                .getElementById(
-                    "learnerVideo"
-                );
+            this.shadowRoot.getElementById(
+                "learnerVideo"
+            );
 
 
         if (
             !video ||
             video.readyState < 2
         ) {
-
             return;
         }
 
@@ -1666,9 +1272,9 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
         /*
-         * -------------------------------------------------
+         * -------------------------
          * FACE
-         * -------------------------------------------------
+         * -------------------------
          */
 
         const faceLandmarks =
@@ -1714,9 +1320,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                 faceData.orientation;
 
 
-            if (
-                faceData.facingForward
-            ) {
+            if (faceData.facingForward) {
 
                 metrics.facingForwardSamples++;
 
@@ -1737,9 +1341,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                 faceData.facingForward;
 
 
-            if (
-                faceData.inFrame
-            ) {
+            if (faceData.inFrame) {
 
                 metrics.inFrameSamples++;
 
@@ -1757,9 +1359,9 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
         /*
-         * -------------------------------------------------
+         * -------------------------
          * POSE
-         * -------------------------------------------------
+         * -------------------------
          */
 
         const poseLandmarks =
@@ -1808,10 +1410,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
         }
 
 
-        /*
-         * Evaluate meaningful live events.
-         */
-
         this.evaluateLiveVisualEvents(
             {
                 faceDetected,
@@ -1823,15 +1421,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
     }
 
 
-    /*
-     * =====================================================
-     * FACE ORIENTATION
-     * =====================================================
-     */
-
-    evaluateFace(
-        landmarks
-    ) {
+    evaluateFace(landmarks) {
 
         const nose =
             landmarks[1];
@@ -1921,38 +1511,25 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
         }
 
 
-        const facingForward =
-            orientation ===
-            "Forward";
-
-
-        const inFrame =
-            nose.x > 0.08 &&
-            nose.x < 0.92 &&
-            nose.y > 0.08 &&
-            nose.y < 0.92;
-
-
         return {
 
             orientation,
 
-            facingForward,
+            facingForward:
+                orientation === "Forward",
 
-            inFrame
+            inFrame:
+                (
+                    nose.x > 0.08 &&
+                    nose.x < 0.92 &&
+                    nose.y > 0.08 &&
+                    nose.y < 0.92
+                )
         };
     }
 
 
-    /*
-     * =====================================================
-     * UPPER-BODY POSTURE
-     * =====================================================
-     */
-
-    evaluatePosture(
-        landmarks
-    ) {
+    evaluatePosture(landmarks) {
 
         const leftShoulder =
             landmarks[11];
@@ -1990,16 +1567,19 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             );
 
 
-        /*
-         * Estimate visible torso compression
-         * when hips are available.
-         *
-         * This is only a rough visual cue and is
-         * never treated as medical or diagnostic.
-         */
+        if (
+            shoulderTilt > 0.075
+        ) {
 
-        let torsoHeight =
-            null;
+            return {
+
+                label:
+                    "Noticeable lean",
+
+                needsCoaching:
+                    true
+            };
+        }
 
 
         if (
@@ -2021,42 +1601,26 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                 ) / 2;
 
 
-            torsoHeight =
+            const torsoHeight =
                 Math.abs(
                     hipCenterY -
                     shoulderCenterY
                 );
-        }
 
 
-        if (
-            shoulderTilt > 0.075
-        ) {
+            if (
+                torsoHeight < 0.18
+            ) {
 
-            return {
+                return {
 
-                label:
-                    "Noticeable lean",
+                    label:
+                        "Compressed upper-body posture",
 
-                needsCoaching:
-                    true
-            };
-        }
-
-
-        if (
-            torsoHeight !== null &&
-            torsoHeight < 0.18
-        ) {
-
-            return {
-
-                label:
-                    "Compressed upper-body posture",
-
-                needsCoaching:
-                    true
-            };
+                    needsCoaching:
+                        true
+                };
+            }
         }
 
 
@@ -2085,7 +1649,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             !this._learnerSessionActive ||
             this._endingSession
         ) {
-
             return;
         }
 
@@ -2102,26 +1665,21 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
         /*
-         * -------------------------------------------------
-         * LEARNER ABSENT
-         * -------------------------------------------------
+         * -------------------------
+         * ABSENT
+         * -------------------------
          */
 
-        if (
-            !learnerVisible
-        ) {
+        if (!learnerVisible) {
 
             this._returnStartedAt =
                 null;
 
 
-            if (
-                !this._absenceStartedAt
-            ) {
+            if (!this._absenceStartedAt) {
 
                 this._absenceStartedAt =
                     now;
-
             }
 
 
@@ -2136,7 +1694,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             ) {
 
                 this.handleLearnerAbsent();
-
             }
 
 
@@ -2144,18 +1701,14 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
         }
 
 
-        /*
-         * Learner is visible.
-         */
-
         this._absenceStartedAt =
             null;
 
 
         /*
-         * -------------------------------------------------
-         * RETURN AFTER ABSENCE
-         * -------------------------------------------------
+         * -------------------------
+         * RETURNED
+         * -------------------------
          */
 
         if (
@@ -2163,13 +1716,10 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             "PAUSED_ABSENT"
         ) {
 
-            if (
-                !this._returnStartedAt
-            ) {
+            if (!this._returnStartedAt) {
 
                 this._returnStartedAt =
                     now;
-
             }
 
 
@@ -2182,7 +1732,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             ) {
 
                 this.handleLearnerReturned();
-
             }
 
 
@@ -2195,25 +1744,9 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
         /*
-         * Don't launch another coaching event
-         * while NEXIVRA is already coaching.
-         */
-
-        if (
-            this._trainingState !==
-            "ACTIVE" &&
-            this._trainingState !==
-            "WAITING_FOR_CORRECTION"
-        ) {
-
-            return;
-        }
-
-
-        /*
-         * -------------------------------------------------
-         * WAITING FOR ORIENTATION CORRECTION
-         * -------------------------------------------------
+         * -------------------------
+         * ORIENTATION CORRECTION
+         * -------------------------
          */
 
         if (
@@ -2231,7 +1764,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
                     this._visualCorrectionStartedAt =
                         now;
-
                 }
 
 
@@ -2240,19 +1772,17 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                         now -
                         this._visualCorrectionStartedAt
                     ) >=
-                        this._thresholds
-                            .orientationCorrection
+                    this._thresholds
+                        .orientationCorrection
                 ) {
 
                     this.handleOrientationCorrected();
-
                 }
 
             } else {
 
                 this._visualCorrectionStartedAt =
                     null;
-
             }
 
 
@@ -2261,9 +1791,9 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
         /*
-         * -------------------------------------------------
-         * WAITING FOR POSTURE CORRECTION
-         * -------------------------------------------------
+         * -------------------------
+         * POSTURE CORRECTION
+         * -------------------------
          */
 
         if (
@@ -2281,7 +1811,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
                     this._visualCorrectionStartedAt =
                         now;
-
                 }
 
 
@@ -2290,19 +1819,17 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                         now -
                         this._visualCorrectionStartedAt
                     ) >=
-                        this._thresholds
-                            .postureCorrection
+                    this._thresholds
+                        .postureCorrection
                 ) {
 
                     this.handlePostureCorrected();
-
                 }
 
             } else {
 
                 this._visualCorrectionStartedAt =
                     null;
-
             }
 
 
@@ -2310,10 +1837,18 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
         }
 
 
+        if (
+            this._trainingState !==
+            "ACTIVE"
+        ) {
+            return;
+        }
+
+
         /*
-         * -------------------------------------------------
-         * SUSTAINED ORIENTATION AWAY
-         * -------------------------------------------------
+         * -------------------------
+         * TURNED AWAY
+         * -------------------------
          */
 
         if (
@@ -2322,13 +1857,10 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                 .facingForward
         ) {
 
-            if (
-                !this._turnedAwayStartedAt
-            ) {
+            if (!this._turnedAwayStartedAt) {
 
                 this._turnedAwayStartedAt =
                     now;
-
             }
 
 
@@ -2355,7 +1887,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                     observation.faceData
                         .orientation
                 );
-
             }
 
         } else {
@@ -2366,9 +1897,9 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
         /*
-         * -------------------------------------------------
-         * SUSTAINED POSTURE CONCERN
-         * -------------------------------------------------
+         * -------------------------
+         * POSTURE
+         * -------------------------
          */
 
         if (
@@ -2383,11 +1914,10 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
                 this._postureIssueStartedAt =
                     now;
-
             }
 
 
-            const postureCooldownComplete =
+            const cooldownComplete =
                 (
                     now -
                     this._lastPostureCoachingAt
@@ -2397,7 +1927,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
 
             if (
-                postureCooldownComplete &&
+                cooldownComplete &&
                 (
                     now -
                     this._postureIssueStartedAt
@@ -2409,7 +1939,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
                     observation.postureData
                         .label
                 );
-
             }
 
         } else {
@@ -2422,7 +1951,7 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
 
     /*
      * =====================================================
-     * LIVE VISUAL COACHING ACTIONS
+     * LIVE VISUAL COACHING
      * =====================================================
      */
 
@@ -2432,7 +1961,6 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
             this._trainingState ===
             "PAUSED_ABSENT"
         ) {
-
             return;
         }
 
@@ -2447,49 +1975,40 @@ Wait for the visual system to confirm a sustained adjustment before continuing.
         );
 
 
-        /*
-         * If the SDK provides an interrupt method,
-         * stop the current avatar response first.
-         */
-
         try {
 
             if (
-                this._session &&
                 typeof this._session
-                    .interrupt ===
-                    "function"
+                    ?.interrupt ===
+                "function"
             ) {
 
                 await this._session
                     .interrupt();
-
             }
 
         } catch (error) {
 
             console.warn(
-                "NEXIVRA interrupt warning:",
+                "NEXIVRA INTERRUPT WARNING:",
                 error
             );
         }
 
 
-        this.sendLiveCoachInstruction(
-            `
+        this.sendLiveCoachInstruction(`
 LIVE TRAINING EVENT:
 
-The learner has not been visibly present in the camera view for several seconds.
+The learner has not been visibly present for several seconds.
 
 Pause the current training interaction.
 
-Briefly tell the learner that you will wait until they return.
+Briefly tell the learner that you will wait for them to return.
 
-Do not continue teaching, questioning, role-play, scoring, or scenario progression until you receive a LEARNER RETURNED event.
+Do not continue teaching, questioning, role-play, evaluation, or scenario progression until a LEARNER RETURNED event is received.
 
 Do not speculate about why the learner stepped away.
-            `
-        );
+        `);
     }
 
 
@@ -2499,7 +2018,6 @@ Do not speculate about why the learner stepped away.
             this._trainingState !==
             "PAUSED_ABSENT"
         ) {
-
             return;
         }
 
@@ -2518,19 +2036,17 @@ Do not speculate about why the learner stepped away.
         );
 
 
-        this.sendLiveCoachInstruction(
-            `
+        this.sendLiveCoachInstruction(`
 LIVE TRAINING EVENT:
 
-The learner has returned and has been visibly present again for a stable period.
+The learner has returned and has remained visibly present again for a stable period.
 
 Briefly welcome them back.
 
 Resume the training from the point where it was paused.
 
 Do not restart the entire lesson unless necessary.
-            `
-        );
+        `);
     }
 
 
@@ -2564,29 +2080,31 @@ Do not restart the entire lesson unless necessary.
         );
 
 
-        this.sendLiveCoachInstruction(
-            `
+        this.sendLiveCoachInstruction(`
 LIVE VISUAL COACHING EVENT:
 
-The learner has maintained a visible head orientation away from the trainer for a sustained period.
+The learner has maintained a visible head orientation away from the interaction for a sustained period.
 
 Current observed orientation: ${orientation}.
 
-Pause the current training content briefly.
+Pause the current training point briefly.
 
-Coach the learner on visual engagement and the role appropriate eye contact can play in helping another person feel heard, respected, and attended to during face-to-face hospitality interactions.
+Teach the importance of visual engagement during face-to-face hospitality interactions.
 
-Do NOT claim the learner was distracted, uninterested, nervous, dishonest, or inattentive.
+Explain that appropriate eye contact can help another person feel heard, respected, and attended to.
 
-Do NOT demand constant eye contact.
+Do not demand constant eye contact.
 
-Explain that natural conversation includes looking away, but sustained orientation away from the person speaking can affect how the interaction is experienced.
+Natural conversation includes looking away.
+
+Do not claim the learner is distracted, nervous, uninterested, dishonest, or inattentive.
+
+Explain that sustained orientation away from someone can affect how the interaction is experienced.
 
 Ask the learner to reorient toward the interaction.
 
-Then wait for the system to confirm that the visual adjustment has been maintained before continuing.
-            `
-        );
+Wait for a VISUAL CORRECTION event before continuing.
+        `);
     }
 
 
@@ -2610,19 +2128,17 @@ Then wait for the system to confirm that the visual adjustment has been maintain
         );
 
 
-        this.sendLiveCoachInstruction(
-            `
+        this.sendLiveCoachInstruction(`
 LIVE VISUAL COACHING EVENT:
 
-The learner has maintained a more forward-facing orientation for a stable period after the visual-presence coaching.
+The learner has maintained a more forward-facing orientation for a stable period after visual-presence coaching.
 
 Briefly acknowledge the adjustment positively.
 
-Then continue the training from where you paused.
+Then continue the training from where it paused.
 
-Do not overpraise or make the correction feel punitive.
-            `
-        );
+Keep the acknowledgment natural and brief.
+        `);
     }
 
 
@@ -2656,11 +2172,10 @@ Do not overpraise or make the correction feel punitive.
         );
 
 
-        this.sendLiveCoachInstruction(
-            `
+        this.sendLiveCoachInstruction(`
 LIVE VISUAL COACHING EVENT:
 
-A sustained visible upper-body alignment pattern has been observed that may reduce the learner's professional or engaged physical presence.
+A sustained visible upper-body pattern has been observed that may reduce an open, engaged professional presence.
 
 Observed pattern: ${postureLabel}.
 
@@ -2668,17 +2183,16 @@ Pause the training briefly.
 
 Coach the learner on maintaining an open, engaged, professional posture appropriate to their abilities and circumstances.
 
-Explain that posture and physical presence can influence how another person experiences our communication.
+Explain that physical presence can influence how another person experiences our communication.
 
-Do NOT diagnose a medical, physical, emotional, or psychological reason for the posture.
+Do not diagnose any medical, physical, emotional, or psychological reason.
 
-Do NOT demand a rigid pose.
+Do not demand a rigid posture.
 
-Invite the learner to adjust into a more open and comfortable professional position.
+Invite the learner to adjust into a comfortable, more open professional position.
 
-Wait for the system to confirm a stable adjustment before continuing.
-            `
-        );
+Wait for a POSTURE CORRECTION event before continuing.
+        `);
     }
 
 
@@ -2702,17 +2216,15 @@ Wait for the system to confirm a stable adjustment before continuing.
         );
 
 
-        this.sendLiveCoachInstruction(
-            `
+        this.sendLiveCoachInstruction(`
 LIVE VISUAL COACHING EVENT:
 
-The learner has maintained a more open and level upper-body position for a stable period after posture coaching.
+The learner has maintained a more open and level visible upper-body position for a stable period after posture coaching.
 
 Briefly acknowledge the adjustment.
 
-Then resume the training from where you paused.
-            `
-        );
+Then resume the training.
+        `);
     }
 
 
@@ -2720,10 +2232,7 @@ Then resume the training from where you paused.
         instruction
     ) {
 
-        if (
-            !this._session
-        ) {
-
+        if (!this._session) {
             return;
         }
 
@@ -2736,7 +2245,7 @@ Then resume the training from where you paused.
 
 
             console.log(
-                "NEXIVRA LIVE COACHING EVENT SENT:",
+                "NEXIVRA LIVE EVENT SENT:",
                 instruction.trim()
             );
 
@@ -2744,7 +2253,7 @@ Then resume the training from where you paused.
         } catch (error) {
 
             console.error(
-                "NEXIVRA LIVE COACHING EVENT ERROR:",
+                "NEXIVRA LIVE EVENT ERROR:",
                 error
             );
         }
@@ -2753,28 +2262,185 @@ Then resume the training from where you paused.
 
     /*
      * =====================================================
-     * MICROPHONE ACTIVITY / INTERRUPTION DETECTION
+     * LEARNER AUDIO MONITOR
      * =====================================================
      */
 
-    async startMicrophoneMonitor(
+    async startLearnerAudioMonitor(
         mediaStream
     ) {
 
         try {
 
-            const audioTracks =
-                mediaStream
-                    .getAudioTracks();
+            const AudioContextClass =
+                window.AudioContext ||
+                window.webkitAudioContext;
+
+
+            if (!AudioContextClass) {
+                return;
+            }
+
+
+            this._learnerAudioContext =
+                new AudioContextClass();
 
 
             if (
+                this._learnerAudioContext
+                    .state ===
+                "suspended"
+            ) {
+
+                await this._learnerAudioContext
+                    .resume();
+            }
+
+
+            this._learnerMicSource =
+                this._learnerAudioContext
+                    .createMediaStreamSource(
+                        mediaStream
+                    );
+
+
+            this._learnerAnalyser =
+                this._learnerAudioContext
+                    .createAnalyser();
+
+
+            this._learnerAnalyser.fftSize =
+                1024;
+
+
+            this._learnerAnalyser
+                .smoothingTimeConstant =
+                0.65;
+
+
+            this._learnerMicSource.connect(
+                this._learnerAnalyser
+            );
+
+
+            const samples =
+                new Float32Array(
+                    this._learnerAnalyser
+                        .fftSize
+                );
+
+
+            this._learnerAudioTimer =
+                setInterval(
+                    () => {
+
+                        if (
+                            !this._learnerAnalyser ||
+                            !this._learnerSessionActive
+                        ) {
+                            return;
+                        }
+
+
+                        this._learnerAnalyser
+                            .getFloatTimeDomainData(
+                                samples
+                            );
+
+
+                        const rms =
+                            this.calculateRms(
+                                samples
+                            );
+
+
+                        this._learnerSpeaking =
+                            rms >
+                            this._interruptionThresholds
+                                .learnerSpeechRms;
+
+
+                        this.evaluateSpeechOverlap();
+
+
+                    },
+                    100
+                );
+
+
+        } catch (error) {
+
+            console.warn(
+                "NEXIVRA LEARNER AUDIO MONITOR ERROR:",
+                error
+            );
+        }
+    }
+
+
+    /*
+     * =====================================================
+     * AVATAR AUDIO MONITOR
+     * =====================================================
+     */
+
+    async startAvatarAudioMonitor(
+        avatarStream
+    ) {
+
+        try {
+
+            if (
+                this._avatarAudioContext
+            ) {
+                return;
+            }
+
+
+            const audioTracks =
+                avatarStream
+                    ?.getAudioTracks?.();
+
+
+            if (
+                !audioTracks ||
                 !audioTracks.length
             ) {
 
-                console.warn(
-                    "NEXIVRA: No microphone track available for interruption monitoring."
+                /*
+                 * Sometimes audio arrives shortly
+                 * after video. Retry once.
+                 */
+
+                setTimeout(
+                    () => {
+
+                        if (
+                            !this._avatarAudioContext &&
+                            this._session
+                        ) {
+
+                            const avatarVideo =
+                                this.shadowRoot
+                                    .getElementById(
+                                        "avatarVideo"
+                                    );
+
+
+                            if (
+                                avatarVideo?.srcObject
+                            ) {
+
+                                this.startAvatarAudioMonitor(
+                                    avatarVideo.srcObject
+                                );
+                            }
+                        }
+
+                    },
+                    1500
                 );
+
 
                 return;
             }
@@ -2785,132 +2451,76 @@ Then resume the training from where you paused.
                 window.webkitAudioContext;
 
 
-            if (
-                !AudioContextClass
-            ) {
-
-                console.warn(
-                    "NEXIVRA: Web Audio API unavailable."
-                );
-
+            if (!AudioContextClass) {
                 return;
             }
 
 
-            this._audioContext =
+            this._avatarAudioContext =
                 new AudioContextClass();
 
 
-            if (
-                this._audioContext.state ===
-                "suspended"
-            ) {
-
-                await this._audioContext
-                    .resume();
-
-            }
-
-
-            this._micSource =
-                this._audioContext
+            this._avatarAudioSource =
+                this._avatarAudioContext
                     .createMediaStreamSource(
-                        mediaStream
+                        avatarStream
                     );
 
 
-            this._audioAnalyser =
-                this._audioContext
+            this._avatarAnalyser =
+                this._avatarAudioContext
                     .createAnalyser();
 
 
-            this._audioAnalyser
-                .fftSize =
-                    1024;
+            this._avatarAnalyser.fftSize =
+                1024;
 
 
-            this._audioAnalyser
+            this._avatarAnalyser
                 .smoothingTimeConstant =
-                    0.65;
+                0.65;
 
 
-            this._micSource
-                .connect(
-                    this._audioAnalyser
-                );
+            this._avatarAudioSource.connect(
+                this._avatarAnalyser
+            );
 
 
             const samples =
                 new Float32Array(
-                    this._audioAnalyser
+                    this._avatarAnalyser
                         .fftSize
                 );
 
 
-            /*
-             * Poll microphone energy roughly
-             * ten times per second.
-             */
-
-            this._micMonitorTimer =
+            this._avatarAudioTimer =
                 setInterval(
                     () => {
 
-                        if (
-                            !this._audioAnalyser ||
-                            !this._learnerSessionActive
-                        ) {
-
+                        if (!this._avatarAnalyser) {
                             return;
                         }
 
 
-                        this._audioAnalyser
+                        this._avatarAnalyser
                             .getFloatTimeDomainData(
                                 samples
                             );
 
 
-                        let sum =
-                            0;
-
-
-                        for (
-                            let i = 0;
-                            i < samples.length;
-                            i++
-                        ) {
-
-                            sum +=
-                                samples[i] *
-                                samples[i];
-
-                        }
-
-
                         const rms =
-                            Math.sqrt(
-                                sum /
-                                samples.length
+                            this.calculateRms(
+                                samples
                             );
 
 
-                        /*
-                         * Conservative speech-energy
-                         * threshold.
-                         *
-                         * Echo cancellation is requested
-                         * by the browser, but this threshold
-                         * will still need real-world tuning.
-                         */
-
-                        const learnerSpeaking =
-                            rms > 0.045;
+                        this._avatarSpeaking =
+                            rms >
+                            this._interruptionThresholds
+                                .avatarSpeechRms;
 
 
-                        this.handleLearnerAudioActivity(
-                            learnerSpeaking
-                        );
+                        this.evaluateSpeechOverlap();
 
 
                     },
@@ -2918,51 +2528,70 @@ Then resume the training from where you paused.
                 );
 
 
-            console.log(
-                "NEXIVRA microphone overlap monitor active."
-            );
-
-
         } catch (error) {
 
             console.warn(
-                "NEXIVRA MICROPHONE MONITOR ERROR:",
+                "NEXIVRA AVATAR AUDIO MONITOR ERROR:",
                 error
             );
         }
     }
 
 
-    handleLearnerAudioActivity(
-        learnerSpeaking
-    ) {
+    calculateRms(samples) {
+
+        let sum =
+            0;
+
+
+        for (
+            let i = 0;
+            i < samples.length;
+            i++
+        ) {
+
+            sum +=
+                samples[i] *
+                samples[i];
+        }
+
+
+        return Math.sqrt(
+            sum /
+            samples.length
+        );
+    }
+
+
+    /*
+     * =====================================================
+     * INTERRUPTION ENGINE
+     * =====================================================
+     */
+
+    evaluateSpeechOverlap() {
 
         if (
             !this._learnerSessionActive ||
             this._endingSession
         ) {
-
             return;
         }
 
 
-        /*
-         * We only care about overlap while
-         * NEXIVRA is speaking.
-         */
+        const overlap =
+            (
+                this._learnerSpeaking &&
+                this._avatarSpeaking
+            );
 
-        if (
-            this._avatarSpeaking &&
-            learnerSpeaking
-        ) {
 
-            if (
-                !this._overlapStartedAt
-            ) {
+        if (overlap) {
+
+            if (!this._overlapStartedAt) {
 
                 this._overlapStartedAt =
                     Date.now();
-
             }
 
 
@@ -2970,28 +2599,16 @@ Then resume the training from where you paused.
         }
 
 
-        /*
-         * If speech overlap just ended,
-         * evaluate whether it was long enough
-         * to qualify as a meaningful event.
-         */
-
-        if (
-            this._overlapStartedAt
-        ) {
+        if (this._overlapStartedAt) {
 
             this.finishPossibleInterruption();
-
         }
     }
 
 
     finishPossibleInterruption() {
 
-        if (
-            !this._overlapStartedAt
-        ) {
-
+        if (!this._overlapStartedAt) {
             return;
         }
 
@@ -3000,7 +2617,7 @@ Then resume the training from where you paused.
             Date.now();
 
 
-        const overlapDuration =
+        const duration =
             now -
             this._overlapStartedAt;
 
@@ -3010,30 +2627,21 @@ Then resume the training from where you paused.
 
 
         if (
-            overlapDuration <
+            duration <
             this._interruptionThresholds
                 .minimumOverlap
         ) {
-
             return;
         }
 
 
-        this._interruptionEvents
-            .push(
-                {
-                    time:
-                        now,
+        this._interruptionEvents.push(
+            {
+                time: now,
+                duration
+            }
+        );
 
-                    duration:
-                        overlapDuration
-                }
-            );
-
-
-        /*
-         * Keep only recent events.
-         */
 
         const cutoff =
             now -
@@ -3049,13 +2657,6 @@ Then resume the training from where you paused.
                 );
 
 
-        console.log(
-            "NEXIVRA meaningful overlap detected:",
-            overlapDuration,
-            "ms"
-        );
-
-
         this.evaluateInterruptionPattern();
     }
 
@@ -3067,12 +2668,10 @@ Then resume the training from where you paused.
 
 
         if (
-            this._interruptionEvents
-                .length <
+            this._interruptionEvents.length <
             this._interruptionThresholds
                 .eventsBeforeCoaching
         ) {
-
             return;
         }
 
@@ -3085,16 +2684,14 @@ Then resume the training from where you paused.
             this._interruptionThresholds
                 .coachingCooldown
         ) {
-
             return;
         }
 
 
         if (
             this._trainingState !==
-                "ACTIVE"
+            "ACTIVE"
         ) {
-
             return;
         }
 
@@ -3123,38 +2720,28 @@ Then resume the training from where you paused.
         );
 
 
-        this.sendLiveCoachInstruction(
-            `
+        this.sendLiveCoachInstruction(`
 LIVE LISTENING COACHING EVENT:
 
-The learner has produced multiple sustained speech-overlap events while you were still speaking during the recent interaction.
+The learner has produced multiple sustained speech-overlap events while the trainer was still speaking.
 
-Treat this as a possible interruption pattern, but remain conversational and non-punitive.
+Treat this as a possible interruption pattern.
 
 Pause the current training point briefly.
 
-Explain that in hospitality, allowing another person to finish speaking helps them feel heard and respected and helps us fully understand before responding.
+Explain that allowing another person to finish speaking helps them feel heard and respected and helps us fully understand before responding.
 
-Do not criticize normal brief acknowledgments such as "yes," "okay," or "I understand."
+Do not criticize normal short acknowledgments such as "yes," "okay," "right," or "I understand."
 
-Frame this as practice in listening and response timing.
+Explain the importance of listening through the end of another person's thought before beginning a full response.
 
-Ask the learner to allow the speaker to finish before beginning their next response.
+Keep the coaching constructive and non-punitive.
 
 Then continue the interaction naturally.
 
-Do not say that an automated microphone detector reported them.
-            `
-        );
+Do not mention microphone monitoring or automated detection.
+        `);
 
-
-        /*
-         * The learner does not need a special
-         * physical correction for this event.
-         *
-         * Return to ACTIVE after a short coaching
-         * window so other live monitoring continues.
-         */
 
         setTimeout(
             () => {
@@ -3172,7 +2759,6 @@ Do not say that an automated microphone detector reported them.
                     this.setStatus(
                         "Session active."
                     );
-
                 }
 
             },
@@ -3181,86 +2767,15 @@ Do not say that an automated microphone detector reported them.
     }
 
 
-    stopMicrophoneMonitor() {
-
-        if (
-            this._micMonitorTimer
-        ) {
-
-            clearInterval(
-                this._micMonitorTimer
-            );
-
-
-            this._micMonitorTimer =
-                null;
-        }
-
-
-        if (
-            this._micSource
-        ) {
-
-            try {
-
-                this._micSource
-                    .disconnect();
-
-            } catch (error) {
-
-                /*
-                 * Ignore disconnect errors.
-                 */
-
-            }
-
-
-            this._micSource =
-                null;
-        }
-
-
-        this._audioAnalyser =
-            null;
-
-
-        if (
-            this._audioContext
-        ) {
-
-            try {
-
-                this._audioContext
-                    .close();
-
-            } catch (error) {
-
-                /*
-                 * Ignore close errors.
-                 */
-
-            }
-
-
-            this._audioContext =
-                null;
-        }
-
-
-        this._overlapStartedAt =
-            null;
-    }
     /*
      * =====================================================
-     * END-OF-SESSION INTEGRATED COACHING
+     * END SESSION
      * =====================================================
      */
 
     async endLearnerSession() {
 
-        if (
-            this._endingSession
-        ) {
+        if (this._endingSession) {
             return;
         }
 
@@ -3270,10 +2785,9 @@ Do not say that an automated microphone detector reported them.
 
 
         const sessionButton =
-            this.shadowRoot
-                .getElementById(
-                    "sessionButton"
-                );
+            this.shadowRoot.getElementById(
+                "sessionButton"
+            );
 
 
         sessionButton.disabled =
@@ -3287,42 +2801,17 @@ Do not say that an automated microphone detector reported them.
 
         try {
 
-            /*
-             * Freeze live visual observations.
-             */
-
             this.stopVisualAnalysis();
 
 
-            /*
-             * Stop interruption monitoring.
-             */
-
-            this.stopMicrophoneMonitor();
-
-
-            /*
-             * Build final visual summary.
-             */
-
             const visualSummary =
                 this.buildVisualSummary();
-
-
-            console.log(
-                "NEXIVRA FINAL VISUAL SUMMARY:",
-                visualSummary
-            );
 
 
             this.setStatus(
                 "NEXIVRA is reviewing your practice..."
             );
 
-
-            /*
-             * Send final visual context.
-             */
 
             this._session.message(
                 visualSummary
@@ -3333,10 +2822,6 @@ Do not say that an automated microphone detector reported them.
                 800
             );
 
-
-            /*
-             * Ask for integrated verbal + visual feedback.
-             */
 
             this._session.message(
                 this.buildIntegratedFeedbackRequest()
@@ -3350,9 +2835,6 @@ Do not say that an automated microphone detector reported them.
 
             /*
              * Prototype feedback window.
-             *
-             * Later we can replace this fixed delay
-             * with actual avatar speaking-state events.
              */
 
             await this.delay(
@@ -3363,7 +2845,7 @@ Do not say that an automated microphone detector reported them.
         } catch (error) {
 
             console.error(
-                "NEXIVRA END SESSION FEEDBACK ERROR:",
+                "NEXIVRA FINAL FEEDBACK ERROR:",
                 error
             );
 
@@ -3374,32 +2856,23 @@ Do not say that an automated microphone detector reported them.
         }
 
 
-        /*
-         * Shut down learner camera.
-         */
+        this.stopLearnerAudioMonitor();
 
         this.stopCameraOnly();
 
 
-        /*
-         * Stop LiveAvatar voice if supported.
-         */
-
         try {
 
             if (
-                this._session &&
-                this._session.voiceChat &&
+                this._session?.voiceChat &&
                 typeof this._session
-                    .voiceChat
-                    .stop ===
+                    .voiceChat.stop ===
                     "function"
             ) {
 
                 await this._session
                     .voiceChat
                     .stop();
-
             }
 
         } catch (error) {
@@ -3435,10 +2908,9 @@ Do not say that an automated microphone detector reported them.
             "Start Session";
 
 
-        sessionButton.classList
-            .remove(
-                "session-active"
-            );
+        sessionButton.classList.remove(
+            "session-active"
+        );
 
 
         this.setStatus(
@@ -3466,7 +2938,7 @@ Do not say that an automated microphone detector reported them.
             );
 
 
-        const faceDetectedPercent =
+        const facePercent =
             Math.round(
                 (
                     metrics.faceDetectedSamples /
@@ -3476,7 +2948,7 @@ Do not say that an automated microphone detector reported them.
             );
 
 
-        const poseDetectedPercent =
+        const posePercent =
             Math.round(
                 (
                     metrics.poseDetectedSamples /
@@ -3496,7 +2968,7 @@ Do not say that an automated microphone detector reported them.
             );
 
 
-        const inFramePercent =
+        const framePercent =
             Math.round(
                 (
                     metrics.inFrameSamples /
@@ -3509,58 +2981,34 @@ Do not say that an automated microphone detector reported them.
         return `
 SYSTEM COACHING CONTEXT:
 
-The following information summarizes observable visual behavior from the learner's completed practice interaction.
+Observable visual information from the completed learner practice:
 
-OBSERVATIONS:
-
-- Face was detected in approximately ${faceDetectedPercent}% of analyzed visual samples.
-- Upper-body pose was detected in approximately ${poseDetectedPercent}% of analyzed visual samples.
-- Learner remained within the central camera frame in approximately ${inFramePercent}% of analyzed samples.
-- Learner's visible head orientation was approximately forward-facing in ${facingPercent}% of analyzed samples.
-- ${metrics.lookAwayEvents} transition(s) away from a forward-facing head orientation were observed.
+- Face detected in approximately ${facePercent}% of analyzed samples.
+- Upper-body pose detected in approximately ${posePercent}% of analyzed samples.
+- Learner remained within the central camera frame in approximately ${framePercent}% of analyzed samples.
+- Learner was approximately forward-facing in ${facingPercent}% of analyzed samples.
+- ${metrics.lookAwayEvents} transition(s) away from forward-facing orientation were observed.
 - Final visible head orientation: ${metrics.headOrientation}.
 - Final visible upper-body alignment: ${metrics.posture}.
 
-IMPORTANT RULES:
-
 Use these observations only as supplemental coaching context.
 
-Do not infer:
-- emotion
-- confidence
-- nervousness
-- honesty
-- deception
-- personality
-- intent
-- motivation
-- attentiveness
-- disability
-- psychological state
-- medical condition
+Do not infer emotion, confidence, nervousness, honesty, deception, personality, intent, motivation, attentiveness, disability, psychological state, or medical condition.
 
 Do not equate camera-facing behavior with perfect eye contact.
 
 Do not treat looking away as inherently negative.
 
-Do not use any percentage or count above as a hospitality score or performance grade.
+Natural human conversation includes looking away.
 
-Natural conversation includes head movement and looking away.
+Do not use these measurements as a performance score.
 
-When visual behavior is relevant, explain only what was observable and how it could potentially affect another person's experience.
+When visual behavior is relevant, describe only what was observable and explain how it could potentially affect another person's experience.
 
-Do not read technical percentages aloud unless the learner specifically asks for them.
-
-Combine this information with the learner's actual verbal responses, choices, listening behavior, and hospitality performance.
+Do not read raw percentages aloud unless the learner asks for them.
         `.trim();
     }
 
-
-    /*
-     * =====================================================
-     * INTEGRATED FEEDBACK REQUEST
-     * =====================================================
-     */
 
     buildIntegratedFeedbackRequest() {
 
@@ -3569,51 +3017,29 @@ COACHING REQUEST:
 
 The learner has completed the current hospitality practice interaction.
 
-Provide concise, integrated coaching using:
+Provide concise integrated coaching using:
 
-1. The conversation you just had with the learner.
+1. The conversation.
 2. The learner's verbal responses and decisions.
-3. Any live coaching moments that occurred during the interaction.
-4. The observable visual summary immediately provided before this request.
+3. Any live visual-presence coaching that occurred.
+4. Any listening/interruption coaching that occurred.
+5. The final observable visual context.
 
-COACHING STRUCTURE:
+Begin with what the learner did effectively.
 
-First, identify what the learner did effectively.
+Then identify one or two meaningful opportunities to strengthen.
 
-Then identify one or two meaningful opportunities for improvement.
+If interruption coaching was relevant, reinforce the importance of allowing another person to finish speaking and listening before responding.
 
-If listening or interruption coaching occurred, reinforce the importance of allowing others to finish speaking and fully understanding before responding.
+If visual presence was relevant, explain how observable behavior could potentially affect another person's experience.
 
-If visual presence or posture was relevant, describe the observable behavior naturally and explain how it could potentially affect another person's experience.
-
-Do not force visual feedback into the response if it is not useful.
-
-Do not mention:
-- MediaPipe
-- camera metrics
-- telemetry
-- percentages
-- microphone detection
-- automated event detection
-- system messages
+Do not mention MediaPipe, telemetry, camera percentages, microphone monitoring, automated event detection, or system messages.
 
 Do not say the learner failed.
 
-Use Legacy Edge Partners coaching language such as:
+Use supportive Legacy Edge Partners coaching language.
 
-"That's a good start."
-
-"One thing I'd work on..."
-
-"One thing you could experiment with..."
-
-"Here's another way to approach it..."
-
-"This is an area we can strengthen."
-
-Keep the coaching conversational, supportive, specific, and concise.
-
-Speak directly to the learner as their NEXIVRA hospitality coach.
+Keep the feedback conversational, specific, constructive, and concise.
         `.trim();
     }
 
@@ -3627,28 +3053,21 @@ Speak directly to the learner as their NEXIVRA hospitality coach.
     async sendMessage() {
 
         const input =
-            this.shadowRoot
-                .getElementById(
-                    "messageInput"
-                );
+            this.shadowRoot.getElementById(
+                "messageInput"
+            );
 
 
         const message =
-            input.value
-                .trim();
+            input.value.trim();
 
 
-        if (
-            !message
-        ) {
-
+        if (!message) {
             return;
         }
 
 
-        if (
-            !this._session
-        ) {
+        if (!this._session) {
 
             this.setStatus(
                 "Please wait for NEXIVRA to connect."
@@ -3695,38 +3114,134 @@ Speak directly to the learner as their NEXIVRA hospitality coach.
 
     /*
      * =====================================================
-     * CAMERA CLEANUP
+     * CLEANUP HELPERS
      * =====================================================
      */
+
+    stopLearnerAudioMonitor() {
+
+        if (this._learnerAudioTimer) {
+
+            clearInterval(
+                this._learnerAudioTimer
+            );
+
+            this._learnerAudioTimer =
+                null;
+        }
+
+
+        if (this._learnerMicSource) {
+
+            try {
+
+                this._learnerMicSource
+                    .disconnect();
+
+            } catch (error) {}
+
+            this._learnerMicSource =
+                null;
+        }
+
+
+        this._learnerAnalyser =
+            null;
+
+
+        if (this._learnerAudioContext) {
+
+            try {
+
+                this._learnerAudioContext
+                    .close();
+
+            } catch (error) {}
+
+            this._learnerAudioContext =
+                null;
+        }
+
+
+        this._learnerSpeaking =
+            false;
+
+
+        this._overlapStartedAt =
+            null;
+    }
+
+
+    stopAvatarAudioMonitor() {
+
+        if (this._avatarAudioTimer) {
+
+            clearInterval(
+                this._avatarAudioTimer
+            );
+
+            this._avatarAudioTimer =
+                null;
+        }
+
+
+        if (this._avatarAudioSource) {
+
+            try {
+
+                this._avatarAudioSource
+                    .disconnect();
+
+            } catch (error) {}
+
+            this._avatarAudioSource =
+                null;
+        }
+
+
+        this._avatarAnalyser =
+            null;
+
+
+        if (this._avatarAudioContext) {
+
+            try {
+
+                this._avatarAudioContext
+                    .close();
+
+            } catch (error) {}
+
+            this._avatarAudioContext =
+                null;
+        }
+
+
+        this._avatarSpeaking =
+            false;
+    }
+
 
     stopCameraOnly() {
 
         const learnerVideo =
-            this.shadowRoot
-                .getElementById(
-                    "learnerVideo"
-                );
-
+            this.shadowRoot.getElementById(
+                "learnerVideo"
+            );
 
         const learnerPreview =
-            this.shadowRoot
-                .getElementById(
-                    "learnerPreview"
-                );
+            this.shadowRoot.getElementById(
+                "learnerPreview"
+            );
 
 
-        if (
-            this._cameraStream
-        ) {
+        if (this._cameraStream) {
 
             this._cameraStream
                 .getTracks()
                 .forEach(
-                    (track) => {
-
-                        track.stop();
-
-                    }
+                    (track) =>
+                        track.stop()
                 );
 
 
@@ -3735,39 +3250,23 @@ Speak directly to the learner as their NEXIVRA hospitality coach.
         }
 
 
-        if (
-            learnerVideo
-        ) {
+        if (learnerVideo) {
 
             learnerVideo.srcObject =
                 null;
-
         }
 
 
-        if (
-            learnerPreview
-        ) {
+        if (learnerPreview) {
 
-            learnerPreview
-                .classList
-                .remove(
-                    "active"
-                );
-
+            learnerPreview.classList.remove(
+                "active"
+            );
         }
     }
 
 
-    /*
-     * =====================================================
-     * HELPERS
-     * =====================================================
-     */
-
-    delay(
-        milliseconds
-    ) {
+    delay(milliseconds) {
 
         return new Promise(
             (resolve) => {
@@ -3784,71 +3283,40 @@ Speak directly to the learner as their NEXIVRA hospitality coach.
 
     /*
      * =====================================================
-     * FULL COMPONENT CLEANUP
+     * COMPONENT CLEANUP
      * =====================================================
      */
 
     disconnectedCallback() {
 
-        /*
-         * Stop attach timer.
-         */
-
-        if (
-            this._attachTimer
-        ) {
+        if (this._attachTimer) {
 
             clearInterval(
                 this._attachTimer
             );
-
 
             this._attachTimer =
                 null;
         }
 
 
-        /*
-         * Stop visual engine.
-         */
-
         this.stopVisualAnalysis();
 
+        this.stopLearnerAudioMonitor();
 
-        /*
-         * Stop interruption monitor.
-         */
-
-        this.stopMicrophoneMonitor();
-
-
-        /*
-         * Stop camera.
-         */
+        this.stopAvatarAudioMonitor();
 
         this.stopCameraOnly();
 
 
-        /*
-         * Close face landmarker.
-         */
-
-        if (
-            this._faceLandmarker
-        ) {
+        if (this._faceLandmarker) {
 
             try {
 
                 this._faceLandmarker
                     .close();
 
-            } catch (error) {
-
-                console.warn(
-                    "NEXIVRA FACE LANDMARKER CLOSE WARNING:",
-                    error
-                );
-            }
+            } catch (error) {}
 
 
             this._faceLandmarker =
@@ -3856,26 +3324,14 @@ Speak directly to the learner as their NEXIVRA hospitality coach.
         }
 
 
-        /*
-         * Close pose landmarker.
-         */
-
-        if (
-            this._poseLandmarker
-        ) {
+        if (this._poseLandmarker) {
 
             try {
 
                 this._poseLandmarker
                     .close();
 
-            } catch (error) {
-
-                console.warn(
-                    "NEXIVRA POSE LANDMARKER CLOSE WARNING:",
-                    error
-                );
-            }
+            } catch (error) {}
 
 
             this._poseLandmarker =
@@ -3883,13 +3339,7 @@ Speak directly to the learner as their NEXIVRA hospitality coach.
         }
 
 
-        /*
-         * Stop LiveAvatar session.
-         */
-
-        if (
-            this._session
-        ) {
+        if (this._session) {
 
             this._session
                 .stop()
@@ -3941,5 +3391,4 @@ if (
         "nexivra-live-avatar",
         NexivraLiveAvatar
     );
-
 }
