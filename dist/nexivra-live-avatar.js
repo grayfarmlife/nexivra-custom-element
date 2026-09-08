@@ -30055,389 +30055,329 @@ var NexivraLiveAvatar = class extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._session = null;
-    this._sessionToken = null;
-    this._avatarStarted = false;
-    this._attachTimer = null;
-    this._learnerSessionActive = false;
-    this._endingSession = false;
-    this._cameraStream = null;
-    this._trainingState = "READY";
-    this._visionFileset = null;
-    this._faceLandmarker = null;
-    this._poseLandmarker = null;
-    this._visualAnalysisTimer = null;
-    this._visualAnalysisRunning = false;
-    this._visualMetrics = this.createEmptyVisualMetrics();
-    this._absenceStartedAt = null;
-    this._returnStartedAt = null;
-    this._turnedAwayStartedAt = null;
-    this._postureIssueStartedAt = null;
-    this._visualCorrectionStartedAt = null;
-    this._waitingForOrientationCorrection = false;
-    this._waitingForPostureCorrection = false;
-    this._lastVisualCoachingAt = 0;
-    this._lastPostureCoachingAt = 0;
-    this._thresholds = {
-      absent: 3e3,
-      returned: 2e3,
-      turnedAway: 6e3,
-      posture: 8e3,
-      orientationCorrection: 2e3,
-      postureCorrection: 3e3,
-      visualCooldown: 3e4,
-      postureCooldown: 3e4
-    };
-    this._learnerAudioContext = null;
-    this._learnerMicSource = null;
-    this._learnerAnalyser = null;
-    this._learnerAudioTimer = null;
-    this._avatarAudioContext = null;
-    this._avatarAudioSource = null;
-    this._avatarAnalyser = null;
-    this._avatarAudioTimer = null;
-    this._learnerSpeaking = false;
-    this._avatarSpeaking = false;
-    this._overlapStartedAt = null;
-    this._interruptionEvents = [];
-    this._lastInterruptionCoachingAt = 0;
-    this._interruptionThresholds = {
+    this.session = null;
+    this.sessionToken = null;
+    this.avatarStarted = false;
+    this.attachTimer = null;
+    this.sessionActive = false;
+    this.sessionEnding = false;
+    this.trainingState = "READY";
+    this.cameraStream = null;
+    this.visionFileset = null;
+    this.faceLandmarker = null;
+    this.poseLandmarker = null;
+    this.visualTimer = null;
+    this.visualRunning = false;
+    this.metrics = this.emptyMetrics();
+    this.absentSince = null;
+    this.returnedSince = null;
+    this.turnedAwaySince = null;
+    this.postureIssueSince = null;
+    this.correctionSince = null;
+    this.waitingForOrientationCorrection = false;
+    this.waitingForPostureCorrection = false;
+    this.lastOrientationCoach = 0;
+    this.lastPostureCoach = 0;
+    this.coachIntervening = false;
+    this.learnerAudioContext = null;
+    this.learnerSource = null;
+    this.learnerAnalyser = null;
+    this.learnerAudioTimer = null;
+    this.avatarAudioContext = null;
+    this.avatarSource = null;
+    this.avatarAnalyser = null;
+    this.avatarAudioTimer = null;
+    this.learnerSpeaking = false;
+    this.avatarSpeaking = false;
+    this.overlapSince = null;
+    this.interruptionEvents = [];
+    this.lastInterruptionCoach = 0;
+    this.thresholds = {
+      absentMs: 3e3,
+      returnedMs: 2e3,
+      turnedAwayMs: 6e3,
+      postureMs: 8e3,
+      orientationCorrectionMs: 2e3,
+      postureCorrectionMs: 3e3,
+      orientationCooldownMs: 3e4,
+      postureCooldownMs: 3e4,
       learnerSpeechRms: 0.045,
       avatarSpeechRms: 0.018,
-      minimumOverlap: 900,
-      rollingWindow: 3e4,
-      eventsBeforeCoaching: 2,
-      coachingCooldown: 45e3
+      minimumOverlapMs: 900,
+      interruptionWindowMs: 3e4,
+      interruptionsBeforeCoach: 2,
+      interruptionCooldownMs: 45e3
     };
   }
   /*
-   * =====================================================
+   * =========================================================
    * CUSTOM ELEMENT
-   * =====================================================
+   * =========================================================
    */
   connectedCallback() {
     this.render();
     this.bindControls();
-    this._sessionToken = this.getAttribute("session-token");
-    if (this._sessionToken) {
+    this.sessionToken = this.getAttribute("session-token");
+    if (this.sessionToken) {
       this.startNexivra();
     }
   }
   attributeChangedCallback(name, oldValue, newValue) {
     if (name === "session-token" && newValue && newValue !== oldValue) {
-      this._sessionToken = newValue;
+      this.sessionToken = newValue;
       if (this.isConnected) {
         this.startNexivra();
       }
     }
   }
   /*
-   * =====================================================
+   * =========================================================
    * UI
-   * =====================================================
+   * =========================================================
    */
   render() {
     this.shadowRoot.innerHTML = `
-            <style>
-
-                :host {
-                    display: block;
-                    width: 100%;
-                    height: 100%;
-                    min-height: 500px;
-                    box-sizing: border-box;
-                }
-
-                * {
-                    box-sizing: border-box;
-                }
-
-                .wrap {
-                    position: relative;
-                    width: 100%;
-                    height: 100%;
-                    min-height: 500px;
-                    background: #111;
-                    overflow: hidden;
-                    font-family: Arial, sans-serif;
-                }
-
-                #avatarVideo {
-                    width: 100%;
-                    height: 100%;
-                    min-height: 500px;
-                    object-fit: contain;
-                    background: #111;
-                    display: block;
-                }
-
-                .learner-preview {
-                    position: absolute;
-                    top: 16px;
-                    right: 16px;
-
-                    width: 190px;
-                    height: 140px;
-
-                    border-radius: 10px;
-                    overflow: hidden;
-
-                    background: #222;
-
-                    border: 2px solid rgba(255,255,255,.85);
-
-                    box-shadow:
-                        0 4px 14px rgba(0,0,0,.35);
-
-                    display: none;
-
-                    z-index: 60;
-                }
-
-                .learner-preview.active {
-                    display: block;
-                }
-
-                #learnerVideo {
-                    width: 100%;
-                    height: 100%;
-
-                    object-fit: cover;
-
-                    transform: scaleX(-1);
-
-                    background: #222;
-
-                    display: block;
-                }
-
-                .preview-label {
-                    position: absolute;
-
-                    left: 6px;
-                    bottom: 5px;
-
-                    padding: 3px 6px;
-
-                    border-radius: 4px;
-
-                    background: rgba(0,0,0,.68);
-
-                    color: white;
-
-                    font-size: 10px;
-                }
-
-                .session-indicator {
-                    position: absolute;
-
-                    top: 16px;
-                    left: 16px;
-
-                    display: none;
-                    align-items: center;
-
-                    gap: 7px;
-
-                    padding: 7px 10px;
-
-                    border-radius: 999px;
-
-                    background: rgba(0,0,0,.72);
-
-                    color: white;
-
-                    font-size: 12px;
-
-                    z-index: 65;
-                }
-
-                .session-indicator.active {
-                    display: flex;
-                }
-
-                .indicator-dot {
-                    width: 8px;
-                    height: 8px;
-
-                    border-radius: 50%;
-
-                    background: white;
-                }
-
-                .controls {
-                    position: absolute;
-
-                    left: 16px;
-                    right: 16px;
-                    bottom: 60px;
-
-                    display: flex;
-
-                    gap: 8px;
-
-                    flex-wrap: wrap;
-
-                    z-index: 70;
-                }
-
-                input {
-                    flex: 1;
-
-                    min-width: 220px;
-
-                    padding: 11px 12px;
-
-                    border: none;
-
-                    border-radius: 6px;
-
-                    font-size: 15px;
-
-                    outline: none;
-                }
-
-                button {
-                    border: none;
-
-                    border-radius: 6px;
-
-                    padding: 10px 14px;
-
-                    background: white;
-
-                    color: #111;
-
-                    font-weight: 600;
-
-                    cursor: pointer;
-
-                    white-space: nowrap;
-                }
-
-                button:hover {
-                    opacity: .9;
-                }
-
-                button:disabled {
-                    opacity: .5;
-                    cursor: not-allowed;
-                }
-
-                #sessionButton.session-active {
-                    background: #222;
-
-                    color: white;
-
-                    border: 1px solid white;
-                }
-
-                .status {
-                    position: absolute;
-
-                    left: 16px;
-                    bottom: 16px;
-
-                    max-width: calc(100% - 32px);
-
-                    background: rgba(0,0,0,.82);
-
-                    color: white;
-
-                    padding: 9px 12px;
-
-                    border-radius: 6px;
-
-                    font-size: 14px;
-
-                    line-height: 1.25;
-
-                    z-index: 60;
-                }
-
-                @media (max-width: 700px) {
-
-                    .learner-preview {
-                        width: 125px;
-                        height: 95px;
-                    }
-
-                    input {
-                        flex-basis: 100%;
-                    }
-                }
-
-            </style>
-
-
-            <div class="wrap">
-
-                <video
-                    id="avatarVideo"
-                    autoplay
-                    playsinline>
-                </video>
-
-
-                <div
-                    class="learner-preview"
-                    id="learnerPreview">
-
-                    <video
-                        id="learnerVideo"
-                        autoplay
-                        muted
-                        playsinline>
-                    </video>
-
-                    <div class="preview-label">
-                        You
-                    </div>
-
-                </div>
-
-
-                <div
-                    class="session-indicator"
-                    id="sessionIndicator">
-
-                    <div class="indicator-dot">
-                    </div>
-
-                    <span id="sessionIndicatorText">
-                        Session Active
-                    </span>
-
-                </div>
-
-
-                <div class="controls">
-
-                    <input
-                        id="messageInput"
-                        type="text"
-                        placeholder="Type to your coach..."
-                    >
-
-                    <button id="sendButton">
-                        Send
-                    </button>
-
-                    <button id="sessionButton">
-                        Start Session
-                    </button>
-
-                </div>
-
-
-                <div
-                    class="status"
-                    id="status">
-                    Connecting to NEXIVRA...
-                </div>
-
-            </div>
-        `;
+      <style>
+
+        :host {
+          display: block;
+          width: 100%;
+          height: 100%;
+          min-height: 500px;
+          box-sizing: border-box;
+        }
+
+        * {
+          box-sizing: border-box;
+        }
+
+        .wrap {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          min-height: 500px;
+          background: #111;
+          overflow: hidden;
+          font-family: Arial, sans-serif;
+        }
+
+        #avatarVideo {
+          width: 100%;
+          height: 100%;
+          min-height: 500px;
+          object-fit: contain;
+          background: #111;
+          display: block;
+        }
+
+        .learner-preview {
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          width: 190px;
+          height: 140px;
+          border-radius: 10px;
+          overflow: hidden;
+          background: #222;
+          border: 2px solid rgba(255,255,255,.85);
+          box-shadow: 0 4px 14px rgba(0,0,0,.35);
+          display: none;
+          z-index: 60;
+        }
+
+        .learner-preview.active {
+          display: block;
+        }
+
+        #learnerVideo {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          transform: scaleX(-1);
+          background: #222;
+          display: block;
+        }
+
+        .preview-label {
+          position: absolute;
+          left: 6px;
+          bottom: 5px;
+          padding: 3px 6px;
+          border-radius: 4px;
+          background: rgba(0,0,0,.68);
+          color: white;
+          font-size: 10px;
+        }
+
+        .session-indicator {
+          position: absolute;
+          top: 16px;
+          left: 16px;
+          display: none;
+          align-items: center;
+          gap: 7px;
+          padding: 7px 10px;
+          border-radius: 999px;
+          background: rgba(0,0,0,.72);
+          color: white;
+          font-size: 12px;
+          z-index: 65;
+        }
+
+        .session-indicator.active {
+          display: flex;
+        }
+
+        .indicator-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: white;
+        }
+
+        .controls {
+          position: absolute;
+          left: 16px;
+          right: 16px;
+          bottom: 60px;
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          z-index: 70;
+        }
+
+        input {
+          flex: 1;
+          min-width: 220px;
+          padding: 11px 12px;
+          border: none;
+          border-radius: 6px;
+          font-size: 15px;
+          outline: none;
+        }
+
+        button {
+          border: none;
+          border-radius: 6px;
+          padding: 10px 14px;
+          background: white;
+          color: #111;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        button:hover {
+          opacity: .9;
+        }
+
+        button:disabled {
+          opacity: .5;
+          cursor: not-allowed;
+        }
+
+        #sessionButton.session-active {
+          background: #222;
+          color: white;
+          border: 1px solid white;
+        }
+
+        .status {
+          position: absolute;
+          left: 16px;
+          bottom: 16px;
+          max-width: calc(100% - 32px);
+          background: rgba(0,0,0,.82);
+          color: white;
+          padding: 9px 12px;
+          border-radius: 6px;
+          font-size: 14px;
+          line-height: 1.25;
+          z-index: 60;
+        }
+
+        @media (max-width: 700px) {
+
+          .learner-preview {
+            width: 125px;
+            height: 95px;
+          }
+
+          input {
+            flex-basis: 100%;
+          }
+        }
+
+      </style>
+
+
+      <div class="wrap">
+
+        <video
+          id="avatarVideo"
+          autoplay
+          playsinline>
+        </video>
+
+
+        <div
+          class="learner-preview"
+          id="learnerPreview">
+
+          <video
+            id="learnerVideo"
+            autoplay
+            muted
+            playsinline>
+          </video>
+
+          <div class="preview-label">
+            You
+          </div>
+
+        </div>
+
+
+        <div
+          class="session-indicator"
+          id="sessionIndicator">
+
+          <div class="indicator-dot"></div>
+
+          <span id="sessionIndicatorText">
+            Session Active
+          </span>
+
+        </div>
+
+
+        <div class="controls">
+
+          <input
+            id="messageInput"
+            type="text"
+            placeholder="Type to your coach..."
+          >
+
+          <button id="sendButton">
+            Send
+          </button>
+
+          <button id="sessionButton">
+            Start Session
+          </button>
+
+        </div>
+
+
+        <div
+          class="status"
+          id="status">
+          Connecting to NEXIVRA...
+        </div>
+
+      </div>
+    `;
   }
   bindControls() {
     const sendButton = this.shadowRoot.getElementById(
@@ -30451,17 +30391,17 @@ var NexivraLiveAvatar = class extends HTMLElement {
     );
     sendButton.addEventListener(
       "click",
-      () => this.sendMessage()
+      () => this.sendTextMessage()
     );
     sessionButton.addEventListener(
       "click",
-      () => this.toggleLearnerSession()
+      () => this.toggleSession()
     );
     messageInput.addEventListener(
       "keydown",
       (event) => {
         if (event.key === "Enter") {
-          this.sendMessage();
+          this.sendTextMessage();
         }
       }
     );
@@ -30479,9 +30419,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
     }
   }
   setTrainingState(state) {
-    this._trainingState = state;
+    this.trainingState = state;
     console.log(
-      "NEXIVRA TRAINING STATE:",
+      "NEXIVRA STATE:",
       state
     );
     const indicator = this.shadowRoot.getElementById(
@@ -30505,37 +30445,37 @@ var NexivraLiveAvatar = class extends HTMLElement {
     const labels = {
       ACTIVE: "Session Active",
       PAUSED_ABSENT: "Session Paused",
-      COACHING_VISUAL: "Visual Coaching",
-      COACHING_INTERRUPTION: "Listening Coaching",
+      VISUAL_COACHING: "Visual Coaching",
+      LISTENING_COACHING: "Listening Coaching",
       WAITING_FOR_CORRECTION: "Practice Adjustment",
       ENDING: "Reviewing Practice"
     };
     indicatorText.textContent = labels[state] || "Session Active";
   }
   /*
-   * =====================================================
+   * =========================================================
    * LIVEAVATAR
-   * =====================================================
+   * =========================================================
    */
   async startNexivra() {
-    if (this._avatarStarted || !this._sessionToken) {
+    if (this.avatarStarted || !this.sessionToken) {
       return;
     }
-    this._avatarStarted = true;
+    this.avatarStarted = true;
     try {
       this.setStatus(
         "Starting AI Hospitality Coach..."
       );
-      this._session = new LiveAvatarSession(
-        this._sessionToken,
+      this.session = new LiveAvatarSession(
+        this.sessionToken,
         {
           voiceChat: false
         }
       );
-      await this._session.start();
-      this.waitForVideo();
+      await this.session.start();
+      this.waitForAvatarVideo();
     } catch (error) {
-      this._avatarStarted = false;
+      this.avatarStarted = false;
       console.error(
         "NEXIVRA SESSION ERROR:",
         error
@@ -30545,28 +30485,28 @@ var NexivraLiveAvatar = class extends HTMLElement {
       );
     }
   }
-  waitForVideo() {
+  waitForAvatarVideo() {
     const video = this.shadowRoot.getElementById(
       "avatarVideo"
     );
     let attempts = 0;
-    if (this._attachTimer) {
+    if (this.attachTimer) {
       clearInterval(
-        this._attachTimer
+        this.attachTimer
       );
     }
-    this._attachTimer = setInterval(
+    this.attachTimer = setInterval(
       () => {
         attempts++;
         try {
-          this._session.attach(
+          this.session.attach(
             video
           );
           if (video.srcObject && video.srcObject.getTracks && video.srcObject.getTracks().length > 0) {
             clearInterval(
-              this._attachTimer
+              this.attachTimer
             );
-            this._attachTimer = null;
+            this.attachTimer = null;
             this.setStatus(
               "NEXIVRA is ready. Click Start Session."
             );
@@ -30580,14 +30520,14 @@ var NexivraLiveAvatar = class extends HTMLElement {
           }
         } catch (error) {
           console.log(
-            "Waiting for NEXIVRA video..."
+            "Waiting for avatar stream..."
           );
         }
         if (attempts >= 60) {
           clearInterval(
-            this._attachTimer
+            this.attachTimer
           );
-          this._attachTimer = null;
+          this.attachTimer = null;
           this.setStatus(
             "Avatar stream timed out."
           );
@@ -30597,21 +30537,21 @@ var NexivraLiveAvatar = class extends HTMLElement {
     );
   }
   /*
-   * =====================================================
-   * ONE-CLICK SESSION
-   * =====================================================
+   * =========================================================
+   * START / END SESSION
+   * =========================================================
    */
-  async toggleLearnerSession() {
-    if (this._endingSession) {
+  async toggleSession() {
+    if (this.sessionEnding) {
       return;
     }
-    if (this._learnerSessionActive) {
-      await this.endLearnerSession();
+    if (this.sessionActive) {
+      await this.endSession();
     } else {
-      await this.startLearnerSession();
+      await this.startSession();
     }
   }
-  async startLearnerSession() {
+  async startSession() {
     const sessionButton = this.shadowRoot.getElementById(
       "sessionButton"
     );
@@ -30621,7 +30561,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
     const learnerPreview = this.shadowRoot.getElementById(
       "learnerPreview"
     );
-    if (!this._session) {
+    if (!this.session) {
       this.setStatus(
         "Please wait for NEXIVRA to connect."
       );
@@ -30632,7 +30572,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
       this.setStatus(
         "Connecting microphone and camera..."
       );
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -30648,26 +30588,26 @@ var NexivraLiveAvatar = class extends HTMLElement {
           }
         }
       });
-      this._cameraStream = mediaStream;
-      learnerVideo.srcObject = mediaStream;
+      this.cameraStream = stream;
+      learnerVideo.srcObject = stream;
       await learnerVideo.play();
       learnerPreview.classList.add(
         "active"
       );
       await this.startLearnerAudioMonitor(
-        mediaStream
+        stream
       );
       this.setStatus(
-        "Starting live coaching awareness..."
+        "Starting visual coaching..."
       );
-      await this.initializeVisualAnalysis();
+      await this.initializeVision();
       this.startVisualAnalysis();
       this.setStatus(
         "Starting voice conversation..."
       );
-      await this._session.voiceChat.start();
-      this._learnerSessionActive = true;
-      this.resetLiveEventTracking();
+      await this.session.voiceChat.start();
+      this.sessionActive = true;
+      this.resetLiveState();
       this.setTrainingState(
         "ACTIVE"
       );
@@ -30687,7 +30627,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
       sessionButton.disabled = false;
       this.stopVisualAnalysis();
       this.stopLearnerAudioMonitor();
-      this.stopCameraOnly();
+      this.stopCamera();
       this.setTrainingState(
         "READY"
       );
@@ -30696,31 +30636,97 @@ var NexivraLiveAvatar = class extends HTMLElement {
       );
     }
   }
-  resetLiveEventTracking() {
-    this._absenceStartedAt = null;
-    this._returnStartedAt = null;
-    this._turnedAwayStartedAt = null;
-    this._postureIssueStartedAt = null;
-    this._visualCorrectionStartedAt = null;
-    this._waitingForOrientationCorrection = false;
-    this._waitingForPostureCorrection = false;
-    this._interruptionEvents = [];
-    this._overlapStartedAt = null;
-  }
-  /*
-   * =====================================================
-   * MEDIAPIPE
-   * =====================================================
-   */
-  async initializeVisualAnalysis() {
-    if (this._faceLandmarker && this._poseLandmarker) {
+  async endSession() {
+    if (this.sessionEnding) {
       return;
     }
-    this._visionFileset = await ah.forVisionTasks(
+    this.sessionEnding = true;
+    const sessionButton = this.shadowRoot.getElementById(
+      "sessionButton"
+    );
+    sessionButton.disabled = true;
+    this.setTrainingState(
+      "ENDING"
+    );
+    try {
+      this.stopVisualAnalysis();
+      const summary = this.buildVisualSummary();
+      this.setStatus(
+        "NEXIVRA is reviewing your practice..."
+      );
+      this.session.message(
+        summary
+      );
+      await this.delay(
+        800
+      );
+      this.session.message(
+        this.buildFinalFeedbackPrompt()
+      );
+      this.setStatus(
+        "NEXIVRA is preparing your coaching feedback..."
+      );
+      await this.delay(
+        18e3
+      );
+    } catch (error) {
+      console.error(
+        "NEXIVRA FINAL FEEDBACK ERROR:",
+        error
+      );
+    }
+    this.stopLearnerAudioMonitor();
+    this.stopCamera();
+    try {
+      if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") {
+        await this.session.voiceChat.stop();
+      }
+    } catch (error) {
+      console.warn(
+        "VOICE STOP WARNING:",
+        error
+      );
+    }
+    this.sessionActive = false;
+    this.sessionEnding = false;
+    this.resetLiveState();
+    this.setTrainingState(
+      "READY"
+    );
+    sessionButton.disabled = false;
+    sessionButton.textContent = "Start Session";
+    sessionButton.classList.remove(
+      "session-active"
+    );
+    this.setStatus(
+      "Practice session complete."
+    );
+  }
+  resetLiveState() {
+    this.absentSince = null;
+    this.returnedSince = null;
+    this.turnedAwaySince = null;
+    this.postureIssueSince = null;
+    this.correctionSince = null;
+    this.waitingForOrientationCorrection = false;
+    this.waitingForPostureCorrection = false;
+    this.overlapSince = null;
+    this.interruptionEvents = [];
+  }
+  /*
+   * =========================================================
+   * VISUAL ANALYSIS
+   * =========================================================
+   */
+  async initializeVision() {
+    if (this.faceLandmarker && this.poseLandmarker) {
+      return;
+    }
+    this.visionFileset = await ah.forVisionTasks(
       "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm"
     );
-    this._faceLandmarker = await mc.createFromOptions(
-      this._visionFileset,
+    this.faceLandmarker = await mc.createFromOptions(
+      this.visionFileset,
       {
         baseOptions: {
           modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task"
@@ -30731,8 +30737,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
         outputFacialTransformationMatrixes: false
       }
     );
-    this._poseLandmarker = await Kc.createFromOptions(
-      this._visionFileset,
+    this.poseLandmarker = await Kc.createFromOptions(
+      this.visionFileset,
       {
         baseOptions: {
           modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task"
@@ -30744,28 +30750,26 @@ var NexivraLiveAvatar = class extends HTMLElement {
     );
   }
   startVisualAnalysis() {
-    if (this._visualAnalysisRunning) {
+    if (this.visualRunning) {
       return;
     }
-    this._visualMetrics = this.createEmptyVisualMetrics();
-    this._visualAnalysisRunning = true;
-    this._visualAnalysisTimer = setInterval(
-      () => {
-        this.analyzeLearnerFrame();
-      },
+    this.metrics = this.emptyMetrics();
+    this.visualRunning = true;
+    this.visualTimer = setInterval(
+      () => this.analyzeFrame(),
       500
     );
   }
   stopVisualAnalysis() {
-    this._visualAnalysisRunning = false;
-    if (this._visualAnalysisTimer) {
+    this.visualRunning = false;
+    if (this.visualTimer) {
       clearInterval(
-        this._visualAnalysisTimer
+        this.visualTimer
       );
-      this._visualAnalysisTimer = null;
+      this.visualTimer = null;
     }
   }
-  createEmptyVisualMetrics() {
+  emptyMetrics() {
     return {
       samples: 0,
       faceDetectedSamples: 0,
@@ -30780,8 +30784,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
       posture: "Unknown"
     };
   }
-  analyzeLearnerFrame() {
-    if (!this._visualAnalysisRunning || !this._learnerSessionActive) {
+  analyzeFrame() {
+    if (!this.visualRunning || !this.sessionActive) {
       return;
     }
     const video = this.shadowRoot.getElementById(
@@ -30792,11 +30796,11 @@ var NexivraLiveAvatar = class extends HTMLElement {
     }
     const timestamp = performance.now();
     try {
-      const faceResult = this._faceLandmarker.detectForVideo(
+      const faceResult = this.faceLandmarker.detectForVideo(
         video,
         timestamp
       );
-      const poseResult = this._poseLandmarker.detectForVideo(
+      const poseResult = this.poseLandmarker.detectForVideo(
         video,
         timestamp
       );
@@ -30806,63 +30810,63 @@ var NexivraLiveAvatar = class extends HTMLElement {
       );
     } catch (error) {
       console.warn(
-        "NEXIVRA VISUAL FRAME ERROR:",
+        "VISUAL FRAME ERROR:",
         error
       );
     }
   }
   processVisualResults(faceResult, poseResult) {
-    const metrics = this._visualMetrics;
-    metrics.samples++;
+    const m3 = this.metrics;
+    m3.samples++;
     const faceLandmarks = faceResult?.faceLandmarks?.[0];
     const faceDetected = Boolean(
       faceLandmarks && faceLandmarks.length
     );
-    metrics.faceDetected = faceDetected;
+    m3.faceDetected = faceDetected;
     let faceData = {
       orientation: "No face detected",
       facingForward: false,
       inFrame: false
     };
     if (faceDetected) {
-      metrics.faceDetectedSamples++;
+      m3.faceDetectedSamples++;
       faceData = this.evaluateFace(
         faceLandmarks
       );
-      metrics.headOrientation = faceData.orientation;
+      m3.headOrientation = faceData.orientation;
       if (faceData.facingForward) {
-        metrics.facingForwardSamples++;
+        m3.facingForwardSamples++;
       }
-      if (metrics.previousFacingForward && !faceData.facingForward) {
-        metrics.lookAwayEvents++;
+      if (m3.previousFacingForward && !faceData.facingForward) {
+        m3.lookAwayEvents++;
       }
-      metrics.previousFacingForward = faceData.facingForward;
+      m3.previousFacingForward = faceData.facingForward;
       if (faceData.inFrame) {
-        metrics.inFrameSamples++;
+        m3.inFrameSamples++;
       }
     } else {
-      metrics.headOrientation = "No face detected";
-      metrics.previousFacingForward = false;
+      m3.headOrientation = "No face detected";
+      m3.previousFacingForward = false;
     }
     const poseLandmarks = poseResult?.landmarks?.[0];
     const poseDetected = Boolean(
       poseLandmarks && poseLandmarks.length
     );
-    metrics.poseDetected = poseDetected;
+    m3.poseDetected = poseDetected;
     let postureData = {
       label: "Not detected",
       needsCoaching: false
     };
     if (poseDetected) {
-      metrics.poseDetectedSamples++;
+      m3.poseDetectedSamples++;
       postureData = this.evaluatePosture(
         poseLandmarks
       );
-      metrics.posture = postureData.label;
+      m3.posture = postureData.label;
     } else {
-      metrics.posture = "Not detected";
+      m3.posture = "Not detected";
     }
-    this.evaluateLiveVisualEvents(
+    this.evaluateLiveEvents(
       {
         faceDetected,
         poseDetected,
@@ -30941,100 +30945,98 @@ var NexivraLiveAvatar = class extends HTMLElement {
     };
   }
   /*
-   * =====================================================
+   * =========================================================
    * LIVE VISUAL EVENT ENGINE
-   * =====================================================
+   * =========================================================
    */
-  evaluateLiveVisualEvents(observation) {
-    if (!this._learnerSessionActive || this._endingSession) {
+  evaluateLiveEvents(observation) {
+    if (!this.sessionActive || this.sessionEnding) {
       return;
     }
     const now = Date.now();
     const learnerVisible = observation.faceDetected || observation.poseDetected;
     if (!learnerVisible) {
-      this._returnStartedAt = null;
-      if (!this._absenceStartedAt) {
-        this._absenceStartedAt = now;
+      this.returnedSince = null;
+      if (!this.absentSince) {
+        this.absentSince = now;
       }
-      if (this._trainingState !== "PAUSED_ABSENT" && now - this._absenceStartedAt >= this._thresholds.absent) {
+      if (this.trainingState !== "PAUSED_ABSENT" && now - this.absentSince >= this.thresholds.absentMs) {
         this.handleLearnerAbsent();
       }
       return;
     }
-    this._absenceStartedAt = null;
-    if (this._trainingState === "PAUSED_ABSENT") {
-      if (!this._returnStartedAt) {
-        this._returnStartedAt = now;
+    this.absentSince = null;
+    if (this.trainingState === "PAUSED_ABSENT") {
+      if (!this.returnedSince) {
+        this.returnedSince = now;
       }
-      if (now - this._returnStartedAt >= this._thresholds.returned) {
+      if (now - this.returnedSince >= this.thresholds.returnedMs) {
         this.handleLearnerReturned();
       }
       return;
     }
-    this._returnStartedAt = null;
-    if (this._waitingForOrientationCorrection) {
+    this.returnedSince = null;
+    if (this.waitingForOrientationCorrection) {
       if (observation.faceData.facingForward) {
-        if (!this._visualCorrectionStartedAt) {
-          this._visualCorrectionStartedAt = now;
+        if (!this.correctionSince) {
+          this.correctionSince = now;
         }
-        if (now - this._visualCorrectionStartedAt >= this._thresholds.orientationCorrection) {
+        if (now - this.correctionSince >= this.thresholds.orientationCorrectionMs) {
           this.handleOrientationCorrected();
         }
       } else {
-        this._visualCorrectionStartedAt = null;
+        this.correctionSince = null;
       }
       return;
     }
-    if (this._waitingForPostureCorrection) {
+    if (this.waitingForPostureCorrection) {
       if (!observation.postureData.needsCoaching) {
-        if (!this._visualCorrectionStartedAt) {
-          this._visualCorrectionStartedAt = now;
+        if (!this.correctionSince) {
+          this.correctionSince = now;
         }
-        if (now - this._visualCorrectionStartedAt >= this._thresholds.postureCorrection) {
+        if (now - this.correctionSince >= this.thresholds.postureCorrectionMs) {
           this.handlePostureCorrected();
         }
       } else {
-        this._visualCorrectionStartedAt = null;
+        this.correctionSince = null;
       }
       return;
     }
-    if (this._trainingState !== "ACTIVE") {
+    if (this.trainingState !== "ACTIVE") {
       return;
     }
     if (observation.faceDetected && !observation.faceData.facingForward) {
-      if (!this._turnedAwayStartedAt) {
-        this._turnedAwayStartedAt = now;
+      if (!this.turnedAwaySince) {
+        this.turnedAwaySince = now;
       }
-      const cooldownComplete = now - this._lastVisualCoachingAt >= this._thresholds.visualCooldown;
-      if (cooldownComplete && now - this._turnedAwayStartedAt >= this._thresholds.turnedAway) {
-        this.handleSustainedOrientationAway(
+      const cooldownComplete = now - this.lastOrientationCoach >= this.thresholds.orientationCooldownMs;
+      if (cooldownComplete && now - this.turnedAwaySince >= this.thresholds.turnedAwayMs) {
+        this.handleOrientationAway(
           observation.faceData.orientation
         );
       }
     } else {
-      this._turnedAwayStartedAt = null;
+      this.turnedAwaySince = null;
     }
     if (observation.poseDetected && observation.postureData.needsCoaching) {
-      if (!this._postureIssueStartedAt) {
-        this._postureIssueStartedAt = now;
+      if (!this.postureIssueSince) {
+        this.postureIssueSince = now;
       }
-      const cooldownComplete = now - this._lastPostureCoachingAt >= this._thresholds.postureCooldown;
-      if (cooldownComplete && now - this._postureIssueStartedAt >= this._thresholds.posture) {
-        this.handlePostureConcern(
-          observation.postureData.label
-        );
+      const cooldownComplete = now - this.lastPostureCoach >= this.thresholds.postureCooldownMs;
+      if (cooldownComplete && now - this.postureIssueSince >= this.thresholds.postureMs) {
+        this.handlePostureConcern();
       }
     } else {
-      this._postureIssueStartedAt = null;
+      this.postureIssueSince = null;
     }
   }
   /*
-   * =====================================================
-   * LIVE VISUAL COACHING
-   * =====================================================
+   * =========================================================
+   * LIVE COACHING ACTIONS
+   * =========================================================
    */
   async handleLearnerAbsent() {
-    if (this._trainingState === "PAUSED_ABSENT") {
+    if (this.trainingState === "PAUSED_ABSENT") {
       return;
     }
     this.setTrainingState(
@@ -31043,247 +31045,240 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.setStatus(
       "Training paused while you are away."
     );
-    try {
-      if (typeof this._session?.interrupt === "function") {
-        await this._session.interrupt();
-      }
-    } catch (error) {
-      console.warn(
-        "NEXIVRA INTERRUPT WARNING:",
-        error
-      );
-    }
-    this.sendLiveCoachInstruction(`
-LIVE TRAINING EVENT:
-
-The learner has not been visibly present for several seconds.
-
-Pause the current training interaction.
-
-Briefly tell the learner that you will wait for them to return.
-
-Do not continue teaching, questioning, role-play, evaluation, or scenario progression until a LEARNER RETURNED event is received.
-
-Do not speculate about why the learner stepped away.
-        `);
+    await this.speakImmediateCoach(
+      "It looks like you've stepped away. I'll pause here and wait for you to come back.",
+      false
+    );
   }
-  handleLearnerReturned() {
-    if (this._trainingState !== "PAUSED_ABSENT") {
+  async handleLearnerReturned() {
+    if (this.trainingState !== "PAUSED_ABSENT") {
       return;
     }
-    this._returnStartedAt = null;
+    this.returnedSince = null;
     this.setTrainingState(
       "ACTIVE"
     );
     this.setStatus(
       "Session active."
     );
-    this.sendLiveCoachInstruction(`
-LIVE TRAINING EVENT:
-
-The learner has returned and has remained visibly present again for a stable period.
-
-Briefly welcome them back.
-
-Resume the training from the point where it was paused.
-
-Do not restart the entire lesson unless necessary.
-        `);
+    await this.speakImmediateCoach(
+      "Welcome back. Let's pick up where we left off.",
+      true
+    );
   }
-  handleSustainedOrientationAway(orientation) {
-    this._lastVisualCoachingAt = Date.now();
-    this._turnedAwayStartedAt = null;
-    this._waitingForOrientationCorrection = true;
-    this._visualCorrectionStartedAt = null;
+  async handleOrientationAway(orientation) {
+    if (this.coachIntervening) {
+      return;
+    }
+    this.lastOrientationCoach = Date.now();
+    this.turnedAwaySince = null;
+    this.waitingForOrientationCorrection = true;
+    this.correctionSince = null;
     this.setTrainingState(
       "WAITING_FOR_CORRECTION"
     );
     this.setStatus(
       "NEXIVRA is coaching visual presence."
     );
-    this.sendLiveCoachInstruction(`
-LIVE VISUAL COACHING EVENT:
-
-The learner has maintained a visible head orientation away from the interaction for a sustained period.
-
-Current observed orientation: ${orientation}.
-
-Pause the current training point briefly.
-
-Teach the importance of visual engagement during face-to-face hospitality interactions.
-
-Explain that appropriate eye contact can help another person feel heard, respected, and attended to.
-
-Do not demand constant eye contact.
-
-Natural conversation includes looking away.
-
-Do not claim the learner is distracted, nervous, uninterested, dishonest, or inattentive.
-
-Explain that sustained orientation away from someone can affect how the interaction is experienced.
-
-Ask the learner to reorient toward the interaction.
-
-Wait for a VISUAL CORRECTION event before continuing.
-        `);
+    await this.speakImmediateCoach(
+      "I'm going to pause us for a moment. You've been turned away from our interaction for a little while. In face-to-face hospitality, appropriate eye contact and visual engagement can help another person feel heard and respected. You don't need to stare at someone constantly, but try turning back toward the interaction and staying visually present.",
+      true
+    );
+    console.log(
+      "Observed orientation:",
+      orientation
+    );
   }
-  handleOrientationCorrected() {
-    this._waitingForOrientationCorrection = false;
-    this._visualCorrectionStartedAt = null;
+  async handleOrientationCorrected() {
+    this.waitingForOrientationCorrection = false;
+    this.correctionSince = null;
     this.setTrainingState(
       "ACTIVE"
     );
     this.setStatus(
       "Session active."
     );
-    this.sendLiveCoachInstruction(`
-LIVE VISUAL COACHING EVENT:
-
-The learner has maintained a more forward-facing orientation for a stable period after visual-presence coaching.
-
-Briefly acknowledge the adjustment positively.
-
-Then continue the training from where it paused.
-
-Keep the acknowledgment natural and brief.
-        `);
+    await this.speakImmediateCoach(
+      "There you go. That's a more visually engaged presence. Let's continue.",
+      true
+    );
   }
-  handlePostureConcern(postureLabel) {
-    this._lastPostureCoachingAt = Date.now();
-    this._postureIssueStartedAt = null;
-    this._waitingForPostureCorrection = true;
-    this._visualCorrectionStartedAt = null;
+  async handlePostureConcern() {
+    if (this.coachIntervening) {
+      return;
+    }
+    this.lastPostureCoach = Date.now();
+    this.postureIssueSince = null;
+    this.waitingForPostureCorrection = true;
+    this.correctionSince = null;
     this.setTrainingState(
       "WAITING_FOR_CORRECTION"
     );
     this.setStatus(
       "NEXIVRA is coaching physical presence."
     );
-    this.sendLiveCoachInstruction(`
-LIVE VISUAL COACHING EVENT:
-
-A sustained visible upper-body pattern has been observed that may reduce an open, engaged professional presence.
-
-Observed pattern: ${postureLabel}.
-
-Pause the training briefly.
-
-Coach the learner on maintaining an open, engaged, professional posture appropriate to their abilities and circumstances.
-
-Explain that physical presence can influence how another person experiences our communication.
-
-Do not diagnose any medical, physical, emotional, or psychological reason.
-
-Do not demand a rigid posture.
-
-Invite the learner to adjust into a comfortable, more open professional position.
-
-Wait for a POSTURE CORRECTION event before continuing.
-        `);
+    await this.speakImmediateCoach(
+      "Let's pause for a moment and work on physical presence. Try moving into a comfortable, more open and upright position. In hospitality, posture can influence how engaged and approachable we appear to another person. Find a position that feels natural and professional for you.",
+      true
+    );
   }
-  handlePostureCorrected() {
-    this._waitingForPostureCorrection = false;
-    this._visualCorrectionStartedAt = null;
+  async handlePostureCorrected() {
+    this.waitingForPostureCorrection = false;
+    this.correctionSince = null;
     this.setTrainingState(
       "ACTIVE"
     );
     this.setStatus(
       "Session active."
     );
-    this.sendLiveCoachInstruction(`
-LIVE VISUAL COACHING EVENT:
-
-The learner has maintained a more open and level visible upper-body position for a stable period after posture coaching.
-
-Briefly acknowledge the adjustment.
-
-Then resume the training.
-        `);
+    await this.speakImmediateCoach(
+      "That's better. Notice how that creates a more open presence. Let's keep going.",
+      true
+    );
   }
-  sendLiveCoachInstruction(instruction) {
-    if (!this._session) {
+  /*
+   * =========================================================
+   * DIRECT LIVE COACHING BRIDGE
+   * =========================================================
+   */
+  async speakImmediateCoach(text, resumeVoice = true) {
+    if (!this.session || this.coachIntervening) {
       return;
     }
+    this.coachIntervening = true;
     try {
-      this._session.message(
-        instruction.trim()
+      if (this.session.voiceChat && typeof this.session.voiceChat.stop === "function") {
+        try {
+          await this.session.voiceChat.stop();
+        } catch (error) {
+          console.warn(
+            "VOICE PAUSE WARNING:",
+            error
+          );
+        }
+      }
+      if (typeof this.session.interrupt === "function") {
+        try {
+          await this.session.interrupt();
+        } catch (error) {
+          console.warn(
+            "AVATAR INTERRUPT WARNING:",
+            error
+          );
+        }
+      }
+      const directPrompt = `
+LIVE COACHING RESPONSE:
+
+Say the following message directly to the learner now.
+
+Do not explain the instruction.
+Do not mention system messages or technical detection.
+Do not add extra coaching before or after it.
+
+MESSAGE TO SAY:
+
+"${text}"
+      `.trim();
+      this.session.message(
+        directPrompt
       );
       console.log(
-        "NEXIVRA LIVE EVENT SENT:",
-        instruction.trim()
+        "NEXIVRA LIVE COACH MESSAGE:",
+        text
       );
+      const words = text.trim().split(/\s+/).length;
+      const speechMs = Math.max(
+        3e3,
+        words / 150 * 6e4 + 1200
+      );
+      await this.delay(
+        speechMs
+      );
+      if (resumeVoice && this.sessionActive && this.session.voiceChat && typeof this.session.voiceChat.start === "function") {
+        try {
+          await this.session.voiceChat.start();
+        } catch (error) {
+          console.warn(
+            "VOICE RESUME WARNING:",
+            error
+          );
+        }
+      }
     } catch (error) {
       console.error(
-        "NEXIVRA LIVE EVENT ERROR:",
+        "LIVE COACHING ERROR:",
         error
       );
+    } finally {
+      this.coachIntervening = false;
     }
   }
   /*
-   * =====================================================
+   * =========================================================
    * LEARNER AUDIO MONITOR
-   * =====================================================
+   * =========================================================
    */
-  async startLearnerAudioMonitor(mediaStream) {
+  async startLearnerAudioMonitor(stream) {
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) {
         return;
       }
-      this._learnerAudioContext = new AudioContextClass();
-      if (this._learnerAudioContext.state === "suspended") {
-        await this._learnerAudioContext.resume();
+      this.learnerAudioContext = new AudioContextClass();
+      if (this.learnerAudioContext.state === "suspended") {
+        await this.learnerAudioContext.resume();
       }
-      this._learnerMicSource = this._learnerAudioContext.createMediaStreamSource(
-        mediaStream
+      this.learnerSource = this.learnerAudioContext.createMediaStreamSource(
+        stream
       );
-      this._learnerAnalyser = this._learnerAudioContext.createAnalyser();
-      this._learnerAnalyser.fftSize = 1024;
-      this._learnerAnalyser.smoothingTimeConstant = 0.65;
-      this._learnerMicSource.connect(
-        this._learnerAnalyser
+      this.learnerAnalyser = this.learnerAudioContext.createAnalyser();
+      this.learnerAnalyser.fftSize = 1024;
+      this.learnerAnalyser.smoothingTimeConstant = 0.65;
+      this.learnerSource.connect(
+        this.learnerAnalyser
       );
       const samples = new Float32Array(
-        this._learnerAnalyser.fftSize
+        this.learnerAnalyser.fftSize
       );
-      this._learnerAudioTimer = setInterval(
+      this.learnerAudioTimer = setInterval(
         () => {
-          if (!this._learnerAnalyser || !this._learnerSessionActive) {
+          if (!this.learnerAnalyser || !this.sessionActive) {
             return;
           }
-          this._learnerAnalyser.getFloatTimeDomainData(
+          this.learnerAnalyser.getFloatTimeDomainData(
             samples
           );
           const rms = this.calculateRms(
             samples
           );
-          this._learnerSpeaking = rms > this._interruptionThresholds.learnerSpeechRms;
+          this.learnerSpeaking = rms > this.thresholds.learnerSpeechRms;
           this.evaluateSpeechOverlap();
         },
         100
       );
     } catch (error) {
       console.warn(
-        "NEXIVRA LEARNER AUDIO MONITOR ERROR:",
+        "LEARNER AUDIO MONITOR ERROR:",
         error
       );
     }
   }
   /*
-   * =====================================================
+   * =========================================================
    * AVATAR AUDIO MONITOR
-   * =====================================================
+   * =========================================================
    */
-  async startAvatarAudioMonitor(avatarStream) {
+  async startAvatarAudioMonitor(stream) {
     try {
-      if (this._avatarAudioContext) {
+      if (this.avatarAudioContext) {
         return;
       }
-      const audioTracks = avatarStream?.getAudioTracks?.();
+      const audioTracks = stream?.getAudioTracks?.();
       if (!audioTracks || !audioTracks.length) {
         setTimeout(
           () => {
-            if (!this._avatarAudioContext && this._session) {
+            if (!this.avatarAudioContext) {
               const avatarVideo = this.shadowRoot.getElementById(
                 "avatarVideo"
               );
@@ -31302,38 +31297,38 @@ Then resume the training.
       if (!AudioContextClass) {
         return;
       }
-      this._avatarAudioContext = new AudioContextClass();
-      this._avatarAudioSource = this._avatarAudioContext.createMediaStreamSource(
-        avatarStream
+      this.avatarAudioContext = new AudioContextClass();
+      this.avatarSource = this.avatarAudioContext.createMediaStreamSource(
+        stream
       );
-      this._avatarAnalyser = this._avatarAudioContext.createAnalyser();
-      this._avatarAnalyser.fftSize = 1024;
-      this._avatarAnalyser.smoothingTimeConstant = 0.65;
-      this._avatarAudioSource.connect(
-        this._avatarAnalyser
+      this.avatarAnalyser = this.avatarAudioContext.createAnalyser();
+      this.avatarAnalyser.fftSize = 1024;
+      this.avatarAnalyser.smoothingTimeConstant = 0.65;
+      this.avatarSource.connect(
+        this.avatarAnalyser
       );
       const samples = new Float32Array(
-        this._avatarAnalyser.fftSize
+        this.avatarAnalyser.fftSize
       );
-      this._avatarAudioTimer = setInterval(
+      this.avatarAudioTimer = setInterval(
         () => {
-          if (!this._avatarAnalyser) {
+          if (!this.avatarAnalyser) {
             return;
           }
-          this._avatarAnalyser.getFloatTimeDomainData(
+          this.avatarAnalyser.getFloatTimeDomainData(
             samples
           );
           const rms = this.calculateRms(
             samples
           );
-          this._avatarSpeaking = rms > this._interruptionThresholds.avatarSpeechRms;
+          this.avatarSpeaking = rms > this.thresholds.avatarSpeechRms;
           this.evaluateSpeechOverlap();
         },
         100
       );
     } catch (error) {
       console.warn(
-        "NEXIVRA AVATAR AUDIO MONITOR ERROR:",
+        "AVATAR AUDIO MONITOR ERROR:",
         error
       );
     }
@@ -31348,200 +31343,102 @@ Then resume the training.
     );
   }
   /*
-   * =====================================================
-   * INTERRUPTION ENGINE
-   * =====================================================
+   * =========================================================
+   * INTERRUPTION DETECTION
+   * =========================================================
    */
   evaluateSpeechOverlap() {
-    if (!this._learnerSessionActive || this._endingSession) {
+    if (!this.sessionActive || this.sessionEnding || this.coachIntervening) {
       return;
     }
-    const overlap = this._learnerSpeaking && this._avatarSpeaking;
+    const overlap = this.learnerSpeaking && this.avatarSpeaking;
     if (overlap) {
-      if (!this._overlapStartedAt) {
-        this._overlapStartedAt = Date.now();
+      if (!this.overlapSince) {
+        this.overlapSince = Date.now();
       }
       return;
     }
-    if (this._overlapStartedAt) {
-      this.finishPossibleInterruption();
+    if (this.overlapSince) {
+      this.finishOverlap();
     }
   }
-  finishPossibleInterruption() {
-    if (!this._overlapStartedAt) {
+  finishOverlap() {
+    if (!this.overlapSince) {
       return;
     }
     const now = Date.now();
-    const duration = now - this._overlapStartedAt;
-    this._overlapStartedAt = null;
-    if (duration < this._interruptionThresholds.minimumOverlap) {
+    const duration = now - this.overlapSince;
+    this.overlapSince = null;
+    if (duration < this.thresholds.minimumOverlapMs) {
       return;
     }
-    this._interruptionEvents.push(
+    this.interruptionEvents.push(
       {
         time: now,
         duration
       }
     );
-    const cutoff = now - this._interruptionThresholds.rollingWindow;
-    this._interruptionEvents = this._interruptionEvents.filter(
+    const cutoff = now - this.thresholds.interruptionWindowMs;
+    this.interruptionEvents = this.interruptionEvents.filter(
       (event) => event.time >= cutoff
     );
-    this.evaluateInterruptionPattern();
+    this.checkInterruptionPattern();
   }
-  evaluateInterruptionPattern() {
+  checkInterruptionPattern() {
     const now = Date.now();
-    if (this._interruptionEvents.length < this._interruptionThresholds.eventsBeforeCoaching) {
+    if (this.interruptionEvents.length < this.thresholds.interruptionsBeforeCoach) {
       return;
     }
-    if (now - this._lastInterruptionCoachingAt < this._interruptionThresholds.coachingCooldown) {
+    if (now - this.lastInterruptionCoach < this.thresholds.interruptionCooldownMs) {
       return;
     }
-    if (this._trainingState !== "ACTIVE") {
+    if (this.trainingState !== "ACTIVE") {
       return;
     }
-    this._lastInterruptionCoachingAt = now;
-    this._interruptionEvents = [];
-    this.handleRepeatedInterruption();
+    this.lastInterruptionCoach = now;
+    this.interruptionEvents = [];
+    this.handleInterruptionCoaching();
   }
-  handleRepeatedInterruption() {
+  async handleInterruptionCoaching() {
     this.setTrainingState(
-      "COACHING_INTERRUPTION"
+      "LISTENING_COACHING"
     );
     this.setStatus(
       "NEXIVRA is coaching listening skills."
     );
-    this.sendLiveCoachInstruction(`
-LIVE LISTENING COACHING EVENT:
-
-The learner has produced multiple sustained speech-overlap events while the trainer was still speaking.
-
-Treat this as a possible interruption pattern.
-
-Pause the current training point briefly.
-
-Explain that allowing another person to finish speaking helps them feel heard and respected and helps us fully understand before responding.
-
-Do not criticize normal short acknowledgments such as "yes," "okay," "right," or "I understand."
-
-Explain the importance of listening through the end of another person's thought before beginning a full response.
-
-Keep the coaching constructive and non-punitive.
-
-Then continue the interaction naturally.
-
-Do not mention microphone monitoring or automated detection.
-        `);
-    setTimeout(
-      () => {
-        if (this._trainingState === "COACHING_INTERRUPTION") {
-          this.setTrainingState(
-            "ACTIVE"
-          );
-          this.setStatus(
-            "Session active."
-          );
-        }
-      },
-      7e3
+    await this.speakImmediateCoach(
+      "I'm going to pause us for a second. You've started responding before I've finished speaking a few times. In hospitality, allowing another person to finish helps them feel heard and gives us the chance to fully understand before we respond. Brief acknowledgments are perfectly natural, but let's practice allowing the speaker to finish their thought before beginning our full response.",
+      true
     );
-  }
-  /*
-   * =====================================================
-   * END SESSION
-   * =====================================================
-   */
-  async endLearnerSession() {
-    if (this._endingSession) {
-      return;
-    }
-    this._endingSession = true;
-    const sessionButton = this.shadowRoot.getElementById(
-      "sessionButton"
-    );
-    sessionButton.disabled = true;
     this.setTrainingState(
-      "ENDING"
-    );
-    try {
-      this.stopVisualAnalysis();
-      const visualSummary = this.buildVisualSummary();
-      this.setStatus(
-        "NEXIVRA is reviewing your practice..."
-      );
-      this._session.message(
-        visualSummary
-      );
-      await this.delay(
-        800
-      );
-      this._session.message(
-        this.buildIntegratedFeedbackRequest()
-      );
-      this.setStatus(
-        "NEXIVRA is preparing your coaching feedback..."
-      );
-      await this.delay(
-        18e3
-      );
-    } catch (error) {
-      console.error(
-        "NEXIVRA FINAL FEEDBACK ERROR:",
-        error
-      );
-      this.setStatus(
-        "NEXIVRA could not complete the final coaching review."
-      );
-    }
-    this.stopLearnerAudioMonitor();
-    this.stopCameraOnly();
-    try {
-      if (this._session?.voiceChat && typeof this._session.voiceChat.stop === "function") {
-        await this._session.voiceChat.stop();
-      }
-    } catch (error) {
-      console.warn(
-        "NEXIVRA VOICE STOP WARNING:",
-        error
-      );
-    }
-    this._learnerSessionActive = false;
-    this._endingSession = false;
-    this.resetLiveEventTracking();
-    this.setTrainingState(
-      "READY"
-    );
-    sessionButton.disabled = false;
-    sessionButton.textContent = "Start Session";
-    sessionButton.classList.remove(
-      "session-active"
+      "ACTIVE"
     );
     this.setStatus(
-      "Practice session complete."
+      "Session active."
     );
   }
   /*
-   * =====================================================
+   * =========================================================
    * FINAL VISUAL SUMMARY
-   * =====================================================
+   * =========================================================
    */
   buildVisualSummary() {
-    const metrics = this._visualMetrics;
-    const sampleCount = Math.max(
-      metrics.samples,
+    const m3 = this.metrics;
+    const samples = Math.max(
+      m3.samples,
       1
     );
     const facePercent = Math.round(
-      metrics.faceDetectedSamples / sampleCount * 100
+      m3.faceDetectedSamples / samples * 100
     );
     const posePercent = Math.round(
-      metrics.poseDetectedSamples / sampleCount * 100
+      m3.poseDetectedSamples / samples * 100
     );
     const facingPercent = Math.round(
-      metrics.facingForwardSamples / sampleCount * 100
+      m3.facingForwardSamples / samples * 100
     );
     const framePercent = Math.round(
-      metrics.inFrameSamples / sampleCount * 100
+      m3.inFrameSamples / samples * 100
     );
     return `
 SYSTEM COACHING CONTEXT:
@@ -31552,9 +31449,9 @@ Observable visual information from the completed learner practice:
 - Upper-body pose detected in approximately ${posePercent}% of analyzed samples.
 - Learner remained within the central camera frame in approximately ${framePercent}% of analyzed samples.
 - Learner was approximately forward-facing in ${facingPercent}% of analyzed samples.
-- ${metrics.lookAwayEvents} transition(s) away from forward-facing orientation were observed.
-- Final visible head orientation: ${metrics.headOrientation}.
-- Final visible upper-body alignment: ${metrics.posture}.
+- ${m3.lookAwayEvents} transition(s) away from forward-facing orientation were observed.
+- Final visible head orientation: ${m3.headOrientation}.
+- Final visible upper-body alignment: ${m3.posture}.
 
 Use these observations only as supplemental coaching context.
 
@@ -31564,52 +31461,48 @@ Do not equate camera-facing behavior with perfect eye contact.
 
 Do not treat looking away as inherently negative.
 
-Natural human conversation includes looking away.
+Natural conversation includes looking away.
 
-Do not use these measurements as a performance score.
+Do not use these measurements as a score.
 
-When visual behavior is relevant, describe only what was observable and explain how it could potentially affect another person's experience.
+When visual behavior is relevant, describe only what was observable and how it could potentially affect another person's experience.
 
-Do not read raw percentages aloud unless the learner asks for them.
-        `.trim();
+Do not read technical percentages aloud unless the learner specifically asks.
+    `.trim();
   }
-  buildIntegratedFeedbackRequest() {
+  buildFinalFeedbackPrompt() {
     return `
 COACHING REQUEST:
 
-The learner has completed the current hospitality practice interaction.
+The learner has completed the current hospitality practice.
 
-Provide concise integrated coaching using:
+Give concise integrated coaching based on:
 
 1. The conversation.
-2. The learner's verbal responses and decisions.
-3. Any live visual-presence coaching that occurred.
-4. Any listening/interruption coaching that occurred.
-5. The final observable visual context.
+2. The learner's verbal responses.
+3. Any visual-presence coaching that occurred.
+4. Any listening or interruption coaching that occurred.
+5. The final visual observations.
 
 Begin with what the learner did effectively.
 
 Then identify one or two meaningful opportunities to strengthen.
 
-If interruption coaching was relevant, reinforce the importance of allowing another person to finish speaking and listening before responding.
-
-If visual presence was relevant, explain how observable behavior could potentially affect another person's experience.
-
-Do not mention MediaPipe, telemetry, camera percentages, microphone monitoring, automated event detection, or system messages.
+Do not mention technical monitoring, MediaPipe, camera percentages, microphone detection, automated events, or system messages.
 
 Do not say the learner failed.
 
 Use supportive Legacy Edge Partners coaching language.
 
 Keep the feedback conversational, specific, constructive, and concise.
-        `.trim();
+    `.trim();
   }
   /*
-   * =====================================================
+   * =========================================================
    * TEXT FALLBACK
-   * =====================================================
+   * =========================================================
    */
-  async sendMessage() {
+  async sendTextMessage() {
     const input = this.shadowRoot.getElementById(
       "messageInput"
     );
@@ -31617,14 +31510,14 @@ Keep the feedback conversational, specific, constructive, and concise.
     if (!message) {
       return;
     }
-    if (!this._session) {
+    if (!this.session) {
       this.setStatus(
         "Please wait for NEXIVRA to connect."
       );
       return;
     }
     try {
-      this._session.message(
+      this.session.message(
         message
       );
       input.value = "";
@@ -31633,80 +31526,76 @@ Keep the feedback conversational, specific, constructive, and concise.
       );
     } catch (error) {
       console.error(
-        "NEXIVRA TEXT ERROR:",
+        "TEXT ERROR:",
         error
-      );
-      this.setStatus(
-        "TEXT ERROR: " + (error?.message || String(error))
       );
     }
   }
   /*
-   * =====================================================
-   * CLEANUP HELPERS
-   * =====================================================
+   * =========================================================
+   * CLEANUP
+   * =========================================================
    */
   stopLearnerAudioMonitor() {
-    if (this._learnerAudioTimer) {
+    if (this.learnerAudioTimer) {
       clearInterval(
-        this._learnerAudioTimer
+        this.learnerAudioTimer
       );
-      this._learnerAudioTimer = null;
+      this.learnerAudioTimer = null;
     }
-    if (this._learnerMicSource) {
+    if (this.learnerSource) {
       try {
-        this._learnerMicSource.disconnect();
+        this.learnerSource.disconnect();
       } catch (error) {
       }
-      this._learnerMicSource = null;
+      this.learnerSource = null;
     }
-    this._learnerAnalyser = null;
-    if (this._learnerAudioContext) {
+    this.learnerAnalyser = null;
+    if (this.learnerAudioContext) {
       try {
-        this._learnerAudioContext.close();
+        this.learnerAudioContext.close();
       } catch (error) {
       }
-      this._learnerAudioContext = null;
+      this.learnerAudioContext = null;
     }
-    this._learnerSpeaking = false;
-    this._overlapStartedAt = null;
+    this.learnerSpeaking = false;
   }
   stopAvatarAudioMonitor() {
-    if (this._avatarAudioTimer) {
+    if (this.avatarAudioTimer) {
       clearInterval(
-        this._avatarAudioTimer
+        this.avatarAudioTimer
       );
-      this._avatarAudioTimer = null;
+      this.avatarAudioTimer = null;
     }
-    if (this._avatarAudioSource) {
+    if (this.avatarSource) {
       try {
-        this._avatarAudioSource.disconnect();
+        this.avatarSource.disconnect();
       } catch (error) {
       }
-      this._avatarAudioSource = null;
+      this.avatarSource = null;
     }
-    this._avatarAnalyser = null;
-    if (this._avatarAudioContext) {
+    this.avatarAnalyser = null;
+    if (this.avatarAudioContext) {
       try {
-        this._avatarAudioContext.close();
+        this.avatarAudioContext.close();
       } catch (error) {
       }
-      this._avatarAudioContext = null;
+      this.avatarAudioContext = null;
     }
-    this._avatarSpeaking = false;
+    this.avatarSpeaking = false;
   }
-  stopCameraOnly() {
+  stopCamera() {
     const learnerVideo = this.shadowRoot.getElementById(
       "learnerVideo"
     );
     const learnerPreview = this.shadowRoot.getElementById(
       "learnerPreview"
     );
-    if (this._cameraStream) {
-      this._cameraStream.getTracks().forEach(
+    if (this.cameraStream) {
+      this.cameraStream.getTracks().forEach(
         (track) => track.stop()
       );
-      this._cameraStream = null;
+      this.cameraStream = null;
     }
     if (learnerVideo) {
       learnerVideo.srcObject = null;
@@ -31717,48 +31606,41 @@ Keep the feedback conversational, specific, constructive, and concise.
       );
     }
   }
-  delay(milliseconds) {
+  delay(ms2) {
     return new Promise(
-      (resolve) => {
-        setTimeout(
-          resolve,
-          milliseconds
-        );
-      }
+      (resolve) => setTimeout(
+        resolve,
+        ms2
+      )
     );
   }
-  /*
-   * =====================================================
-   * COMPONENT CLEANUP
-   * =====================================================
-   */
   disconnectedCallback() {
-    if (this._attachTimer) {
+    if (this.attachTimer) {
       clearInterval(
-        this._attachTimer
+        this.attachTimer
       );
-      this._attachTimer = null;
+      this.attachTimer = null;
     }
     this.stopVisualAnalysis();
     this.stopLearnerAudioMonitor();
     this.stopAvatarAudioMonitor();
-    this.stopCameraOnly();
-    if (this._faceLandmarker) {
+    this.stopCamera();
+    if (this.faceLandmarker) {
       try {
-        this._faceLandmarker.close();
+        this.faceLandmarker.close();
       } catch (error) {
       }
-      this._faceLandmarker = null;
+      this.faceLandmarker = null;
     }
-    if (this._poseLandmarker) {
+    if (this.poseLandmarker) {
       try {
-        this._poseLandmarker.close();
+        this.poseLandmarker.close();
       } catch (error) {
       }
-      this._poseLandmarker = null;
+      this.poseLandmarker = null;
     }
-    if (this._session) {
-      this._session.stop().catch(
+    if (this.session) {
+      this.session.stop().catch(
         (error) => {
           console.error(
             "NEXIVRA STOP ERROR:",
@@ -31767,9 +31649,9 @@ Keep the feedback conversational, specific, constructive, and concise.
         }
       );
     }
-    this._session = null;
-    this._learnerSessionActive = false;
-    this._endingSession = false;
+    this.session = null;
+    this.sessionActive = false;
+    this.sessionEnding = false;
     this.setTrainingState(
       "READY"
     );
