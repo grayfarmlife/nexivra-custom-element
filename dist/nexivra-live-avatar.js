@@ -30472,6 +30472,46 @@ var NexivraLiveAvatar = class extends HTMLElement {
           voiceChat: false
         }
       );
+      this.session.on(
+        AgentEventsEnum.AVATAR_SPEAK_STARTED,
+        () => {
+          this.avatarSpeaking = true;
+          console.log(
+            "NEXIVRA SPEECH EVENT: Elenora started speaking"
+          );
+          this.evaluateSpeechOverlap();
+        }
+      );
+      this.session.on(
+        AgentEventsEnum.AVATAR_SPEAK_ENDED,
+        () => {
+          this.avatarSpeaking = false;
+          console.log(
+            "NEXIVRA SPEECH EVENT: Elenora stopped speaking"
+          );
+          this.evaluateSpeechOverlap();
+        }
+      );
+      this.session.on(
+        AgentEventsEnum.USER_SPEAK_STARTED,
+        () => {
+          this.learnerSpeaking = true;
+          console.log(
+            "NEXIVRA SPEECH EVENT: Learner started speaking"
+          );
+          this.evaluateSpeechOverlap();
+        }
+      );
+      this.session.on(
+        AgentEventsEnum.USER_SPEAK_ENDED,
+        () => {
+          this.learnerSpeaking = false;
+          console.log(
+            "NEXIVRA SPEECH EVENT: Learner stopped speaking"
+          );
+          this.evaluateSpeechOverlap();
+        }
+      );
       await this.session.start();
       this.waitForAvatarVideo();
     } catch (error) {
@@ -30513,9 +30553,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
             video.play().catch(
               () => {
               }
-            );
-            this.startAvatarAudioMonitor(
-              video.srcObject
             );
           }
         } catch (error) {
@@ -30593,9 +30630,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
       await learnerVideo.play();
       learnerPreview.classList.add(
         "active"
-      );
-      await this.startLearnerAudioMonitor(
-        stream
       );
       this.setStatus(
         "Starting visual coaching..."
@@ -30712,6 +30746,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.waitingForPostureCorrection = false;
     this.overlapSince = null;
     this.interruptionEvents = [];
+    this.learnerSpeaking = false;
+    this.avatarSpeaking = false;
   }
   /*
    * =========================================================
