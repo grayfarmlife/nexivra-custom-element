@@ -31187,6 +31187,19 @@ var NexivraLiveAvatar = class extends HTMLElement {
     }
     this.coachIntervening = true;
     try {
+      if (this.session.voiceChat && typeof this.session.voiceChat.stop === "function") {
+        try {
+          await this.session.voiceChat.stop();
+          console.log(
+            "NEXIVRA LIVE COACH: voice chat paused"
+          );
+        } catch (error) {
+          console.warn(
+            "VOICE PAUSE WARNING:",
+            error
+          );
+        }
+      }
       if (typeof this.session.interrupt === "function") {
         try {
           this.session.interrupt();
@@ -31203,27 +31216,84 @@ var NexivraLiveAvatar = class extends HTMLElement {
       await this.delay(
         500
       );
-      if (typeof this.session.repeat === "function") {
-        this.session.repeat(
-          text
-        );
-        console.log(
-          "NEXIVRA LIVE COACH SPOKEN:",
-          text
-        );
-      } else {
-        console.error(
-          "NEXIVRA LIVE COACH ERROR: session.repeat is unavailable"
+      if (typeof this.session.repeat !== "function") {
+        throw new Error(
+          "session.repeat is unavailable"
         );
       }
-      const words = text.trim().split(/\s+/).length;
-      const speechMs = Math.max(
-        3e3,
-        words / 150 * 6e4 + 1200
+      const coachEventId = this.session.repeat(
+        text
       );
-      await this.delay(
-        speechMs
+      console.log(
+        "NEXIVRA LIVE COACH SPOKEN:",
+        text
       );
+      console.log(
+        "NEXIVRA LIVE COACH EVENT ID:",
+        coachEventId
+      );
+      await new Promise(
+        (resolve) => {
+          let finished = false;
+          const cleanup = () => {
+            if (typeof this.session.off === "function") {
+              this.session.off(
+                AgentEventsEnum.AVATAR_SPEAK_ENDED,
+                handleEnded
+              );
+            }
+          };
+          const handleEnded = (event) => {
+            if (finished) {
+              return;
+            }
+            if (event?.event_id === coachEventId) {
+              finished = true;
+              cleanup();
+              console.log(
+                "NEXIVRA LIVE COACH: coaching speech completed"
+              );
+              resolve();
+            }
+          };
+          this.session.on(
+            AgentEventsEnum.AVATAR_SPEAK_ENDED,
+            handleEnded
+          );
+          const words = text.trim().split(/\s+/).length;
+          const fallbackMs = Math.max(
+            8e3,
+            words / 120 * 6e4 + 5e3
+          );
+          setTimeout(
+            () => {
+              if (finished) {
+                return;
+              }
+              finished = true;
+              cleanup();
+              console.warn(
+                "NEXIVRA LIVE COACH: speech-end timeout used"
+              );
+              resolve();
+            },
+            fallbackMs
+          );
+        }
+      );
+      if (resumeVoice && this.sessionActive && this.session.voiceChat && typeof this.session.voiceChat.start === "function") {
+        try {
+          await this.session.voiceChat.start();
+          console.log(
+            "NEXIVRA LIVE COACH: voice chat resumed"
+          );
+        } catch (error) {
+          console.warn(
+            "VOICE RESUME WARNING:",
+            error
+          );
+        }
+      }
     } catch (error) {
       console.error(
         "LIVE COACHING ERROR:",
