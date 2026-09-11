@@ -30492,26 +30492,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
           this.evaluateSpeechOverlap();
         }
       );
-      this.session.on(
-        AgentEventsEnum.USER_SPEAK_STARTED,
-        () => {
-          this.learnerSpeaking = true;
-          console.log(
-            "NEXIVRA SPEECH EVENT: Learner started speaking"
-          );
-          this.evaluateSpeechOverlap();
-        }
-      );
-      this.session.on(
-        AgentEventsEnum.USER_SPEAK_ENDED,
-        () => {
-          this.learnerSpeaking = false;
-          console.log(
-            "NEXIVRA SPEECH EVENT: Learner stopped speaking"
-          );
-          this.evaluateSpeechOverlap();
-        }
-      );
       await this.session.start();
       this.waitForAvatarVideo();
     } catch (error) {
@@ -30631,6 +30611,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
       learnerPreview.classList.add(
         "active"
       );
+      await this.startLearnerAudioMonitor(
+        stream
+      );
       this.setStatus(
         "Starting visual coaching..."
       );
@@ -30746,8 +30729,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.waitingForPostureCorrection = false;
     this.overlapSince = null;
     this.interruptionEvents = [];
-    this.learnerSpeaking = false;
-    this.avatarSpeaking = false;
   }
   /*
    * =========================================================
