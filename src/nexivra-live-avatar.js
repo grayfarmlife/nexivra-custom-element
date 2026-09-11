@@ -74,10 +74,12 @@ class NexivraLiveAvatar extends HTMLElement {
     this.avatarAudioTimer = null;
 
     this.learnerSpeaking = false;
+    this.learnerMicSpeaking = false;
     this.avatarSpeaking = false;
 
     // Interruption tracking
     this.overlapSince = null;
+    this.interruptionCandidateSince = null;
     this.interruptionEvents = [];
     this.lastInterruptionCoach = 0;
 
@@ -576,8 +578,6 @@ class NexivraLiveAvatar extends HTMLElement {
             "NEXIVRA SPEECH EVENT: Elenora started speaking"
           );
 
-
-          this.evaluateSpeechOverlap();
         }
       );
 
@@ -593,8 +593,6 @@ class NexivraLiveAvatar extends HTMLElement {
             "NEXIVRA SPEECH EVENT: Elenora stopped speaking"
           );
 
-
-          this.evaluateSpeechOverlap();
         }
       );
 
@@ -1058,7 +1056,15 @@ class NexivraLiveAvatar extends HTMLElement {
 
     this.overlapSince = null;
 
+    this.interruptionCandidateSince = null;
+
     this.interruptionEvents = [];
+
+    this.learnerSpeaking = false;
+
+    this.learnerMicSpeaking = false;
+
+    this.avatarSpeaking = false;
   }
 
 
@@ -2428,13 +2434,44 @@ MESSAGE TO SAY:
               );
 
 
-            this.learnerSpeaking =
+            const isSpeaking =
               rms >
               this.thresholds
                 .learnerSpeechRms;
 
 
-            this.evaluateSpeechOverlap();
+            if (
+              isSpeaking &&
+              !this.learnerMicSpeaking
+            ) {
+
+              this.learnerMicSpeaking = true;
+              this.learnerSpeaking = true;
+
+
+              console.log(
+                "NEXIVRA LEARNER AUDIO: speaking started"
+              );
+
+
+              this.startInterruptionCandidate();
+
+            } else if (
+              !isSpeaking &&
+              this.learnerMicSpeaking
+            ) {
+
+              this.learnerMicSpeaking = false;
+              this.learnerSpeaking = false;
+
+
+              console.log(
+                "NEXIVRA LEARNER AUDIO: speaking stopped"
+              );
+
+
+              this.finishInterruptionCandidate();
+            }
 
           },
           100
@@ -2632,47 +2669,52 @@ MESSAGE TO SAY:
    * =========================================================
    */
 
-  evaluateSpeechOverlap() {
+  startInterruptionCandidate() {
 
     if (
       !this.sessionActive ||
       this.sessionEnding ||
-      this.coachIntervening
+      this.coachIntervening ||
+      this.trainingState !==
+        "ACTIVE"
     ) {
       return;
     }
 
 
-    const overlap =
-      (
-        this.learnerSpeaking &&
-        this.avatarSpeaking
-      );
+    /*
+     * A possible interruption begins only when the learner
+     * STARTS speaking while Elenora is already speaking.
+     *
+     * After that moment, we measure how long the learner keeps
+     * talking. We do NOT require Elenora to keep talking too,
+     * because LiveAvatar may naturally stop her as soon as the
+     * learner barges in.
+     */
 
-
-    if (overlap) {
-
-      if (!this.overlapSince) {
-
-        this.overlapSince =
-          Date.now();
-      }
-
-
+    if (!this.avatarSpeaking) {
       return;
     }
 
 
-    if (this.overlapSince) {
-
-      this.finishOverlap();
+    if (this.interruptionCandidateSince) {
+      return;
     }
+
+
+    this.interruptionCandidateSince =
+      Date.now();
+
+
+    console.log(
+      "NEXIVRA INTERRUPTION: candidate started"
+    );
   }
 
 
-  finishOverlap() {
+  finishInterruptionCandidate() {
 
-    if (!this.overlapSince) {
+    if (!this.interruptionCandidateSince) {
       return;
     }
 
@@ -2683,18 +2725,36 @@ MESSAGE TO SAY:
 
     const duration =
       now -
-      this.overlapSince;
+      this.interruptionCandidateSince;
 
 
-    this.overlapSince =
+    this.interruptionCandidateSince =
       null;
 
+
+    console.log(
+      "NEXIVRA INTERRUPTION: learner response duration",
+      duration
+    );
+
+
+    /*
+     * Short acknowledgments should normally finish below this
+     * threshold and are ignored. A sustained learner response
+     * that began before Elenora finished counts as one
+     * interruption event.
+     */
 
     if (
       duration <
       this.thresholds
         .minimumOverlapMs
     ) {
+
+      console.log(
+        "NEXIVRA INTERRUPTION: ignored as brief acknowledgment"
+      );
+
       return;
     }
 
@@ -2718,6 +2778,12 @@ MESSAGE TO SAY:
         (event) =>
           event.time >= cutoff
       );
+
+
+    console.log(
+      "NEXIVRA INTERRUPTION: qualifying interruption",
+      this.interruptionEvents.length
+    );
 
 
     this.checkInterruptionPattern();
@@ -3023,6 +3089,10 @@ Keep the feedback conversational, specific, constructive, and concise.
 
 
     this.learnerSpeaking =
+      false;
+
+
+    this.learnerMicSpeaking =
       false;
   }
 
