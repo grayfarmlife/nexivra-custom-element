@@ -31187,19 +31187,12 @@ var NexivraLiveAvatar = class extends HTMLElement {
     }
     this.coachIntervening = true;
     try {
-      if (this.session.voiceChat && typeof this.session.voiceChat.stop === "function") {
-        try {
-          await this.session.voiceChat.stop();
-        } catch (error) {
-          console.warn(
-            "VOICE PAUSE WARNING:",
-            error
-          );
-        }
-      }
       if (typeof this.session.interrupt === "function") {
         try {
           this.session.interrupt();
+          console.log(
+            "NEXIVRA LIVE COACH: interrupt command sent"
+          );
         } catch (error) {
           console.warn(
             "AVATAR INTERRUPT WARNING:",
@@ -31207,6 +31200,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
           );
         }
       }
+      await this.delay(
+        500
+      );
       if (typeof this.session.repeat === "function") {
         this.session.repeat(
           text
@@ -31228,16 +31224,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
       await this.delay(
         speechMs
       );
-      if (resumeVoice && this.sessionActive && this.session.voiceChat && typeof this.session.voiceChat.start === "function") {
-        try {
-          await this.session.voiceChat.start();
-        } catch (error) {
-          console.warn(
-            "VOICE RESUME WARNING:",
-            error
-          );
-        }
-      }
     } catch (error) {
       console.error(
         "LIVE COACHING ERROR:",
