@@ -557,9 +557,12 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
       /*
-       * Use HeyGen's real speech events for interruption detection.
-       * This replaces the old audio-volume guesswork for determining
-       * when Elenora and the learner are speaking.
+       * Use HeyGen's actual avatar speaking events
+       * so interruption detection knows reliably
+       * when Elenora is speaking.
+       *
+       * Learner speaking detection remains on the
+       * existing microphone RMS monitor.
        */
 
       this.session.on(
@@ -588,40 +591,6 @@ class NexivraLiveAvatar extends HTMLElement {
 
           console.log(
             "NEXIVRA SPEECH EVENT: Elenora stopped speaking"
-          );
-
-
-          this.evaluateSpeechOverlap();
-        }
-      );
-
-
-      this.session.on(
-        AgentEventsEnum.USER_SPEAK_STARTED,
-        () => {
-
-          this.learnerSpeaking = true;
-
-
-          console.log(
-            "NEXIVRA SPEECH EVENT: Learner started speaking"
-          );
-
-
-          this.evaluateSpeechOverlap();
-        }
-      );
-
-
-      this.session.on(
-        AgentEventsEnum.USER_SPEAK_ENDED,
-        () => {
-
-          this.learnerSpeaking = false;
-
-
-          console.log(
-            "NEXIVRA SPEECH EVENT: Learner stopped speaking"
           );
 
 
@@ -853,7 +822,9 @@ class NexivraLiveAvatar extends HTMLElement {
       );
 
 
-
+      await this.startLearnerAudioMonitor(
+        stream
+      );
 
 
       this.setStatus(
@@ -1088,10 +1059,6 @@ class NexivraLiveAvatar extends HTMLElement {
     this.overlapSince = null;
 
     this.interruptionEvents = [];
-
-    this.learnerSpeaking = false;
-
-    this.avatarSpeaking = false;
   }
 
 
