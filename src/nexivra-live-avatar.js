@@ -2213,11 +2213,40 @@ async speakImmediateCoach(
   try {
 
     /*
+     * Pause normal voice conversation so the AI agent
+     * cannot talk over the deterministic coaching message.
+     */
+
+    if (
+      this.session.voiceChat &&
+      typeof this.session
+        .voiceChat.stop ===
+        "function"
+    ) {
+
+      try {
+
+        await this.session
+          .voiceChat
+          .stop();
+
+
+        console.log(
+          "NEXIVRA LIVE COACH: voice chat paused"
+        );
+
+      } catch (error) {
+
+        console.warn(
+          "VOICE PAUSE WARNING:",
+          error
+        );
+      }
+    }
+
+
+    /*
      * Stop whatever Elenora is currently saying.
-     *
-     * Do NOT stop voiceChat here. Keeping voiceChat active
-     * prevents the learner microphone from being shut down
-     * during live coaching.
      */
 
     if (
@@ -2245,12 +2274,7 @@ async speakImmediateCoach(
 
 
     /*
-     * Give the avatar a short moment to clear the current
-     * response before sending the deterministic coaching line.
-     *
-     * session.interrupt() does not return a Promise in the
-     * current HeyGen SDK, so awaiting it would not actually
-     * wait for the speech to clear.
+     * Give the interrupt a moment to clear.
      */
 
     await this.delay(
@@ -2259,61 +2283,189 @@ async speakImmediateCoach(
 
 
     /*
-     * Speak the exact coaching text.
+     * Deliver the exact coaching text and capture the
+     * event ID returned by HeyGen.
      */
 
     if (
-      typeof this.session.repeat ===
+      typeof this.session.repeat !==
       "function"
     ) {
 
+      throw new Error(
+        "session.repeat is unavailable"
+      );
+    }
+
+
+    const coachEventId =
       this.session.repeat(
         text
       );
 
 
-      console.log(
-        "NEXIVRA LIVE COACH SPOKEN:",
-        text
-      );
+    console.log(
+      "NEXIVRA LIVE COACH SPOKEN:",
+      text
+    );
 
-    } else {
 
-      console.error(
-        "NEXIVRA LIVE COACH ERROR: session.repeat is unavailable"
-      );
-    }
+    console.log(
+      "NEXIVRA LIVE COACH EVENT ID:",
+      coachEventId
+    );
 
 
     /*
-     * Allow enough time for the coaching message to be
-     * delivered before releasing the live-coaching lock.
-     *
-     * Voice chat remains active throughout.
+     * Wait until HeyGen tells us THIS coaching utterance
+     * has actually finished speaking.
      */
 
-    const words =
-      text
-        .trim()
-        .split(/\s+/)
-        .length;
+    await new Promise(
+      (resolve) => {
+
+        let finished =
+          false;
 
 
-    const speechMs =
-      Math.max(
-        3000,
-        (
-          words /
-          150
-        ) *
-        60000 +
-        1200
-      );
+        const cleanup =
+          () => {
+
+            if (
+              typeof this.session.off ===
+              "function"
+            ) {
+
+              this.session.off(
+                AgentEventsEnum.AVATAR_SPEAK_ENDED,
+                handleEnded
+              );
+            }
+          };
 
 
-    await this.delay(
-      speechMs
+        const handleEnded =
+          (event) => {
+
+            if (finished) {
+              return;
+            }
+
+
+            if (
+              event?.event_id ===
+              coachEventId
+            ) {
+
+              finished =
+                true;
+
+
+              cleanup();
+
+
+              console.log(
+                "NEXIVRA LIVE COACH: coaching speech completed"
+              );
+
+
+              resolve();
+            }
+          };
+
+
+        this.session.on(
+          AgentEventsEnum.AVATAR_SPEAK_ENDED,
+          handleEnded
+        );
+
+
+        /*
+         * Safety timeout in case HeyGen does not return
+         * the matching ended event.
+         */
+
+        const words =
+          text
+            .trim()
+            .split(/\s+/)
+            .length;
+
+
+        const fallbackMs =
+          Math.max(
+            8000,
+            (
+              words /
+              120
+            ) *
+              60000 +
+              5000
+          );
+
+
+        setTimeout(
+          () => {
+
+            if (finished) {
+              return;
+            }
+
+
+            finished =
+              true;
+
+
+            cleanup();
+
+
+            console.warn(
+              "NEXIVRA LIVE COACH: speech-end timeout used"
+            );
+
+
+            resolve();
+
+          },
+          fallbackMs
+        );
+      }
     );
+
+
+    /*
+     * Resume normal two-way voice conversation only AFTER
+     * the live coaching message has finished.
+     */
+
+    if (
+      resumeVoice &&
+      this.sessionActive &&
+      this.session.voiceChat &&
+      typeof this.session
+        .voiceChat.start ===
+        "function"
+    ) {
+
+      try {
+
+        await this.session
+          .voiceChat
+          .start();
+
+
+        console.log(
+          "NEXIVRA LIVE COACH: voice chat resumed"
+        );
+
+      } catch (error) {
+
+        console.warn(
+          "VOICE RESUME WARNING:",
+          error
+        );
+      }
+    }
 
 
   } catch (error) {
