@@ -30088,8 +30088,10 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.avatarAnalyser = null;
     this.avatarAudioTimer = null;
     this.learnerSpeaking = false;
+    this.learnerMicSpeaking = false;
     this.avatarSpeaking = false;
     this.overlapSince = null;
+    this.interruptionCandidateSince = null;
     this.interruptionEvents = [];
     this.lastInterruptionCoach = 0;
     this.thresholds = {
@@ -30479,7 +30481,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
           console.log(
             "NEXIVRA SPEECH EVENT: Elenora started speaking"
           );
-          this.evaluateSpeechOverlap();
         }
       );
       this.session.on(
@@ -30489,7 +30490,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
           console.log(
             "NEXIVRA SPEECH EVENT: Elenora stopped speaking"
           );
-          this.evaluateSpeechOverlap();
         }
       );
       await this.session.start();
@@ -30728,7 +30728,11 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.waitingForOrientationCorrection = false;
     this.waitingForPostureCorrection = false;
     this.overlapSince = null;
+    this.interruptionCandidateSince = null;
     this.interruptionEvents = [];
+    this.learnerSpeaking = false;
+    this.learnerMicSpeaking = false;
+    this.avatarSpeaking = false;
   }
   /*
    * =========================================================
@@ -31269,8 +31273,22 @@ MESSAGE TO SAY:
           const rms = this.calculateRms(
             samples
           );
-          this.learnerSpeaking = rms > this.thresholds.learnerSpeechRms;
-          this.evaluateSpeechOverlap();
+          const isSpeaking = rms > this.thresholds.learnerSpeechRms;
+          if (isSpeaking && !this.learnerMicSpeaking) {
+            this.learnerMicSpeaking = true;
+            this.learnerSpeaking = true;
+            console.log(
+              "NEXIVRA LEARNER AUDIO: speaking started"
+            );
+            this.startInterruptionCandidate();
+          } else if (!isSpeaking && this.learnerMicSpeaking) {
+            this.learnerMicSpeaking = false;
+            this.learnerSpeaking = false;
+            console.log(
+              "NEXIVRA LEARNER AUDIO: speaking stopped"
+            );
+            this.finishInterruptionCandidate();
+          }
         },
         100
       );
@@ -31364,29 +31382,36 @@ MESSAGE TO SAY:
    * INTERRUPTION DETECTION
    * =========================================================
    */
-  evaluateSpeechOverlap() {
-    if (!this.sessionActive || this.sessionEnding || this.coachIntervening) {
+  startInterruptionCandidate() {
+    if (!this.sessionActive || this.sessionEnding || this.coachIntervening || this.trainingState !== "ACTIVE") {
       return;
     }
-    const overlap = this.learnerSpeaking && this.avatarSpeaking;
-    if (overlap) {
-      if (!this.overlapSince) {
-        this.overlapSince = Date.now();
-      }
+    if (!this.avatarSpeaking) {
       return;
     }
-    if (this.overlapSince) {
-      this.finishOverlap();
+    if (this.interruptionCandidateSince) {
+      return;
     }
+    this.interruptionCandidateSince = Date.now();
+    console.log(
+      "NEXIVRA INTERRUPTION: candidate started"
+    );
   }
-  finishOverlap() {
-    if (!this.overlapSince) {
+  finishInterruptionCandidate() {
+    if (!this.interruptionCandidateSince) {
       return;
     }
     const now = Date.now();
-    const duration = now - this.overlapSince;
-    this.overlapSince = null;
+    const duration = now - this.interruptionCandidateSince;
+    this.interruptionCandidateSince = null;
+    console.log(
+      "NEXIVRA INTERRUPTION: learner response duration",
+      duration
+    );
     if (duration < this.thresholds.minimumOverlapMs) {
+      console.log(
+        "NEXIVRA INTERRUPTION: ignored as brief acknowledgment"
+      );
       return;
     }
     this.interruptionEvents.push(
@@ -31398,6 +31423,10 @@ MESSAGE TO SAY:
     const cutoff = now - this.thresholds.interruptionWindowMs;
     this.interruptionEvents = this.interruptionEvents.filter(
       (event) => event.time >= cutoff
+    );
+    console.log(
+      "NEXIVRA INTERRUPTION: qualifying interruption",
+      this.interruptionEvents.length
     );
     this.checkInterruptionPattern();
   }
@@ -31576,6 +31605,7 @@ Keep the feedback conversational, specific, constructive, and concise.
       this.learnerAudioContext = null;
     }
     this.learnerSpeaking = false;
+    this.learnerMicSpeaking = false;
   }
   stopAvatarAudioMonitor() {
     if (this.avatarAudioTimer) {
