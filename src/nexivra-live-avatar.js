@@ -2193,180 +2193,180 @@ class NexivraLiveAvatar extends HTMLElement {
    * =========================================================
    */
 
-  async speakImmediateCoach(
-    text,
-    resumeVoice = true
+async speakImmediateCoach(
+  text,
+  resumeVoice = true
+) {
+
+  if (
+    !this.session ||
+    this.coachIntervening
   ) {
+    return;
+  }
+
+
+  this.coachIntervening =
+    true;
+
+
+  try {
+
+    /*
+     * Pause the learner microphone conversation
+     * while deterministic live coaching is delivered.
+     */
 
     if (
-      !this.session ||
-      this.coachIntervening
+      this.session.voiceChat &&
+      typeof this.session
+        .voiceChat.stop ===
+        "function"
     ) {
-      return;
+
+      try {
+
+        await this.session
+          .voiceChat
+          .stop();
+
+      } catch (error) {
+
+        console.warn(
+          "VOICE PAUSE WARNING:",
+          error
+        );
+      }
     }
 
 
-    this.coachIntervening =
-      true;
+    /*
+     * Stop any current avatar speech first.
+     */
 
+    if (
+      typeof this.session.interrupt ===
+      "function"
+    ) {
 
-    try {
+      try {
 
-      /*
-       * Stop the active voice conversation
-       * temporarily if supported.
-       */
+        this.session
+          .interrupt();
 
-      if (
-        this.session.voiceChat &&
-        typeof this.session
-          .voiceChat.stop ===
-          "function"
-      ) {
+      } catch (error) {
 
-        try {
-
-          await this.session
-            .voiceChat
-            .stop();
-
-        } catch (error) {
-
-          console.warn(
-            "VOICE PAUSE WARNING:",
-            error
-          );
-        }
+        console.warn(
+          "AVATAR INTERRUPT WARNING:",
+          error
+        );
       }
+    }
 
 
-      /*
-       * Interrupt current avatar speech
-       * if SDK supports it.
-       */
+    /*
+     * Speak the coaching text directly.
+     *
+     * repeat() tells LiveAvatar to SAY the supplied text.
+     * message() sends text into the AI conversation and
+     * leaves the response up to the agent.
+     */
 
-      if (
-        typeof this.session.interrupt ===
-        "function"
-      ) {
+    if (
+      typeof this.session.repeat ===
+      "function"
+    ) {
 
-        try {
-
-          await this.session
-            .interrupt();
-
-        } catch (error) {
-
-          console.warn(
-            "AVATAR INTERRUPT WARNING:",
-            error
-          );
-        }
-      }
-
-
-      /*
-       * Send the live coaching prompt directly
-       * to the active agent.
-       */
-
-      const directPrompt = `
-LIVE COACHING RESPONSE:
-
-Say the following message directly to the learner now.
-
-Do not explain the instruction.
-Do not mention system messages or technical detection.
-Do not add extra coaching before or after it.
-
-MESSAGE TO SAY:
-
-"${text}"
-      `.trim();
-
-
-      this.session.message(
-        directPrompt
+      this.session.repeat(
+        text
       );
 
 
       console.log(
-        "NEXIVRA LIVE COACH MESSAGE:",
+        "NEXIVRA LIVE COACH SPOKEN:",
         text
       );
 
-
-      /*
-       * Estimate spoken duration.
-       */
-
-      const words =
-        text
-          .trim()
-          .split(/\s+/)
-          .length;
-
-
-      const speechMs =
-        Math.max(
-          3000,
-          (
-            words /
-            150
-          ) *
-          60000 +
-          1200
-        );
-
-
-      await this.delay(
-        speechMs
-      );
-
-
-      /*
-       * Resume voice interaction.
-       */
-
-      if (
-        resumeVoice &&
-        this.sessionActive &&
-        this.session.voiceChat &&
-        typeof this.session
-          .voiceChat.start ===
-          "function"
-      ) {
-
-        try {
-
-          await this.session
-            .voiceChat
-            .start();
-
-        } catch (error) {
-
-          console.warn(
-            "VOICE RESUME WARNING:",
-            error
-          );
-        }
-      }
-
-
-    } catch (error) {
+    } else {
 
       console.error(
-        "LIVE COACHING ERROR:",
-        error
+        "NEXIVRA LIVE COACH ERROR: session.repeat is unavailable"
+      );
+    }
+
+
+    /*
+     * Estimate enough time for the coaching message
+     * to finish before reopening voice conversation.
+     */
+
+    const words =
+      text
+        .trim()
+        .split(/\s+/)
+        .length;
+
+
+    const speechMs =
+      Math.max(
+        3000,
+        (
+          words /
+          150
+        ) *
+        60000 +
+        1200
       );
 
 
-    } finally {
+    await this.delay(
+      speechMs
+    );
 
-      this.coachIntervening =
-        false;
+
+    /*
+     * Resume normal two-way voice conversation.
+     */
+
+    if (
+      resumeVoice &&
+      this.sessionActive &&
+      this.session.voiceChat &&
+      typeof this.session
+        .voiceChat.start ===
+        "function"
+    ) {
+
+      try {
+
+        await this.session
+          .voiceChat
+          .start();
+
+      } catch (error) {
+
+        console.warn(
+          "VOICE RESUME WARNING:",
+          error
+        );
+      }
     }
+
+
+  } catch (error) {
+
+    console.error(
+      "LIVE COACHING ERROR:",
+      error
+    );
+
+
+  } finally {
+
+    this.coachIntervening =
+      false;
   }
+}
 
 
   /*
