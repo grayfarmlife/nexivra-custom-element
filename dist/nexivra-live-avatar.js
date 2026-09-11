@@ -31199,7 +31199,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
       }
       if (typeof this.session.interrupt === "function") {
         try {
-          await this.session.interrupt();
+          this.session.interrupt();
         } catch (error) {
           console.warn(
             "AVATAR INTERRUPT WARNING:",
@@ -31207,26 +31207,19 @@ var NexivraLiveAvatar = class extends HTMLElement {
           );
         }
       }
-      const directPrompt = `
-LIVE COACHING RESPONSE:
-
-Say the following message directly to the learner now.
-
-Do not explain the instruction.
-Do not mention system messages or technical detection.
-Do not add extra coaching before or after it.
-
-MESSAGE TO SAY:
-
-"${text}"
-      `.trim();
-      this.session.message(
-        directPrompt
-      );
-      console.log(
-        "NEXIVRA LIVE COACH MESSAGE:",
-        text
-      );
+      if (typeof this.session.repeat === "function") {
+        this.session.repeat(
+          text
+        );
+        console.log(
+          "NEXIVRA LIVE COACH SPOKEN:",
+          text
+        );
+      } else {
+        console.error(
+          "NEXIVRA LIVE COACH ERROR: session.repeat is unavailable"
+        );
+      }
       const words = text.trim().split(/\s+/).length;
       const speechMs = Math.max(
         3e3,
