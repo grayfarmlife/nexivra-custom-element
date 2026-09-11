@@ -77,6 +77,15 @@ class NexivraLiveAvatar extends HTMLElement {
     this.learnerMicSpeaking = false;
     this.avatarSpeaking = false;
 
+    // Adaptive learner speech detection
+    this.learnerNoiseFloor = 0.006;
+    this.learnerSpeechStartThreshold = 0.018;
+    this.learnerSpeechStopThreshold = 0.012;
+    this.learnerCalibrationSamples = [];
+    this.learnerCalibrationComplete = false;
+    this.learnerSpeechAboveSince = null;
+    this.learnerSpeechBelowSince = null;
+
     // Interruption tracking
     this.overlapSince = null;
     this.interruptionCandidateSince = null;
@@ -97,8 +106,14 @@ class NexivraLiveAvatar extends HTMLElement {
       orientationCooldownMs: 30000,
       postureCooldownMs: 30000,
 
-      learnerSpeechRms: 0.045,
+      learnerSpeechRms: 0.018,
       avatarSpeechRms: 0.018,
+
+      learnerCalibrationMs: 1500,
+      learnerSpeechStartHoldMs: 120,
+      learnerSpeechStopHoldMs: 260,
+      learnerSpeechThresholdFloor: 0.012,
+      learnerSpeechThresholdCeiling: 0.030,
 
       minimumOverlapMs: 900,
       interruptionWindowMs: 30000,
@@ -564,7 +579,7 @@ class NexivraLiveAvatar extends HTMLElement {
        * when Elenora is speaking.
        *
        * Learner speaking detection remains on the
-       * existing microphone RMS monitor.
+       * microphone monitor below.
        */
 
       this.session.on(
@@ -1065,6 +1080,20 @@ class NexivraLiveAvatar extends HTMLElement {
     this.learnerMicSpeaking = false;
 
     this.avatarSpeaking = false;
+
+    this.learnerNoiseFloor = 0.006;
+
+    this.learnerSpeechStartThreshold = 0.018;
+
+    this.learnerSpeechStopThreshold = 0.012;
+
+    this.learnerCalibrationSamples = [];
+
+    this.learnerCalibrationComplete = false;
+
+    this.learnerSpeechAboveSince = null;
+
+    this.learnerSpeechBelowSince = null;
   }
 
 
@@ -2395,7 +2424,7 @@ MESSAGE TO SAY:
 
       this.learnerAnalyser
         .smoothingTimeConstant =
-        0.65;
+        0.55;
 
 
       this.learnerSource.connect(
@@ -2410,14 +2439,24 @@ MESSAGE TO SAY:
         );
 
 
+      const monitorStartedAt =
+        Date.now();
+
+
+      this.learnerCalibrationSamples = [];
+
+      this.learnerCalibrationComplete = false;
+
+      this.learnerSpeechAboveSince = null;
+
+      this.learnerSpeechBelowSince = null;
+
+
       this.learnerAudioTimer =
         setInterval(
           () => {
 
-            if (
-              !this.learnerAnalyser ||
-              !this.sessionActive
-            ) {
+            if (!this.learnerAnalyser) {
               return;
             }
 
@@ -2434,47 +2473,251 @@ MESSAGE TO SAY:
               );
 
 
-            const isSpeaking =
-              rms >
-              this.thresholds
-                .learnerSpeechRms;
+            const now =
+              Date.now();
 
+
+            /*
+             * Calibrate against the learner's actual microphone
+             * and room instead of depending on one hard-coded
+             * RMS value for every computer.
+             */
+
+            if (!this.learnerCalibrationComplete) {
+
+              this.learnerCalibrationSamples.push(
+                rms
+              );
+
+
+              if (
+                (
+                  now -
+                  monitorStartedAt
+                ) >=
+                  this.thresholds
+                    .learnerCalibrationMs
+              ) {
+
+                const sorted =
+                  [
+                    ...this.learnerCalibrationSamples
+                  ].sort(
+                    (a, b) => a - b
+                  );
+
+
+                const quietCount =
+                  Math.max(
+                    1,
+                    Math.floor(
+                      sorted.length * 0.6
+                    )
+                  );
+
+
+                const quietSamples =
+                  sorted.slice(
+                    0,
+                    quietCount
+                  );
+
+
+                const quietAverage =
+                  quietSamples.reduce(
+                    (sum, value) =>
+                      sum + value,
+                    0
+                  ) /
+                  quietSamples.length;
+
+
+                this.learnerNoiseFloor =
+                  Math.max(
+                    0.002,
+                    quietAverage
+                  );
+
+
+                const adaptiveStart =
+                  Math.max(
+                    this.thresholds
+                      .learnerSpeechThresholdFloor,
+                    this.learnerNoiseFloor *
+                      2.4 +
+                      0.004
+                  );
+
+
+                this.learnerSpeechStartThreshold =
+                  Math.min(
+                    this.thresholds
+                      .learnerSpeechThresholdCeiling,
+                    adaptiveStart
+                  );
+
+
+                this.learnerSpeechStopThreshold =
+                  Math.max(
+                    this.learnerNoiseFloor *
+                      1.7 +
+                      0.002,
+                    this.learnerSpeechStartThreshold *
+                      0.65
+                  );
+
+
+                this.learnerCalibrationComplete =
+                  true;
+
+
+                console.log(
+                  "NEXIVRA LEARNER AUDIO: calibrated",
+                  {
+                    noiseFloor:
+                      this.learnerNoiseFloor
+                        .toFixed(4),
+                    startThreshold:
+                      this.learnerSpeechStartThreshold
+                        .toFixed(4),
+                    stopThreshold:
+                      this.learnerSpeechStopThreshold
+                        .toFixed(4)
+                  }
+                );
+              }
+
+
+              return;
+            }
+
+
+            /*
+             * While quiet, require a short sustained rise above
+             * the adaptive threshold before calling it speech.
+             * This avoids reacting to tiny clicks and bumps.
+             */
+
+            if (!this.learnerMicSpeaking) {
+
+              if (
+                rms >=
+                this.learnerSpeechStartThreshold
+              ) {
+
+                if (!this.learnerSpeechAboveSince) {
+
+                  this.learnerSpeechAboveSince =
+                    now;
+                }
+
+
+                if (
+                  (
+                    now -
+                    this.learnerSpeechAboveSince
+                  ) >=
+                    this.thresholds
+                      .learnerSpeechStartHoldMs
+                ) {
+
+                  this.learnerMicSpeaking =
+                    true;
+
+                  this.learnerSpeaking =
+                    true;
+
+                  this.learnerSpeechAboveSince =
+                    null;
+
+                  this.learnerSpeechBelowSince =
+                    null;
+
+
+                  console.log(
+                    "NEXIVRA LEARNER AUDIO: speaking started",
+                    "rms",
+                    rms.toFixed(4),
+                    "threshold",
+                    this.learnerSpeechStartThreshold
+                      .toFixed(4)
+                  );
+
+
+                  this.startInterruptionCandidate();
+                }
+
+
+              } else {
+
+                this.learnerSpeechAboveSince =
+                  null;
+              }
+
+
+              return;
+            }
+
+
+            /*
+             * Once speech has started, use a lower stop threshold
+             * and a brief hold time so normal pauses between words
+             * do not chop one response into several fake events.
+             */
 
             if (
-              isSpeaking &&
-              !this.learnerMicSpeaking
+              rms <=
+              this.learnerSpeechStopThreshold
             ) {
 
-              this.learnerMicSpeaking = true;
-              this.learnerSpeaking = true;
+              if (!this.learnerSpeechBelowSince) {
+
+                this.learnerSpeechBelowSince =
+                  now;
+              }
 
 
-              console.log(
-                "NEXIVRA LEARNER AUDIO: speaking started"
-              );
+              if (
+                (
+                  now -
+                  this.learnerSpeechBelowSince
+                ) >=
+                  this.thresholds
+                    .learnerSpeechStopHoldMs
+              ) {
+
+                this.learnerMicSpeaking =
+                  false;
+
+                this.learnerSpeaking =
+                  false;
+
+                this.learnerSpeechBelowSince =
+                  null;
+
+                this.learnerSpeechAboveSince =
+                  null;
 
 
-              this.startInterruptionCandidate();
-
-            } else if (
-              !isSpeaking &&
-              this.learnerMicSpeaking
-            ) {
-
-              this.learnerMicSpeaking = false;
-              this.learnerSpeaking = false;
+                console.log(
+                  "NEXIVRA LEARNER AUDIO: speaking stopped",
+                  "rms",
+                  rms.toFixed(4)
+                );
 
 
-              console.log(
-                "NEXIVRA LEARNER AUDIO: speaking stopped"
-              );
+                this.finishInterruptionCandidate();
+              }
 
 
-              this.finishInterruptionCandidate();
+            } else {
+
+              this.learnerSpeechBelowSince =
+                null;
             }
 
           },
-          100
+          50
         );
 
 
@@ -2689,7 +2932,7 @@ MESSAGE TO SAY:
      * After that moment, we measure how long the learner keeps
      * talking. We do NOT require Elenora to keep talking too,
      * because LiveAvatar may naturally stop her as soon as the
-     * learner barges in.
+     * learner begins speaking.
      */
 
     if (!this.avatarSpeaking) {
@@ -3093,6 +3336,22 @@ Keep the feedback conversational, specific, constructive, and concise.
 
 
     this.learnerMicSpeaking =
+      false;
+
+
+    this.learnerSpeechAboveSince =
+      null;
+
+
+    this.learnerSpeechBelowSince =
+      null;
+
+
+    this.learnerCalibrationSamples =
+      [];
+
+
+    this.learnerCalibrationComplete =
       false;
   }
 
