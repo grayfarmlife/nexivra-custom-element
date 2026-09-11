@@ -2213,35 +2213,11 @@ async speakImmediateCoach(
   try {
 
     /*
-     * Pause the learner microphone conversation
-     * while deterministic live coaching is delivered.
-     */
-
-    if (
-      this.session.voiceChat &&
-      typeof this.session
-        .voiceChat.stop ===
-        "function"
-    ) {
-
-      try {
-
-        await this.session
-          .voiceChat
-          .stop();
-
-      } catch (error) {
-
-        console.warn(
-          "VOICE PAUSE WARNING:",
-          error
-        );
-      }
-    }
-
-
-    /*
-     * Stop any current avatar speech first.
+     * Stop whatever Elenora is currently saying.
+     *
+     * Do NOT stop voiceChat here. Keeping voiceChat active
+     * prevents the learner microphone from being shut down
+     * during live coaching.
      */
 
     if (
@@ -2251,8 +2227,12 @@ async speakImmediateCoach(
 
       try {
 
-        this.session
-          .interrupt();
+        this.session.interrupt();
+
+
+        console.log(
+          "NEXIVRA LIVE COACH: interrupt command sent"
+        );
 
       } catch (error) {
 
@@ -2265,11 +2245,21 @@ async speakImmediateCoach(
 
 
     /*
-     * Speak the coaching text directly.
+     * Give the avatar a short moment to clear the current
+     * response before sending the deterministic coaching line.
      *
-     * repeat() tells LiveAvatar to SAY the supplied text.
-     * message() sends text into the AI conversation and
-     * leaves the response up to the agent.
+     * session.interrupt() does not return a Promise in the
+     * current HeyGen SDK, so awaiting it would not actually
+     * wait for the speech to clear.
+     */
+
+    await this.delay(
+      500
+    );
+
+
+    /*
+     * Speak the exact coaching text.
      */
 
     if (
@@ -2296,8 +2286,10 @@ async speakImmediateCoach(
 
 
     /*
-     * Estimate enough time for the coaching message
-     * to finish before reopening voice conversation.
+     * Allow enough time for the coaching message to be
+     * delivered before releasing the live-coaching lock.
+     *
+     * Voice chat remains active throughout.
      */
 
     const words =
@@ -2322,35 +2314,6 @@ async speakImmediateCoach(
     await this.delay(
       speechMs
     );
-
-
-    /*
-     * Resume normal two-way voice conversation.
-     */
-
-    if (
-      resumeVoice &&
-      this.sessionActive &&
-      this.session.voiceChat &&
-      typeof this.session
-        .voiceChat.start ===
-        "function"
-    ) {
-
-      try {
-
-        await this.session
-          .voiceChat
-          .start();
-
-      } catch (error) {
-
-        console.warn(
-          "VOICE RESUME WARNING:",
-          error
-        );
-      }
-    }
 
 
   } catch (error) {
