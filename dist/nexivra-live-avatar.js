@@ -30090,6 +30090,13 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.learnerSpeaking = false;
     this.learnerMicSpeaking = false;
     this.avatarSpeaking = false;
+    this.learnerNoiseFloor = 6e-3;
+    this.learnerSpeechStartThreshold = 0.018;
+    this.learnerSpeechStopThreshold = 0.012;
+    this.learnerCalibrationSamples = [];
+    this.learnerCalibrationComplete = false;
+    this.learnerSpeechAboveSince = null;
+    this.learnerSpeechBelowSince = null;
     this.overlapSince = null;
     this.interruptionCandidateSince = null;
     this.interruptionEvents = [];
@@ -30103,8 +30110,13 @@ var NexivraLiveAvatar = class extends HTMLElement {
       postureCorrectionMs: 3e3,
       orientationCooldownMs: 3e4,
       postureCooldownMs: 3e4,
-      learnerSpeechRms: 0.045,
+      learnerSpeechRms: 0.018,
       avatarSpeechRms: 0.018,
+      learnerCalibrationMs: 1500,
+      learnerSpeechStartHoldMs: 120,
+      learnerSpeechStopHoldMs: 260,
+      learnerSpeechThresholdFloor: 0.012,
+      learnerSpeechThresholdCeiling: 0.03,
       minimumOverlapMs: 900,
       interruptionWindowMs: 3e4,
       interruptionsBeforeCoach: 2,
@@ -30733,6 +30745,13 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.learnerSpeaking = false;
     this.learnerMicSpeaking = false;
     this.avatarSpeaking = false;
+    this.learnerNoiseFloor = 6e-3;
+    this.learnerSpeechStartThreshold = 0.018;
+    this.learnerSpeechStopThreshold = 0.012;
+    this.learnerCalibrationSamples = [];
+    this.learnerCalibrationComplete = false;
+    this.learnerSpeechAboveSince = null;
+    this.learnerSpeechBelowSince = null;
   }
   /*
    * =========================================================
@@ -31255,16 +31274,21 @@ MESSAGE TO SAY:
       );
       this.learnerAnalyser = this.learnerAudioContext.createAnalyser();
       this.learnerAnalyser.fftSize = 1024;
-      this.learnerAnalyser.smoothingTimeConstant = 0.65;
+      this.learnerAnalyser.smoothingTimeConstant = 0.55;
       this.learnerSource.connect(
         this.learnerAnalyser
       );
       const samples = new Float32Array(
         this.learnerAnalyser.fftSize
       );
+      const monitorStartedAt = Date.now();
+      this.learnerCalibrationSamples = [];
+      this.learnerCalibrationComplete = false;
+      this.learnerSpeechAboveSince = null;
+      this.learnerSpeechBelowSince = null;
       this.learnerAudioTimer = setInterval(
         () => {
-          if (!this.learnerAnalyser || !this.sessionActive) {
+          if (!this.learnerAnalyser) {
             return;
           }
           this.learnerAnalyser.getFloatTimeDomainData(
@@ -31273,24 +31297,104 @@ MESSAGE TO SAY:
           const rms = this.calculateRms(
             samples
           );
-          const isSpeaking = rms > this.thresholds.learnerSpeechRms;
-          if (isSpeaking && !this.learnerMicSpeaking) {
-            this.learnerMicSpeaking = true;
-            this.learnerSpeaking = true;
-            console.log(
-              "NEXIVRA LEARNER AUDIO: speaking started"
+          const now = Date.now();
+          if (!this.learnerCalibrationComplete) {
+            this.learnerCalibrationSamples.push(
+              rms
             );
-            this.startInterruptionCandidate();
-          } else if (!isSpeaking && this.learnerMicSpeaking) {
-            this.learnerMicSpeaking = false;
-            this.learnerSpeaking = false;
-            console.log(
-              "NEXIVRA LEARNER AUDIO: speaking stopped"
-            );
-            this.finishInterruptionCandidate();
+            if (now - monitorStartedAt >= this.thresholds.learnerCalibrationMs) {
+              const sorted = [
+                ...this.learnerCalibrationSamples
+              ].sort(
+                (a3, b3) => a3 - b3
+              );
+              const quietCount = Math.max(
+                1,
+                Math.floor(
+                  sorted.length * 0.6
+                )
+              );
+              const quietSamples = sorted.slice(
+                0,
+                quietCount
+              );
+              const quietAverage = quietSamples.reduce(
+                (sum, value) => sum + value,
+                0
+              ) / quietSamples.length;
+              this.learnerNoiseFloor = Math.max(
+                2e-3,
+                quietAverage
+              );
+              const adaptiveStart = Math.max(
+                this.thresholds.learnerSpeechThresholdFloor,
+                this.learnerNoiseFloor * 2.4 + 4e-3
+              );
+              this.learnerSpeechStartThreshold = Math.min(
+                this.thresholds.learnerSpeechThresholdCeiling,
+                adaptiveStart
+              );
+              this.learnerSpeechStopThreshold = Math.max(
+                this.learnerNoiseFloor * 1.7 + 2e-3,
+                this.learnerSpeechStartThreshold * 0.65
+              );
+              this.learnerCalibrationComplete = true;
+              console.log(
+                "NEXIVRA LEARNER AUDIO: calibrated",
+                {
+                  noiseFloor: this.learnerNoiseFloor.toFixed(4),
+                  startThreshold: this.learnerSpeechStartThreshold.toFixed(4),
+                  stopThreshold: this.learnerSpeechStopThreshold.toFixed(4)
+                }
+              );
+            }
+            return;
+          }
+          if (!this.learnerMicSpeaking) {
+            if (rms >= this.learnerSpeechStartThreshold) {
+              if (!this.learnerSpeechAboveSince) {
+                this.learnerSpeechAboveSince = now;
+              }
+              if (now - this.learnerSpeechAboveSince >= this.thresholds.learnerSpeechStartHoldMs) {
+                this.learnerMicSpeaking = true;
+                this.learnerSpeaking = true;
+                this.learnerSpeechAboveSince = null;
+                this.learnerSpeechBelowSince = null;
+                console.log(
+                  "NEXIVRA LEARNER AUDIO: speaking started",
+                  "rms",
+                  rms.toFixed(4),
+                  "threshold",
+                  this.learnerSpeechStartThreshold.toFixed(4)
+                );
+                this.startInterruptionCandidate();
+              }
+            } else {
+              this.learnerSpeechAboveSince = null;
+            }
+            return;
+          }
+          if (rms <= this.learnerSpeechStopThreshold) {
+            if (!this.learnerSpeechBelowSince) {
+              this.learnerSpeechBelowSince = now;
+            }
+            if (now - this.learnerSpeechBelowSince >= this.thresholds.learnerSpeechStopHoldMs) {
+              this.learnerMicSpeaking = false;
+              this.learnerSpeaking = false;
+              this.learnerSpeechBelowSince = null;
+              this.learnerSpeechAboveSince = null;
+              console.log(
+                "NEXIVRA LEARNER AUDIO: speaking stopped",
+                "rms",
+                rms.toFixed(4)
+              );
+              this.finishInterruptionCandidate();
+            }
+          } else {
+            this.learnerSpeechBelowSince = null;
           }
         },
-        100
+        50
       );
     } catch (error) {
       console.warn(
@@ -31606,6 +31710,10 @@ Keep the feedback conversational, specific, constructive, and concise.
     }
     this.learnerSpeaking = false;
     this.learnerMicSpeaking = false;
+    this.learnerSpeechAboveSince = null;
+    this.learnerSpeechBelowSince = null;
+    this.learnerCalibrationSamples = [];
+    this.learnerCalibrationComplete = false;
   }
   stopAvatarAudioMonitor() {
     if (this.avatarAudioTimer) {
