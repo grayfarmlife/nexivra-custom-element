@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/nexivra-live-avatar.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-live-avatar.js"
+    "build": "esbuild src/nexivra-live-avatar.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-live-avatar.js && esbuild src/nexivra-home.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-home.js"
   },
   "dependencies": {
     "@heygen/liveavatar-web-sdk": "0.0.18",
