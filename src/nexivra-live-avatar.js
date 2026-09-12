@@ -13,7 +13,7 @@ import {
 class NexivraLiveAvatar extends HTMLElement {
 
   static get observedAttributes() {
-    return ["session-token"];
+    return ["session-token", "subject-id", "lesson-id"];
   }
 
 
@@ -25,6 +25,8 @@ class NexivraLiveAvatar extends HTMLElement {
     // LiveAvatar
     this.session = null;
     this.sessionToken = null;
+    this.subjectId = null;
+    this.lessonId = null;
     this.avatarStarted = false;
     this.attachTimer = null;
 
@@ -51,13 +53,13 @@ class NexivraLiveAvatar extends HTMLElement {
     this.returnedSince = null;
     this.turnedAwaySince = null;
     this.postureIssueSince = null;
-    this.correctionSince = null;
+    this.stabilitySince = null;
 
-    this.waitingForOrientationCorrection = false;
-    this.waitingForPostureCorrection = false;
+    this.waitingForOrientationReturn = false;
+    this.waitingForPostureChange = false;
 
-    this.lastOrientationCoach = 0;
-    this.lastPostureCoach = 0;
+    this.lastOrientationObservation = 0;
+    this.lastPostureObservation = 0;
 
     // Live intervention control
     this.coachIntervening = false;
@@ -67,11 +69,6 @@ class NexivraLiveAvatar extends HTMLElement {
     this.learnerSource = null;
     this.learnerAnalyser = null;
     this.learnerAudioTimer = null;
-
-    this.avatarAudioContext = null;
-    this.avatarSource = null;
-    this.avatarAnalyser = null;
-    this.avatarAudioTimer = null;
 
     this.learnerSpeaking = false;
     this.learnerMicSpeaking = false;
@@ -86,11 +83,14 @@ class NexivraLiveAvatar extends HTMLElement {
     this.learnerSpeechAboveSince = null;
     this.learnerSpeechBelowSince = null;
 
-    // Interruption tracking
-    this.overlapSince = null;
-    this.interruptionCandidateSince = null;
-    this.interruptionEvents = [];
-    this.lastInterruptionCoach = 0;
+    // Speech-overlap pattern tracking
+    this.speechOverlapCandidateSince = null;
+    this.speechOverlapEvents = [];
+    this.lastSpeechOverlapObservation = 0;
+
+    // Subject-neutral observation ledger
+    this.observationTimeline = [];
+    this.observationSequence = 0;
 
     // Thresholds
     this.thresholds = {
@@ -100,14 +100,11 @@ class NexivraLiveAvatar extends HTMLElement {
       turnedAwayMs: 6000,
       postureMs: 8000,
 
-      orientationCorrectionMs: 2000,
-      postureCorrectionMs: 3000,
+      orientationReturnMs: 2000,
+      postureChangeMs: 3000,
 
-      orientationCooldownMs: 30000,
-      postureCooldownMs: 30000,
-
-      learnerSpeechRms: 0.018,
-      avatarSpeechRms: 0.018,
+      orientationObservationCooldownMs: 30000,
+      postureObservationCooldownMs: 30000,
 
       learnerCalibrationMs: 1500,
       learnerSpeechStartHoldMs: 120,
@@ -115,10 +112,10 @@ class NexivraLiveAvatar extends HTMLElement {
       learnerSpeechThresholdFloor: 0.012,
       learnerSpeechThresholdCeiling: 0.030,
 
-      minimumOverlapMs: 900,
-      interruptionWindowMs: 30000,
-      interruptionsBeforeCoach: 2,
-      interruptionCooldownMs: 45000
+      minimumMeaningfulOverlapMs: 900,
+      speechOverlapWindowMs: 30000,
+      speechOverlapsBeforePattern: 2,
+      speechOverlapPatternCooldownMs: 45000
     };
   }
 
@@ -136,6 +133,14 @@ class NexivraLiveAvatar extends HTMLElement {
     this.sessionToken =
       this.getAttribute("session-token");
 
+    this.subjectId =
+      this.getAttribute("subject-id") ||
+      null;
+
+    this.lessonId =
+      this.getAttribute("lesson-id") ||
+      null;
+
     if (this.sessionToken) {
       this.startNexivra();
     }
@@ -143,16 +148,35 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
   attributeChangedCallback(name, oldValue, newValue) {
+
     if (
-      name === "session-token" &&
-      newValue &&
-      newValue !== oldValue
+      !newValue ||
+      newValue === oldValue
     ) {
+      return;
+    }
+
+
+    if (name === "session-token") {
+
       this.sessionToken = newValue;
 
       if (this.isConnected) {
         this.startNexivra();
       }
+
+      return;
+    }
+
+
+    if (name === "subject-id") {
+      this.subjectId = newValue;
+      return;
+    }
+
+
+    if (name === "lesson-id") {
+      this.lessonId = newValue;
     }
   }
 
@@ -384,7 +408,7 @@ class NexivraLiveAvatar extends HTMLElement {
           <input
             id="messageInput"
             type="text"
-            placeholder="Type to your coach..."
+            placeholder="Type to NEXIVRA..."
           >
 
           <button id="sendButton">
@@ -519,13 +543,13 @@ class NexivraLiveAvatar extends HTMLElement {
         "Session Paused",
 
       VISUAL_COACHING:
-        "Visual Coaching",
+        "Adaptive Review",
 
       LISTENING_COACHING:
-        "Listening Coaching",
+        "Adaptive Review",
 
       WAITING_FOR_CORRECTION:
-        "Practice Adjustment",
+        "Observing Change",
 
       ENDING:
         "Reviewing Practice"
@@ -560,7 +584,7 @@ class NexivraLiveAvatar extends HTMLElement {
     try {
 
       this.setStatus(
-        "Starting AI Hospitality Coach..."
+        "Starting NEXIVRA Core..."
       );
 
 
@@ -574,12 +598,9 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
       /*
-       * Use HeyGen's actual avatar speaking events
-       * so interruption detection knows reliably
-       * when Elenora is speaking.
-       *
-       * Learner speaking detection remains on the
-       * microphone monitor below.
+       * Subject-neutral speech-state sensing.
+       * The core records WHEN the avatar is speaking.
+       * Meaning is supplied by the active subject layer.
        */
 
       this.session.on(
@@ -588,11 +609,9 @@ class NexivraLiveAvatar extends HTMLElement {
 
           this.avatarSpeaking = true;
 
-
           console.log(
-            "NEXIVRA SPEECH EVENT: Elenora started speaking"
+            "NEXIVRA SPEECH EVENT: avatar started speaking"
           );
-
         }
       );
 
@@ -603,17 +622,14 @@ class NexivraLiveAvatar extends HTMLElement {
 
           this.avatarSpeaking = false;
 
-
           console.log(
-            "NEXIVRA SPEECH EVENT: Elenora stopped speaking"
+            "NEXIVRA SPEECH EVENT: avatar stopped speaking"
           );
-
         }
       );
 
 
       await this.session.start();
-
 
       this.waitForAvatarVideo();
 
@@ -622,12 +638,10 @@ class NexivraLiveAvatar extends HTMLElement {
 
       this.avatarStarted = false;
 
-
       console.error(
         "NEXIVRA SESSION ERROR:",
         error
       );
-
 
       this.setStatus(
         "Unable to start NEXIVRA: " +
@@ -697,8 +711,6 @@ class NexivraLiveAvatar extends HTMLElement {
                 .catch(
                   () => {}
                 );
-
-
 
             }
 
@@ -841,7 +853,7 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
       this.setStatus(
-        "Starting visual coaching..."
+        "Starting visual analysis..."
       );
 
 
@@ -1061,39 +1073,28 @@ class NexivraLiveAvatar extends HTMLElement {
     this.returnedSince = null;
     this.turnedAwaySince = null;
     this.postureIssueSince = null;
-    this.correctionSince = null;
+    this.stabilitySince = null;
 
-    this.waitingForOrientationCorrection =
-      false;
+    this.waitingForOrientationReturn = false;
+    this.waitingForPostureChange = false;
 
-    this.waitingForPostureCorrection =
-      false;
-
-    this.overlapSince = null;
-
-    this.interruptionCandidateSince = null;
-
-    this.interruptionEvents = [];
+    this.speechOverlapCandidateSince = null;
+    this.speechOverlapEvents = [];
 
     this.learnerSpeaking = false;
-
     this.learnerMicSpeaking = false;
-
     this.avatarSpeaking = false;
 
     this.learnerNoiseFloor = 0.006;
-
     this.learnerSpeechStartThreshold = 0.018;
-
     this.learnerSpeechStopThreshold = 0.012;
-
     this.learnerCalibrationSamples = [];
-
     this.learnerCalibrationComplete = false;
-
     this.learnerSpeechAboveSince = null;
-
     this.learnerSpeechBelowSince = null;
+
+    this.observationTimeline = [];
+    this.observationSequence = 0;
   }
 
 
@@ -1432,7 +1433,7 @@ class NexivraLiveAvatar extends HTMLElement {
       label:
         "Not detected",
 
-      needsCoaching:
+      patternDetected:
         false
     };
 
@@ -1604,7 +1605,7 @@ class NexivraLiveAvatar extends HTMLElement {
         label:
           "Unknown",
 
-        needsCoaching:
+        patternDetected:
           false
       };
     }
@@ -1626,7 +1627,7 @@ class NexivraLiveAvatar extends HTMLElement {
         label:
           "Noticeable lean",
 
-        needsCoaching:
+        patternDetected:
           true
       };
     }
@@ -1667,7 +1668,7 @@ class NexivraLiveAvatar extends HTMLElement {
           label:
             "Compressed upper-body posture",
 
-          needsCoaching:
+          patternDetected:
             true
         };
       }
@@ -1679,7 +1680,7 @@ class NexivraLiveAvatar extends HTMLElement {
       label:
         "Open / mostly level",
 
-      needsCoaching:
+      patternDetected:
         false
     };
   }
@@ -1788,11 +1789,11 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
     /*
-     * Waiting for eye/orientation correction
+     * Waiting for orientation return
      */
 
     if (
-      this.waitingForOrientationCorrection
+      this.waitingForOrientationReturn
     ) {
 
       if (
@@ -1800,9 +1801,9 @@ class NexivraLiveAvatar extends HTMLElement {
           .facingForward
       ) {
 
-        if (!this.correctionSince) {
+        if (!this.stabilitySince) {
 
-          this.correctionSince =
+          this.stabilitySince =
             now;
         }
 
@@ -1810,19 +1811,19 @@ class NexivraLiveAvatar extends HTMLElement {
         if (
           (
             now -
-            this.correctionSince
+            this.stabilitySince
           ) >=
             this.thresholds
-              .orientationCorrectionMs
+              .orientationReturnMs
         ) {
 
-          this.handleOrientationCorrected();
+          this.handleOrientationReturned();
         }
 
 
       } else {
 
-        this.correctionSince =
+        this.stabilitySince =
           null;
       }
 
@@ -1832,21 +1833,21 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
     /*
-     * Waiting for posture correction
+     * Waiting for posture change
      */
 
     if (
-      this.waitingForPostureCorrection
+      this.waitingForPostureChange
     ) {
 
       if (
         !observation.postureData
-          .needsCoaching
+          .patternDetected
       ) {
 
-        if (!this.correctionSince) {
+        if (!this.stabilitySince) {
 
-          this.correctionSince =
+          this.stabilitySince =
             now;
         }
 
@@ -1854,19 +1855,19 @@ class NexivraLiveAvatar extends HTMLElement {
         if (
           (
             now -
-            this.correctionSince
+            this.stabilitySince
           ) >=
             this.thresholds
-              .postureCorrectionMs
+              .postureChangeMs
         ) {
 
-          this.handlePostureCorrected();
+          this.handlePostureChanged();
         }
 
 
       } else {
 
-        this.correctionSince =
+        this.stabilitySince =
           null;
       }
 
@@ -1903,10 +1904,10 @@ class NexivraLiveAvatar extends HTMLElement {
       const cooldownComplete =
         (
           now -
-          this.lastOrientationCoach
+          this.lastOrientationObservation
         ) >=
           this.thresholds
-            .orientationCooldownMs;
+            .orientationObservationCooldownMs;
 
 
       if (
@@ -1934,13 +1935,13 @@ class NexivraLiveAvatar extends HTMLElement {
 
 
     /*
-     * Sustained posture issue
+     * Sustained posture pattern
      */
 
     if (
       observation.poseDetected &&
       observation.postureData
-        .needsCoaching
+        .patternDetected
     ) {
 
       if (!this.postureIssueSince) {
@@ -1953,10 +1954,10 @@ class NexivraLiveAvatar extends HTMLElement {
       const cooldownComplete =
         (
           now -
-          this.lastPostureCoach
+          this.lastPostureObservation
         ) >=
           this.thresholds
-            .postureCooldownMs;
+            .postureObservationCooldownMs;
 
 
       if (
@@ -1969,7 +1970,7 @@ class NexivraLiveAvatar extends HTMLElement {
             .postureMs
       ) {
 
-        this.handlePostureConcern();
+        this.handlePosturePattern();
       }
 
 
@@ -1983,31 +1984,28 @@ class NexivraLiveAvatar extends HTMLElement {
 
   /*
    * =========================================================
-   * LIVE COACHING ACTIONS
+   * SUBJECT-NEUTRAL LIVE EVENT ACTIONS
    * =========================================================
    */
 
   async handleLearnerAbsent() {
 
-    if (
-      this.trainingState ===
-      "PAUSED_ABSENT"
-    ) {
+    if (this.trainingState === "PAUSED_ABSENT") {
       return;
     }
 
+    this.setTrainingState("PAUSED_ABSENT");
+    this.setStatus("Session paused while you are away.");
 
-    this.setTrainingState(
-      "PAUSED_ABSENT"
+    this.recordObservation(
+      "learner_absent",
+      {
+        immediate: true,
+        interpretation: "operational"
+      }
     );
 
-
-    this.setStatus(
-      "Training paused while you are away."
-    );
-
-
-    await this.speakImmediateCoach(
+    await this.speakSystemMessage(
       "It looks like you've stepped away. I'll pause here and wait for you to come back.",
       false
     );
@@ -2016,472 +2014,362 @@ class NexivraLiveAvatar extends HTMLElement {
 
   async handleLearnerReturned() {
 
-    if (
-      this.trainingState !==
-      "PAUSED_ABSENT"
-    ) {
+    if (this.trainingState !== "PAUSED_ABSENT") {
       return;
     }
 
+    this.returnedSince = null;
+    this.setTrainingState("ACTIVE");
+    this.setStatus("Session active.");
 
-    this.returnedSince =
-      null;
-
-
-    this.setTrainingState(
-      "ACTIVE"
+    this.recordObservation(
+      "learner_returned",
+      {
+        immediate: true,
+        interpretation: "operational"
+      }
     );
 
-
-    this.setStatus(
-      "Session active."
-    );
-
-
-    await this.speakImmediateCoach(
+    await this.speakSystemMessage(
       "Welcome back. Let's pick up where we left off.",
       true
     );
   }
 
 
-  async handleOrientationAway(
-    orientation
-  ) {
+  async handleOrientationAway(orientation) {
 
-    if (this.coachIntervening) {
-      return;
-    }
-
-
-    this.lastOrientationCoach =
-      Date.now();
-
-
-    this.turnedAwaySince =
-      null;
-
-
-    this.waitingForOrientationCorrection =
-      true;
-
-
-    this.correctionSince =
-      null;
-
-
-    this.setTrainingState(
-      "WAITING_FOR_CORRECTION"
-    );
-
+    this.lastOrientationObservation = Date.now();
+    this.turnedAwaySince = null;
+    this.waitingForOrientationReturn = true;
+    this.stabilitySince = null;
 
     this.setStatus(
-      "NEXIVRA is coaching visual presence."
+      "NEXIVRA recorded an observable interaction pattern."
     );
 
-
-    await this.speakImmediateCoach(
-      "I'm going to pause us for a moment. You've been turned away from our interaction for a little while. In face-to-face hospitality, appropriate eye contact and visual engagement can help another person feel heard and respected. You don't need to stare at someone constantly, but try turning back toward the interaction and staying visually present.",
-      true
-    );
-
-
-    console.log(
-      "Observed orientation:",
-      orientation
+    await this.handleAdaptiveObservation(
+      "sustained_orientation_away",
+      {
+        orientation,
+        durationMs: this.thresholds.turnedAwayMs,
+        observableOnly: true
+      }
     );
   }
 
 
-  async handleOrientationCorrected() {
+  async handleOrientationReturned() {
 
-    this.waitingForOrientationCorrection =
-      false;
+    this.waitingForOrientationReturn = false;
+    this.stabilitySince = null;
+    this.setStatus("Session active.");
 
-
-    this.correctionSince =
-      null;
-
-
-    this.setTrainingState(
-      "ACTIVE"
-    );
-
-
-    this.setStatus(
-      "Session active."
-    );
-
-
-    await this.speakImmediateCoach(
-      "There you go. That's a more visually engaged presence. Let's continue.",
-      true
+    await this.handleAdaptiveObservation(
+      "orientation_returned_forward",
+      {
+        stableForMs: this.thresholds.orientationReturnMs,
+        observableOnly: true
+      }
     );
   }
 
 
-  async handlePostureConcern() {
+  async handlePosturePattern() {
 
-    if (this.coachIntervening) {
-      return;
-    }
-
-
-    this.lastPostureCoach =
-      Date.now();
-
-
-    this.postureIssueSince =
-      null;
-
-
-    this.waitingForPostureCorrection =
-      true;
-
-
-    this.correctionSince =
-      null;
-
-
-    this.setTrainingState(
-      "WAITING_FOR_CORRECTION"
-    );
-
+    this.lastPostureObservation = Date.now();
+    this.postureIssueSince = null;
+    this.waitingForPostureChange = true;
+    this.stabilitySince = null;
 
     this.setStatus(
-      "NEXIVRA is coaching physical presence."
+      "NEXIVRA recorded an observable interaction pattern."
     );
 
-
-    await this.speakImmediateCoach(
-      "Let's pause for a moment and work on physical presence. Try moving into a comfortable, more open and upright position. In hospitality, posture can influence how engaged and approachable we appear to another person. Find a position that feels natural and professional for you.",
-      true
+    await this.handleAdaptiveObservation(
+      "sustained_posture_pattern",
+      {
+        posture: this.metrics.posture,
+        durationMs: this.thresholds.postureMs,
+        observableOnly: true
+      }
     );
   }
 
 
-  async handlePostureCorrected() {
+  async handlePostureChanged() {
 
-    this.waitingForPostureCorrection =
-      false;
+    this.waitingForPostureChange = false;
+    this.stabilitySince = null;
+    this.setStatus("Session active.");
 
-
-    this.correctionSince =
-      null;
-
-
-    this.setTrainingState(
-      "ACTIVE"
-    );
-
-
-    this.setStatus(
-      "Session active."
-    );
-
-
-    await this.speakImmediateCoach(
-      "That's better. Notice how that creates a more open presence. Let's keep going.",
-      true
+    await this.handleAdaptiveObservation(
+      "posture_pattern_changed",
+      {
+        stableForMs: this.thresholds.postureChangeMs,
+        observableOnly: true
+      }
     );
   }
 
 
   /*
    * =========================================================
-   * DIRECT LIVE COACHING BRIDGE
+   * ADAPTIVE OBSERVATION BRIDGE
    * =========================================================
    */
 
-async speakImmediateCoach(
-  text,
-  resumeVoice = true
-) {
+  recordObservation(type, details = {}) {
 
-  if (
-    !this.session ||
-    this.coachIntervening
-  ) {
-    return;
+    const observation = {
+      id: ++this.observationSequence,
+      type,
+      timestamp: Date.now(),
+      trainingState: this.trainingState,
+      subjectId: this.subjectId,
+      lessonId: this.lessonId,
+      details
+    };
+
+    this.observationTimeline.push(observation);
+
+    if (this.observationTimeline.length > 100) {
+      this.observationTimeline.shift();
+    }
+
+    this.dispatchEvent(
+      new CustomEvent(
+        "nexivra-observation",
+        {
+          detail: observation,
+          bubbles: true,
+          composed: true
+        }
+      )
+    );
+
+    console.log(
+      "NEXIVRA OBSERVATION:",
+      observation
+    );
+
+    return observation;
   }
 
 
-  this.coachIntervening =
-    true;
+  async handleAdaptiveObservation(type, details = {}) {
 
-
-  try {
-
-    /*
-     * Pause normal voice conversation so the AI agent
-     * cannot talk over the deterministic coaching message.
-     */
+    const observation =
+      this.recordObservation(type, details);
 
     if (
-      this.session.voiceChat &&
-      typeof this.session
-        .voiceChat.stop ===
-        "function"
+      !this.session ||
+      !this.sessionActive ||
+      this.sessionEnding
     ) {
-
-      try {
-
-        await this.session
-          .voiceChat
-          .stop();
-
-
-        console.log(
-          "NEXIVRA LIVE COACH: voice chat paused"
-        );
-
-      } catch (error) {
-
-        console.warn(
-          "VOICE PAUSE WARNING:",
-          error
-        );
-      }
+      return;
     }
 
+    const internalContext = `
+INTERNAL NEXIVRA OBSERVATION
 
-    /*
-     * Stop whatever Elenora is currently saying.
-     */
+A subject-neutral behavior event was detected during the current learning interaction.
 
-    if (
-      typeof this.session.interrupt ===
-      "function"
-    ) {
+OBSERVATION TYPE: ${observation.type}
+SUBJECT ID: ${observation.subjectId || "not supplied"}
+LESSON ID: ${observation.lessonId || "not supplied"}
+DETAILS: ${JSON.stringify(observation.details)}
 
-      try {
+IMPORTANT INTERPRETATION RULES:
+- This observation is descriptive, not a judgment.
+- Do not assume the behavior is good or bad.
+- Interpret it only through the active subject, lesson objective, scenario, and learner context already available to you.
+- Decide whether to IGNORE, COACH LATER, or COACH NOW.
+- If coaching is useful, teach naturally in your own words and adapt to the learner.
+- Do not announce technical detection, thresholds, sensors, or system metadata.
+- Do not infer emotion, intent, personality, motivation, disability, medical status, or psychological state from this event.
+- If the behavior is appropriate for the current subject or scenario, do not correct it merely because it occurred.
+- If the behavior is not relevant to the current learning objective, continue naturally.
 
-        this.session.interrupt();
+Continue the learning interaction naturally.
+    `.trim();
 
+    try {
 
-        console.log(
-          "NEXIVRA LIVE COACH: interrupt command sent"
-        );
-
-      } catch (error) {
-
-        console.warn(
-          "AVATAR INTERRUPT WARNING:",
-          error
-        );
-      }
-    }
-
-
-    /*
-     * Give the interrupt a moment to clear.
-     */
-
-    await this.delay(
-      500
-    );
-
-
-    /*
-     * Deliver the exact coaching text and capture the
-     * event ID returned by HeyGen.
-     */
-
-    if (
-      typeof this.session.repeat !==
-      "function"
-    ) {
-
-      throw new Error(
-        "session.repeat is unavailable"
-      );
-    }
-
-
-    const coachEventId =
-      this.session.repeat(
-        text
+      this.session.message(
+        internalContext
       );
 
 
-    console.log(
-      "NEXIVRA LIVE COACH SPOKEN:",
-      text
-    );
+      console.log(
+        "NEXIVRA ADAPTIVE EVENT SENT:",
+        observation.type
+      );
+
+    } catch (error) {
+
+      console.error(
+        "NEXIVRA ADAPTIVE EVENT ERROR:",
+        error
+      );
+    }
+  }
 
 
-    console.log(
-      "NEXIVRA LIVE COACH EVENT ID:",
-      coachEventId
-    );
+  /*
+   * =========================================================
+   * DIRECT SYSTEM MESSAGE BRIDGE
+   * =========================================================
+   */
 
-
-    /*
-     * Wait until HeyGen tells us THIS coaching utterance
-     * has actually finished speaking.
-     */
-
-    await new Promise(
-      (resolve) => {
-
-        let finished =
-          false;
-
-
-        const cleanup =
-          () => {
-
-            if (
-              typeof this.session.off ===
-              "function"
-            ) {
-
-              this.session.off(
-                AgentEventsEnum.AVATAR_SPEAK_ENDED,
-                handleEnded
-              );
-            }
-          };
-
-
-        const handleEnded =
-          (event) => {
-
-            if (finished) {
-              return;
-            }
-
-
-            if (
-              event?.event_id ===
-              coachEventId
-            ) {
-
-              finished =
-                true;
-
-
-              cleanup();
-
-
-              console.log(
-                "NEXIVRA LIVE COACH: coaching speech completed"
-              );
-
-
-              resolve();
-            }
-          };
-
-
-        this.session.on(
-          AgentEventsEnum.AVATAR_SPEAK_ENDED,
-          handleEnded
-        );
-
-
-        /*
-         * Safety timeout in case HeyGen does not return
-         * the matching ended event.
-         */
-
-        const words =
-          text
-            .trim()
-            .split(/\s+/)
-            .length;
-
-
-        const fallbackMs =
-          Math.max(
-            8000,
-            (
-              words /
-              120
-            ) *
-              60000 +
-              5000
-          );
-
-
-        setTimeout(
-          () => {
-
-            if (finished) {
-              return;
-            }
-
-
-            finished =
-              true;
-
-
-            cleanup();
-
-
-            console.warn(
-              "NEXIVRA LIVE COACH: speech-end timeout used"
-            );
-
-
-            resolve();
-
-          },
-          fallbackMs
-        );
-      }
-    );
-
-
-    /*
-     * Resume normal two-way voice conversation only AFTER
-     * the live coaching message has finished.
-     */
+  async speakSystemMessage(
+    text,
+    resumeVoice = true
+  ) {
 
     if (
-      resumeVoice &&
-      this.sessionActive &&
-      this.session.voiceChat &&
-      typeof this.session
-        .voiceChat.start ===
-        "function"
+      !this.session ||
+      this.coachIntervening
     ) {
-
-      try {
-
-        await this.session
-          .voiceChat
-          .start();
-
-
-        console.log(
-          "NEXIVRA LIVE COACH: voice chat resumed"
-        );
-
-      } catch (error) {
-
-        console.warn(
-          "VOICE RESUME WARNING:",
-          error
-        );
-      }
+      return;
     }
 
-
-  } catch (error) {
-
-    console.error(
-      "LIVE COACHING ERROR:",
-      error
-    );
-
-
-  } finally {
 
     this.coachIntervening =
-      false;
+      true;
+
+
+    try {
+
+      if (
+        this.session.voiceChat &&
+        typeof this.session
+          .voiceChat
+          .stop ===
+          "function"
+      ) {
+
+        try {
+
+          await this.session
+            .voiceChat
+            .stop();
+
+        } catch (error) {
+
+          console.warn(
+            "VOICE PAUSE WARNING:",
+            error
+          );
+        }
+      }
+
+
+      if (
+        typeof this.session.interrupt ===
+        "function"
+      ) {
+
+        try {
+
+          this.session.interrupt();
+
+        } catch (error) {
+
+          console.warn(
+            "AVATAR INTERRUPT WARNING:",
+            error
+          );
+        }
+      }
+
+
+      await this.delay(
+        400
+      );
+
+
+      if (
+        typeof this.session.repeat ===
+        "function"
+      ) {
+
+        this.session.repeat(
+          text
+        );
+
+      } else {
+
+        this.session.message(
+          text
+        );
+      }
+
+
+      const words =
+        text
+          .trim()
+          .split(/\s+/)
+          .length;
+
+
+      const speechMs =
+        Math.max(
+          2500,
+          (
+            words /
+            150
+          ) *
+          60000 +
+          800
+        );
+
+
+      await this.delay(
+        speechMs
+      );
+
+
+      if (
+        resumeVoice &&
+        this.sessionActive &&
+        this.session.voiceChat &&
+        typeof this.session
+          .voiceChat
+          .start ===
+          "function"
+      ) {
+
+        try {
+
+          await this.session
+            .voiceChat
+            .start();
+
+        } catch (error) {
+
+          console.warn(
+            "VOICE RESUME WARNING:",
+            error
+          );
+        }
+      }
+
+
+    } catch (error) {
+
+      console.error(
+        "SYSTEM MESSAGE ERROR:",
+        error
+      );
+
+
+    } finally {
+
+      this.coachIntervening =
+        false;
+    }
   }
-}
 
 
   /*
@@ -2558,13 +2446,17 @@ async speakImmediateCoach(
         Date.now();
 
 
-      this.learnerCalibrationSamples = [];
+      this.learnerCalibrationSamples =
+        [];
 
-      this.learnerCalibrationComplete = false;
+      this.learnerCalibrationComplete =
+        false;
 
-      this.learnerSpeechAboveSince = null;
+      this.learnerSpeechAboveSince =
+        null;
 
-      this.learnerSpeechBelowSince = null;
+      this.learnerSpeechBelowSince =
+        null;
 
 
       this.learnerAudioTimer =
@@ -2592,13 +2484,9 @@ async speakImmediateCoach(
               Date.now();
 
 
-            /*
-             * Calibrate against the learner's actual microphone
-             * and room instead of depending on one hard-coded
-             * RMS value for every computer.
-             */
-
-            if (!this.learnerCalibrationComplete) {
+            if (
+              !this.learnerCalibrationComplete
+            ) {
 
               this.learnerCalibrationSamples.push(
                 rms
@@ -2618,7 +2506,8 @@ async speakImmediateCoach(
                   [
                     ...this.learnerCalibrationSamples
                   ].sort(
-                    (a, b) => a - b
+                    (a, b) =>
+                      a - b
                   );
 
 
@@ -2626,7 +2515,8 @@ async speakImmediateCoach(
                   Math.max(
                     1,
                     Math.floor(
-                      sorted.length * 0.6
+                      sorted.length *
+                      0.6
                     )
                   );
 
@@ -2707,12 +2597,6 @@ async speakImmediateCoach(
             }
 
 
-            /*
-             * While quiet, require a short sustained rise above
-             * the adaptive threshold before calling it speech.
-             * This avoids reacting to tiny clicks and bumps.
-             */
-
             if (!this.learnerMicSpeaking) {
 
               if (
@@ -2720,7 +2604,9 @@ async speakImmediateCoach(
                 this.learnerSpeechStartThreshold
               ) {
 
-                if (!this.learnerSpeechAboveSince) {
+                if (
+                  !this.learnerSpeechAboveSince
+                ) {
 
                   this.learnerSpeechAboveSince =
                     now;
@@ -2750,16 +2636,11 @@ async speakImmediateCoach(
 
 
                   console.log(
-                    "NEXIVRA LEARNER AUDIO: speaking started",
-                    "rms",
-                    rms.toFixed(4),
-                    "threshold",
-                    this.learnerSpeechStartThreshold
-                      .toFixed(4)
+                    "NEXIVRA LEARNER AUDIO: speaking started"
                   );
 
 
-                  this.startInterruptionCandidate();
+                  this.startSpeechOverlapCandidate();
                 }
 
 
@@ -2774,18 +2655,14 @@ async speakImmediateCoach(
             }
 
 
-            /*
-             * Once speech has started, use a lower stop threshold
-             * and a brief hold time so normal pauses between words
-             * do not chop one response into several fake events.
-             */
-
             if (
               rms <=
               this.learnerSpeechStopThreshold
             ) {
 
-              if (!this.learnerSpeechBelowSince) {
+              if (
+                !this.learnerSpeechBelowSince
+              ) {
 
                 this.learnerSpeechBelowSince =
                   now;
@@ -2815,13 +2692,11 @@ async speakImmediateCoach(
 
 
                 console.log(
-                  "NEXIVRA LEARNER AUDIO: speaking stopped",
-                  "rms",
-                  rms.toFixed(4)
+                  "NEXIVRA LEARNER AUDIO: speaking stopped"
                 );
 
 
-                this.finishInterruptionCandidate();
+                this.finishSpeechOverlapCandidate();
               }
 
 
@@ -2840,157 +2715,6 @@ async speakImmediateCoach(
 
       console.warn(
         "LEARNER AUDIO MONITOR ERROR:",
-        error
-      );
-    }
-  }
-
-
-  /*
-   * =========================================================
-   * AVATAR AUDIO MONITOR
-   * =========================================================
-   */
-
-  async startAvatarAudioMonitor(
-    stream
-  ) {
-
-    try {
-
-      if (this.avatarAudioContext) {
-        return;
-      }
-
-
-      const audioTracks =
-        stream
-          ?.getAudioTracks?.();
-
-
-      if (
-        !audioTracks ||
-        !audioTracks.length
-      ) {
-
-        setTimeout(
-          () => {
-
-            if (
-              !this.avatarAudioContext
-            ) {
-
-              const avatarVideo =
-                this.shadowRoot
-                  .getElementById(
-                    "avatarVideo"
-                  );
-
-
-              if (
-                avatarVideo?.srcObject
-              ) {
-
-                this.startAvatarAudioMonitor(
-                  avatarVideo.srcObject
-                );
-              }
-            }
-
-          },
-          1500
-        );
-
-
-        return;
-      }
-
-
-      const AudioContextClass =
-        window.AudioContext ||
-        window.webkitAudioContext;
-
-
-      if (!AudioContextClass) {
-        return;
-      }
-
-
-      this.avatarAudioContext =
-        new AudioContextClass();
-
-
-      this.avatarSource =
-        this.avatarAudioContext
-          .createMediaStreamSource(
-            stream
-          );
-
-
-      this.avatarAnalyser =
-        this.avatarAudioContext
-          .createAnalyser();
-
-
-      this.avatarAnalyser.fftSize =
-        1024;
-
-
-      this.avatarAnalyser
-        .smoothingTimeConstant =
-        0.65;
-
-
-      this.avatarSource.connect(
-        this.avatarAnalyser
-      );
-
-
-      const samples =
-        new Float32Array(
-          this.avatarAnalyser
-            .fftSize
-        );
-
-
-      this.avatarAudioTimer =
-        setInterval(
-          () => {
-
-            if (!this.avatarAnalyser) {
-              return;
-            }
-
-
-            this.avatarAnalyser
-              .getFloatTimeDomainData(
-                samples
-              );
-
-
-            const rms =
-              this.calculateRms(
-                samples
-              );
-
-
-            this.avatarSpeaking =
-              rms >
-              this.thresholds
-                .avatarSpeechRms;
-
-
-            this.evaluateSpeechOverlap();
-
-          },
-          100
-        );
-
-
-    } catch (error) {
-
-      console.warn(
-        "AVATAR AUDIO MONITOR ERROR:",
         error
       );
     }
@@ -3023,11 +2747,11 @@ async speakImmediateCoach(
 
   /*
    * =========================================================
-   * INTERRUPTION DETECTION
+   * SUBJECT-NEUTRAL OVERLAP DETECTION
    * =========================================================
    */
 
-  startInterruptionCandidate() {
+  startSpeechOverlapCandidate() {
 
     if (
       !this.sessionActive ||
@@ -3040,39 +2764,33 @@ async speakImmediateCoach(
     }
 
 
-    /*
-     * A possible interruption begins only when the learner
-     * STARTS speaking while Elenora is already speaking.
-     *
-     * After that moment, we measure how long the learner keeps
-     * talking. We do NOT require Elenora to keep talking too,
-     * because LiveAvatar may naturally stop her as soon as the
-     * learner begins speaking.
-     */
-
     if (!this.avatarSpeaking) {
       return;
     }
 
 
-    if (this.interruptionCandidateSince) {
+    if (
+      this.speechOverlapCandidateSince
+    ) {
       return;
     }
 
 
-    this.interruptionCandidateSince =
+    this.speechOverlapCandidateSince =
       Date.now();
 
 
     console.log(
-      "NEXIVRA INTERRUPTION: candidate started"
+      "NEXIVRA OVERLAP: candidate started"
     );
   }
 
 
-  finishInterruptionCandidate() {
+  finishSpeechOverlapCandidate() {
 
-    if (!this.interruptionCandidateSince) {
+    if (
+      !this.speechOverlapCandidateSince
+    ) {
       return;
     }
 
@@ -3083,43 +2801,40 @@ async speakImmediateCoach(
 
     const duration =
       now -
-      this.interruptionCandidateSince;
+      this.speechOverlapCandidateSince;
 
 
-    this.interruptionCandidateSince =
+    this.speechOverlapCandidateSince =
       null;
 
-
-    console.log(
-      "NEXIVRA INTERRUPTION: learner response duration",
-      duration
-    );
-
-
-    /*
-     * Short acknowledgments should normally finish below this
-     * threshold and are ignored. A sustained learner response
-     * that began before Elenora finished counts as one
-     * interruption event.
-     */
 
     if (
       duration <
       this.thresholds
-        .minimumOverlapMs
+        .minimumMeaningfulOverlapMs
     ) {
 
-      console.log(
-        "NEXIVRA INTERRUPTION: ignored as brief acknowledgment"
+      this.recordObservation(
+        "brief_speech_overlap",
+        {
+          durationMs:
+            duration,
+
+          observableOnly:
+            true
+        }
       );
+
 
       return;
     }
 
 
-    this.interruptionEvents.push(
+    this.speechOverlapEvents.push(
       {
-        time: now,
+        time:
+          now,
+
         duration
       }
     );
@@ -3128,36 +2843,49 @@ async speakImmediateCoach(
     const cutoff =
       now -
       this.thresholds
-        .interruptionWindowMs;
+        .speechOverlapWindowMs;
 
 
-    this.interruptionEvents =
-      this.interruptionEvents.filter(
+    this.speechOverlapEvents =
+      this.speechOverlapEvents.filter(
         (event) =>
           event.time >= cutoff
       );
 
 
-    console.log(
-      "NEXIVRA INTERRUPTION: qualifying interruption",
-      this.interruptionEvents.length
+    this.recordObservation(
+      "sustained_speech_overlap",
+      {
+        durationMs:
+          duration,
+
+        rollingCount:
+          this.speechOverlapEvents.length,
+
+        windowMs:
+          this.thresholds
+            .speechOverlapWindowMs,
+
+        observableOnly:
+          true
+      }
     );
 
 
-    this.checkInterruptionPattern();
+    this.checkOverlapPattern();
   }
 
 
-  checkInterruptionPattern() {
+  checkOverlapPattern() {
 
     const now =
       Date.now();
 
 
     if (
-      this.interruptionEvents.length <
+      this.speechOverlapEvents.length <
       this.thresholds
-        .interruptionsBeforeCoach
+        .speechOverlapsBeforePattern
     ) {
       return;
     }
@@ -3166,10 +2894,10 @@ async speakImmediateCoach(
     if (
       (
         now -
-        this.lastInterruptionCoach
+        this.lastSpeechOverlapObservation
       ) <
       this.thresholds
-        .interruptionCooldownMs
+        .speechOverlapPatternCooldownMs
     ) {
       return;
     }
@@ -3183,38 +2911,57 @@ async speakImmediateCoach(
     }
 
 
-    this.lastInterruptionCoach =
+    this.lastSpeechOverlapObservation =
       now;
 
 
-    this.interruptionEvents =
+    const recentEvents =
+      [
+        ...this.speechOverlapEvents
+      ];
+
+
+    this.speechOverlapEvents =
       [];
 
 
-    this.handleInterruptionCoaching();
+    this.handleRepeatedOverlapObservation(
+      recentEvents
+    );
   }
 
 
-  async handleInterruptionCoaching() {
-
-    this.setTrainingState(
-      "LISTENING_COACHING"
-    );
-
+  async handleRepeatedOverlapObservation(
+    events
+  ) {
 
     this.setStatus(
-      "NEXIVRA is coaching listening skills."
+      "NEXIVRA is reviewing an interaction pattern."
     );
 
 
-    await this.speakImmediateCoach(
-      "I'm going to pause us for a second. You've started responding before I've finished speaking a few times. In hospitality, allowing another person to finish helps them feel heard and gives us the chance to fully understand before we respond. Brief acknowledgments are perfectly natural, but let's practice allowing the speaker to finish their thought before beginning our full response.",
-      true
-    );
+    await this.handleAdaptiveObservation(
+      "repeated_sustained_speech_overlap",
+      {
+        count:
+          events.length,
 
+        durationsMs:
+          events.map(
+            (event) =>
+              event.duration
+          ),
 
-    this.setTrainingState(
-      "ACTIVE"
+        windowMs:
+          this.thresholds
+            .speechOverlapWindowMs,
+
+        observableOnly:
+          true,
+
+        interpretationRequired:
+          true
+      }
     );
 
 
@@ -3226,7 +2973,7 @@ async speakImmediateCoach(
 
   /*
    * =========================================================
-   * FINAL VISUAL SUMMARY
+   * FINAL OBSERVATION SUMMARY
    * =========================================================
    */
 
@@ -3283,34 +3030,49 @@ async speakImmediateCoach(
       );
 
 
+    const recentObservations =
+      this.observationTimeline
+        .slice(-20)
+        .map(
+          (observation) => ({
+            type:
+              observation.type,
+
+            details:
+              observation.details
+          })
+        );
+
+
     return `
-SYSTEM COACHING CONTEXT:
+SYSTEM TRAINING CONTEXT:
 
-Observable visual information from the completed learner practice:
+Subject-neutral observations from the completed learning interaction:
 
-- Face detected in approximately ${facePercent}% of analyzed samples.
-- Upper-body pose detected in approximately ${posePercent}% of analyzed samples.
+- Face was detectable in approximately ${facePercent}% of analyzed samples.
+- Upper-body pose was detectable in approximately ${posePercent}% of analyzed samples.
 - Learner remained within the central camera frame in approximately ${framePercent}% of analyzed samples.
 - Learner was approximately forward-facing in ${facingPercent}% of analyzed samples.
 - ${m.lookAwayEvents} transition(s) away from forward-facing orientation were observed.
 - Final visible head orientation: ${m.headOrientation}.
 - Final visible upper-body alignment: ${m.posture}.
+- Recent neutral event observations: ${JSON.stringify(recentObservations)}
 
-Use these observations only as supplemental coaching context.
+Use these observations only as descriptive context.
 
-Do not infer emotion, confidence, nervousness, honesty, deception, personality, intent, motivation, attentiveness, disability, psychological state, or medical condition.
+Do not assume any observed behavior is inherently good or bad.
+
+Interpret behavior only through the active subject, lesson objectives, scenario, and learner context.
+
+Do not infer emotion, confidence, nervousness, honesty, deception, personality, intent, motivation, attentiveness, disability, psychological state, or medical condition from camera or audio observations.
 
 Do not equate camera-facing behavior with perfect eye contact.
 
-Do not treat looking away as inherently negative.
-
 Natural conversation includes looking away.
 
-Do not use these measurements as a score.
+Do not use these measurements as a score unless the active subject explicitly defines a valid scoring rule for them.
 
-When visual behavior is relevant, describe only what was observable and how it could potentially affect another person's experience.
-
-Do not read technical percentages aloud unless the learner specifically asks.
+Do not read technical percentages or system metadata aloud unless explicitly requested.
     `.trim();
   }
 
@@ -3318,29 +3080,31 @@ Do not read technical percentages aloud unless the learner specifically asks.
   buildFinalFeedbackPrompt() {
 
     return `
-COACHING REQUEST:
+ADAPTIVE TEACHING REQUEST:
 
-The learner has completed the current hospitality practice.
+The learner has completed the current learning interaction.
 
-Give concise integrated coaching based on:
+Use only the active subject, lesson objectives, scenario, learner context, conversation, and neutral observations already available to you.
 
-1. The conversation.
-2. The learner's verbal responses.
-3. Any visual-presence coaching that occurred.
-4. Any listening or interruption coaching that occurred.
-5. The final visual observations.
+Your job is to teach the current subject, not to apply universal behavior rules.
 
-Begin with what the learner did effectively.
+For any observed behavior:
 
-Then identify one or two meaningful opportunities to strengthen.
+- decide whether it was effective, ineffective, neutral, or context-dependent for THIS subject and THIS moment;
+- do not criticize behavior merely because it occurred;
+- recognize improvement or successful adaptation when supported by the interaction;
+- adapt your explanation, questions, examples, and coaching style to the learner;
+- prioritize one or two useful learning opportunities rather than producing a report card.
 
-Do not mention technical monitoring, MediaPipe, camera percentages, microphone detection, automated events, or system messages.
+Begin with what the learner demonstrated effectively according to the active subject.
 
-Do not say the learner failed.
+Then continue with the most useful next teaching or coaching point.
 
-Use supportive Legacy Edge Partners coaching language.
+Do not mention technical monitoring, MediaPipe, microphone thresholds, automated events, system messages, or raw percentages.
 
-Keep the feedback conversational, specific, constructive, and concise.
+Do not use pass/fail language unless the active subject explicitly requires it.
+
+Keep the response natural, specific, constructive, and conversational.
     `.trim();
   }
 
@@ -3426,23 +3190,32 @@ Keep the feedback conversational, specific, constructive, and concise.
     if (this.learnerSource) {
 
       try {
+
         this.learnerSource.disconnect();
+
       } catch (error) {}
 
-      this.learnerSource = null;
+
+      this.learnerSource =
+        null;
     }
 
 
-    this.learnerAnalyser = null;
+    this.learnerAnalyser =
+      null;
 
 
     if (this.learnerAudioContext) {
 
       try {
+
         this.learnerAudioContext.close();
+
       } catch (error) {}
 
-      this.learnerAudioContext = null;
+
+      this.learnerAudioContext =
+        null;
     }
 
 
@@ -3467,47 +3240,6 @@ Keep the feedback conversational, specific, constructive, and concise.
 
 
     this.learnerCalibrationComplete =
-      false;
-  }
-
-
-  stopAvatarAudioMonitor() {
-
-    if (this.avatarAudioTimer) {
-
-      clearInterval(
-        this.avatarAudioTimer
-      );
-
-      this.avatarAudioTimer =
-        null;
-    }
-
-
-    if (this.avatarSource) {
-
-      try {
-        this.avatarSource.disconnect();
-      } catch (error) {}
-
-      this.avatarSource = null;
-    }
-
-
-    this.avatarAnalyser = null;
-
-
-    if (this.avatarAudioContext) {
-
-      try {
-        this.avatarAudioContext.close();
-      } catch (error) {}
-
-      this.avatarAudioContext = null;
-    }
-
-
-    this.avatarSpeaking =
       false;
   }
 
@@ -3585,16 +3317,17 @@ Keep the feedback conversational, specific, constructive, and concise.
 
     this.stopLearnerAudioMonitor();
 
-    this.stopAvatarAudioMonitor();
-
     this.stopCamera();
 
 
     if (this.faceLandmarker) {
 
       try {
+
         this.faceLandmarker.close();
+
       } catch (error) {}
+
 
       this.faceLandmarker =
         null;
@@ -3604,8 +3337,11 @@ Keep the feedback conversational, specific, constructive, and concise.
     if (this.poseLandmarker) {
 
       try {
+
         this.poseLandmarker.close();
+
       } catch (error) {}
+
 
       this.poseLandmarker =
         null;
