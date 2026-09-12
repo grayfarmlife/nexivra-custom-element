@@ -1,0 +1,4200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>NEXIVRA Management</title>
+
+<style>
+:root {
+  --bg: #020711;
+  --bg-2: #06111f;
+  --panel: rgba(5, 18, 33, 0.88);
+  --panel-2: rgba(7, 24, 42, 0.92);
+
+  --cyan: #00c8ff;
+  --cyan-2: #118dff;
+  --cyan-soft: rgba(0, 200, 255, 0.14);
+
+  --orange: #ff8a00;
+  --orange-soft: rgba(255, 138, 0, 0.14);
+
+  --text: #f7fbff;
+  --muted: #8fa4b8;
+  --muted-2: #60788d;
+
+  --border: rgba(0, 200, 255, 0.22);
+  --border-strong: rgba(0, 200, 255, 0.42);
+
+  --green: #49d597;
+  --yellow: #ffc857;
+  --red: #ff6262;
+
+  --sidebar-width: 270px;
+  --radius: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  background:
+    radial-gradient(
+      circle at 20% 0%,
+      rgba(0, 153, 255, 0.11),
+      transparent 35%
+    ),
+    radial-gradient(
+      circle at 90% 20%,
+      rgba(255, 128, 0, 0.06),
+      transparent 30%
+    ),
+    var(--bg);
+
+  color: var(--text);
+
+  font-family:
+    Inter,
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* ======================================================
+   APP SHELL
+====================================================== */
+
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ======================================================
+   SIDEBAR
+====================================================== */
+
+.sidebar {
+  width: var(--sidebar-width);
+  min-height: 100vh;
+
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  padding: 24px 18px;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(3, 13, 24, 0.98),
+      rgba(1, 7, 15, 0.98)
+    );
+
+  border-right:
+    1px solid var(--border);
+
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding:
+    6px 8px 24px 8px;
+
+  border-bottom:
+    1px solid rgba(255,255,255,0.06);
+}
+
+.brand img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+}
+
+.brand-copy {
+  min-width: 0;
+}
+
+.brand-name {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.brand-subtitle {
+  margin-top: 4px;
+
+  color: var(--muted);
+
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.nav-label {
+  margin:
+    24px 10px 10px;
+
+  color: var(--muted-2);
+
+  font-size: 10px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.nav-button {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  border: 1px solid transparent;
+
+  padding: 12px 13px;
+
+  border-radius: 12px;
+
+  background: transparent;
+
+  color: var(--muted);
+
+  text-align: left;
+
+  transition:
+    .2s ease;
+}
+
+.nav-button:hover {
+  color: white;
+  background: rgba(255,255,255,0.035);
+  border-color: rgba(255,255,255,0.06);
+}
+
+.nav-button.active {
+  color: white;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0,200,255,.15),
+      rgba(0,200,255,.04)
+    );
+
+  border-color:
+    rgba(0,200,255,.28);
+
+  box-shadow:
+    inset 3px 0 0 var(--cyan);
+}
+
+.nav-icon {
+  width: 23px;
+  text-align: center;
+
+  color: var(--cyan);
+
+  font-size: 16px;
+}
+
+.sidebar-footer {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+}
+
+.system-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 11px 12px;
+
+  border:
+    1px solid rgba(73,213,151,.2);
+
+  border-radius: 12px;
+
+  background:
+    rgba(73,213,151,.05);
+
+  color: #b9f4d8;
+
+  font-size: 12px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+
+  background: var(--green);
+
+  box-shadow:
+    0 0 12px var(--green);
+}
+
+/* ======================================================
+   MAIN CONTENT
+====================================================== */
+
+.main {
+  margin-left:
+    var(--sidebar-width);
+
+  width:
+    calc(100% - var(--sidebar-width));
+
+  min-height: 100vh;
+}
+
+/* ======================================================
+   HEADER
+====================================================== */
+
+.topbar {
+  min-height: 82px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding:
+    15px 28px;
+
+  position: sticky;
+  top: 0;
+
+  z-index: 50;
+
+  backdrop-filter: blur(18px);
+
+  background:
+    rgba(2, 7, 17, 0.78);
+
+  border-bottom:
+    1px solid rgba(255,255,255,.06);
+}
+
+.page-heading {
+  min-width: 0;
+}
+
+.eyebrow {
+  color: var(--cyan);
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+.page-title {
+  margin-top: 5px;
+
+  font-size: 23px;
+  font-weight: 800;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding:
+    7px 11px;
+
+  border:
+    1px solid rgba(255,255,255,.08);
+
+  border-radius: 12px;
+
+  background:
+    rgba(255,255,255,.025);
+}
+
+.admin-avatar {
+  width: 34px;
+  height: 34px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(--cyan-2),
+      var(--orange)
+    );
+
+  color: #000;
+
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-role {
+  margin-top: 2px;
+
+  color: var(--muted);
+
+  font-size: 10px;
+}
+
+/* ======================================================
+   CONTENT
+====================================================== */
+
+.content {
+  padding:
+    28px;
+}
+
+.section {
+  display: none;
+}
+
+.section.active {
+  display: block;
+}
+
+.section-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 20px;
+
+  margin-bottom: 22px;
+}
+
+.section-heading h1 {
+  margin: 0;
+
+  font-size:
+    clamp(28px, 3vw, 44px);
+
+  line-height: 1;
+
+  letter-spacing: -1px;
+}
+
+.section-heading p {
+  margin:
+    11px 0 0;
+
+  max-width: 680px;
+
+  color: var(--muted);
+
+  line-height: 1.6;
+
+  font-size: 14px;
+}
+
+/* ======================================================
+   BUTTONS
+====================================================== */
+
+.btn {
+  border:
+    1px solid var(--border);
+
+  border-radius: 11px;
+
+  padding:
+    10px 14px;
+
+  background:
+    rgba(0, 200, 255, .04);
+
+  color: white;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  transition:
+    .18s ease;
+}
+
+.btn:hover {
+  transform:
+    translateY(-1px);
+
+  border-color:
+    var(--border-strong);
+
+  box-shadow:
+    0 0 18px rgba(0,200,255,.12);
+}
+
+.btn-primary {
+  background:
+    linear-gradient(
+      90deg,
+      var(--cyan-2),
+      var(--cyan)
+    );
+
+  color: #00101a;
+
+  border:
+    1px solid transparent;
+}
+
+.btn-orange {
+  background:
+    linear-gradient(
+      90deg,
+      #ff9d2f,
+      var(--orange)
+    );
+
+  color: #130700;
+
+  border:
+    1px solid transparent;
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+/* ======================================================
+   CARDS
+====================================================== */
+
+.metric-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 14px;
+
+  margin-bottom: 24px;
+}
+
+.metric-card {
+  position: relative;
+  overflow: hidden;
+
+  min-height: 145px;
+
+  padding: 20px;
+
+  border:
+    1px solid var(--border);
+
+  border-radius:
+    var(--radius);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6,26,44,.95),
+      rgba(2,9,18,.96)
+    );
+}
+
+.metric-card::after {
+  content: "";
+
+  position: absolute;
+
+  width: 130px;
+  height: 130px;
+
+  right: -55px;
+  top: -55px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(0,200,255,.2),
+      transparent 68%
+    );
+}
+
+.metric-label {
+  color: var(--muted);
+
+  font-size: 11px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+.metric-value {
+  margin-top: 14px;
+
+  font-size: 36px;
+  font-weight: 800;
+}
+
+.metric-sub {
+  margin-top: 7px;
+
+  color: var(--muted);
+
+  font-size: 11px;
+}
+
+.card {
+  border:
+    1px solid var(--border);
+
+  border-radius:
+    var(--radius);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(5,20,35,.92),
+      rgba(2,9,17,.96)
+    );
+
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  padding:
+    18px 20px;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.06);
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.card-subtitle {
+  margin-top: 4px;
+
+  color: var(--muted);
+
+  font-size: 11px;
+}
+
+.card-body {
+  padding: 20px;
+}
+
+.two-column {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.3fr)
+    minmax(300px, .7fr);
+
+  gap: 16px;
+}
+
+/* ======================================================
+   QUICK ACTIONS
+====================================================== */
+
+.quick-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.quick-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 14px 15px;
+
+  border:
+    1px solid rgba(255,255,255,.07);
+
+  border-radius: 13px;
+
+  background:
+    rgba(255,255,255,.02);
+
+  color: white;
+
+  transition:
+    .18s ease;
+}
+
+.quick-action:hover {
+  border-color:
+    var(--border-strong);
+
+  background:
+    rgba(0,200,255,.05);
+}
+
+.quick-action strong {
+  font-size: 12px;
+}
+
+.quick-action span {
+  color: var(--cyan);
+}
+
+/* ======================================================
+   TABLES
+====================================================== */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+
+  border-collapse: collapse;
+}
+
+th {
+  padding:
+    12px 13px;
+
+  color: var(--muted-2);
+
+  font-size: 10px;
+
+  text-align: left;
+
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.06);
+}
+
+td {
+  padding:
+    14px 13px;
+
+  color: #cbd8e3;
+
+  font-size: 12px;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.04);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+
+  padding:
+    5px 9px;
+
+  border-radius: 999px;
+
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.status.active,
+.status.published,
+.status.complete {
+  color: #8ff0c4;
+
+  background:
+    rgba(73,213,151,.09);
+
+  border:
+    1px solid rgba(73,213,151,.18);
+}
+
+.status.draft,
+.status.processing {
+  color: #ffdc92;
+
+  background:
+    rgba(255,200,87,.07);
+
+  border:
+    1px solid rgba(255,200,87,.18);
+}
+
+.status.inactive {
+  color: #ff9f9f;
+
+  background:
+    rgba(255,98,98,.07);
+
+  border:
+    1px solid rgba(255,98,98,.18);
+}
+
+/* ======================================================
+   EMPTY STATES
+====================================================== */
+
+.empty {
+  padding:
+    44px 20px;
+
+  text-align: center;
+
+  color: var(--muted);
+}
+
+.empty-symbol {
+  width: 54px;
+  height: 54px;
+
+  display: grid;
+  place-items: center;
+
+  margin:
+    0 auto 15px;
+
+  border-radius: 50%;
+
+  border:
+    1px solid var(--border);
+
+  color: var(--cyan);
+
+  font-size: 22px;
+
+  background:
+    rgba(0,200,255,.04);
+}
+
+.empty strong {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: white;
+
+  font-size: 14px;
+}
+
+/* ======================================================
+   BUILDER
+====================================================== */
+
+.builder-shell {
+  display: grid;
+
+  grid-template-columns:
+    310px minmax(0,1fr);
+
+  gap: 16px;
+}
+
+.builder-sidebar,
+.builder-main {
+  border:
+    1px solid var(--border);
+
+  border-radius:
+    var(--radius);
+
+  background:
+    rgba(4,16,28,.9);
+}
+
+.builder-sidebar {
+  padding: 16px;
+}
+
+.module-item {
+  padding: 13px;
+
+  margin-bottom: 8px;
+
+  border:
+    1px solid rgba(255,255,255,.06);
+
+  border-radius: 12px;
+
+  background:
+    rgba(255,255,255,.02);
+
+  cursor: pointer;
+}
+
+.module-item:hover {
+  border-color:
+    var(--border-strong);
+}
+
+.module-number {
+  color: var(--cyan);
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 1.5px;
+
+  text-transform: uppercase;
+}
+
+.module-title {
+  margin-top: 5px;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.builder-main {
+  min-height: 520px;
+
+  padding: 22px;
+}
+
+/* ======================================================
+   DEMO MODE
+====================================================== */
+
+.demo-card {
+  padding: 26px;
+
+  position: relative;
+
+  overflow: hidden;
+}
+
+.demo-card::after {
+  content: "";
+
+  position: absolute;
+
+  width: 400px;
+  height: 400px;
+
+  right: -160px;
+  bottom: -210px;
+
+  border-radius: 50%;
+
+  border:
+    1px solid rgba(0,200,255,.35);
+
+  box-shadow:
+    0 0 90px rgba(0,200,255,.08);
+}
+
+.demo-title {
+  margin: 0;
+
+  max-width: 800px;
+
+  font-size:
+    clamp(36px, 5vw, 70px);
+
+  line-height: .98;
+
+  letter-spacing: -2px;
+}
+
+.demo-title .cyan {
+  color: var(--cyan);
+}
+
+.demo-title .orange {
+  color: var(--orange);
+}
+
+.demo-description {
+  max-width: 720px;
+
+  margin-top: 18px;
+
+  color: var(--muted);
+
+  line-height: 1.7;
+}
+
+/* ======================================================
+   MODAL
+====================================================== */
+
+.modal-overlay {
+  display: none;
+
+  position: fixed;
+  inset: 0;
+
+  z-index: 1000;
+
+  background:
+    rgba(0,0,0,.72);
+
+  backdrop-filter:
+    blur(10px);
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal {
+  width: min(560px, 100%);
+
+  border:
+    1px solid var(--border-strong);
+
+  border-radius:
+    20px;
+
+  background:
+    linear-gradient(
+      145deg,
+      #07192a,
+      #020810
+    );
+
+  box-shadow:
+    0 35px 100px rgba(0,0,0,.5);
+
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-bottom:
+    1px solid rgba(255,255,255,.06);
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.modal-close {
+  border: 0;
+  background: transparent;
+
+  color: var(--muted);
+
+  font-size: 22px;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  padding:
+    16px 20px;
+
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+
+  border-top:
+    1px solid rgba(255,255,255,.06);
+}
+
+/* ======================================================
+   FORMS
+====================================================== */
+
+.form-grid {
+  display: grid;
+  gap: 15px;
+}
+
+.form-row {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 12px;
+}
+
+label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: var(--muted);
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+
+  padding:
+    11px 12px;
+
+  border:
+    1px solid rgba(255,255,255,.09);
+
+  border-radius: 10px;
+
+  background:
+    rgba(255,255,255,.035);
+
+  color: white;
+
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color:
+    var(--cyan);
+}
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+/* ======================================================
+   LOADING
+====================================================== */
+
+.loading {
+  position: fixed;
+  inset: 0;
+
+  z-index: 2000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background:
+    var(--bg);
+}
+
+.loader {
+  text-align: center;
+}
+
+.loader-ring {
+  width: 58px;
+  height: 58px;
+
+  margin:
+    0 auto 18px;
+
+  border:
+    2px solid rgba(0,200,255,.15);
+
+  border-top-color:
+    var(--cyan);
+
+  border-right-color:
+    var(--orange);
+
+  border-radius: 50%;
+
+  animation:
+    spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-text {
+  color: var(--muted);
+
+  font-size: 11px;
+
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ======================================================
+   TOAST
+====================================================== */
+
+.toast {
+  position: fixed;
+
+  right: 24px;
+  bottom: 24px;
+
+  z-index: 3000;
+
+  min-width: 280px;
+  max-width: 420px;
+
+  padding:
+    14px 16px;
+
+  border:
+    1px solid var(--border);
+
+  border-radius: 12px;
+
+  background:
+    #071626;
+
+  box-shadow:
+    0 20px 55px rgba(0,0,0,.45);
+
+  color: white;
+
+  transform:
+    translateY(140%);
+
+  transition:
+    .25s ease;
+}
+
+.toast.show {
+  transform:
+    translateY(0);
+}
+
+.toast.success {
+  border-color:
+    rgba(73,213,151,.45);
+}
+
+.toast.error {
+  border-color:
+    rgba(255,98,98,.45);
+}
+
+/* ======================================================
+   RESPONSIVE
+====================================================== */
+
+@media (max-width: 1100px) {
+
+  .metric-grid {
+    grid-template-columns:
+      repeat(2,1fr);
+  }
+
+  .two-column {
+    grid-template-columns:
+      1fr;
+  }
+
+  .builder-shell {
+    grid-template-columns:
+      1fr;
+  }
+}
+
+@media (max-width: 760px) {
+
+  :root {
+    --sidebar-width: 74px;
+  }
+
+  .sidebar {
+    padding:
+      18px 10px;
+  }
+
+  .brand-copy,
+  .nav-button span:last-child,
+  .nav-label,
+  .sidebar-footer {
+    display: none;
+  }
+
+  .brand {
+    justify-content: center;
+  }
+
+  .brand img {
+    width: 45px;
+    height: 45px;
+  }
+
+  .nav-button {
+    justify-content: center;
+  }
+
+  .content {
+    padding: 18px;
+  }
+
+  .metric-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .form-row {
+    grid-template-columns:
+      1fr;
+  }
+
+  .admin-badge .admin-copy {
+    display: none;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div id="loading" class="loading">
+  <div class="loader">
+    <div class="loader-ring"></div>
+    <div class="loader-text">
+      Connecting to NEXIVRA Core
+    </div>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ================================================
+       SIDEBAR
+  ================================================= -->
+
+  <aside class="sidebar">
+
+    <div class="brand">
+
+      <img
+        src="https://static.wixstatic.com/media/433270_aba4225e8fc54279ba41af267bab397a~mv2.png"
+        alt="NEXIVRA"
+      >
+
+      <div class="brand-copy">
+        <div class="brand-name">
+          NEXIVRA
+        </div>
+
+        <div class="brand-subtitle">
+          Management
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nav-label">
+      Platform
+    </div>
+
+    <nav class="nav">
+
+      <button class="nav-button active" data-section="overview">
+        <span class="nav-icon">◉</span>
+        <span>Overview</span>
+      </button>
+
+      <button class="nav-button" data-section="organizations">
+        <span class="nav-icon">◇</span>
+        <span>Organizations</span>
+      </button>
+
+      <button class="nav-button" data-section="courses">
+        <span class="nav-icon">▤</span>
+        <span>Courses</span>
+      </button>
+
+      <button class="nav-button" data-section="builder">
+        <span class="nav-icon">⌘</span>
+        <span>Course Builder</span>
+      </button>
+
+      <button class="nav-button" data-section="uploads">
+        <span class="nav-icon">⇧</span>
+        <span>Knowledge Uploads</span>
+      </button>
+
+      <button class="nav-button" data-section="users">
+        <span class="nav-icon">◎</span>
+        <span>Users</span>
+      </button>
+
+      <button class="nav-button" data-section="assignments">
+        <span class="nav-icon">✓</span>
+        <span>Assignments</span>
+      </button>
+
+      <button class="nav-button" data-section="reporting">
+        <span class="nav-icon">↗</span>
+        <span>Reporting</span>
+      </button>
+
+      <button class="nav-button" data-section="demo">
+        <span class="nav-icon">✦</span>
+        <span>Demo Mode</span>
+      </button>
+
+      <button class="nav-button" data-section="settings">
+        <span class="nav-icon">⚙</span>
+        <span>System Settings</span>
+      </button>
+
+    </nav>
+
+    <div class="sidebar-footer">
+
+      <div class="system-chip">
+        <span class="status-dot"></span>
+        NEXIVRA Core Online
+      </div>
+
+    </div>
+
+  </aside>
+
+  <!-- ================================================
+       MAIN
+  ================================================= -->
+
+  <main class="main">
+
+    <header class="topbar">
+
+      <div class="page-heading">
+
+        <div class="eyebrow">
+          NEXIVRA CONTROL CENTER
+        </div>
+
+        <div class="page-title" id="topbarTitle">
+          Overview
+        </div>
+
+      </div>
+
+      <div class="header-actions">
+
+        <button class="btn btn-ghost" id="refreshButton">
+          Refresh
+        </button>
+
+        <div class="admin-badge">
+
+          <div
+            class="admin-avatar"
+            id="adminInitials"
+          >
+            NX
+          </div>
+
+          <div class="admin-copy">
+
+            <div
+              class="admin-name"
+              id="adminName"
+            >
+              NEXIVRA Admin
+            </div>
+
+            <div class="admin-role">
+              Platform Administrator
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <div class="content">
+
+      <!-- ==========================================
+           OVERVIEW
+      =========================================== -->
+
+      <section
+        class="section active"
+        id="section-overview"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              PLATFORM INTELLIGENCE
+            </div>
+
+            <h1>
+              NEXIVRA Management
+            </h1>
+
+            <p>
+              Manage organizations, learning environments,
+              courses, users, assignments, intelligence,
+              performance, and the NEXIVRA training engine
+              from one connected platform.
+            </p>
+
+          </div>
+
+          <button
+            class="btn btn-primary"
+            onclick="openOrganizationModal()"
+          >
+            + New Organization
+          </button>
+
+        </div>
+
+        <div class="metric-grid">
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Organizations
+            </div>
+
+            <div
+              class="metric-value"
+              id="metricOrganizations"
+            >
+              0
+            </div>
+
+            <div class="metric-sub">
+              Active client environments
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Courses
+            </div>
+
+            <div
+              class="metric-value"
+              id="metricCourses"
+            >
+              0
+            </div>
+
+            <div class="metric-sub">
+              Draft + published training
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Learners
+            </div>
+
+            <div
+              class="metric-value"
+              id="metricLearners"
+            >
+              0
+            </div>
+
+            <div class="metric-sub">
+              Active learner accounts
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Sessions
+            </div>
+
+            <div
+              class="metric-value"
+              id="metricSessions"
+            >
+              0
+            </div>
+
+            <div class="metric-sub">
+              Recorded training interactions
+            </div>
+          </div>
+
+        </div>
+
+        <div class="two-column">
+
+          <div class="card">
+
+            <div class="card-header">
+
+              <div>
+                <div class="card-title">
+                  Recent Courses
+                </div>
+
+                <div class="card-subtitle">
+                  Latest course activity across NEXIVRA
+                </div>
+              </div>
+
+              <button
+                class="btn"
+                onclick="goToSection('courses')"
+              >
+                View All
+              </button>
+
+            </div>
+
+            <div
+              class="table-wrap"
+              id="recentCoursesContainer"
+            >
+            </div>
+
+          </div>
+
+          <div class="card">
+
+            <div class="card-header">
+
+              <div>
+                <div class="card-title">
+                  Quick Actions
+                </div>
+
+                <div class="card-subtitle">
+                  Common management tools
+                </div>
+              </div>
+
+            </div>
+
+            <div class="card-body">
+
+              <div class="quick-actions">
+
+                <button
+                  class="quick-action"
+                  onclick="openOrganizationModal()"
+                >
+                  <strong>
+                    Add Organization
+                  </strong>
+                  <span>→</span>
+                </button>
+
+                <button
+                  class="quick-action"
+                  onclick="openCourseModal()"
+                >
+                  <strong>
+                    Create Course
+                  </strong>
+                  <span>→</span>
+                </button>
+
+                <button
+                  class="quick-action"
+                  onclick="goToSection('uploads')"
+                >
+                  <strong>
+                    Upload Knowledge
+                  </strong>
+                  <span>→</span>
+                </button>
+
+                <button
+                  class="quick-action"
+                  onclick="goToSection('demo')"
+                >
+                  <strong>
+                    Launch Demo Mode
+                  </strong>
+                  <span>→</span>
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           ORGANIZATIONS
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-organizations"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              CLIENT ENVIRONMENTS
+            </div>
+
+            <h1>
+              Organizations
+            </h1>
+
+            <p>
+              Create and manage each organization's
+              isolated NEXIVRA environment.
+            </p>
+
+          </div>
+
+          <button
+            class="btn btn-primary"
+            onclick="openOrganizationModal()"
+          >
+            + New Organization
+          </button>
+
+        </div>
+
+        <div class="card">
+
+          <div
+            class="table-wrap"
+            id="organizationsContainer"
+          >
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           COURSES
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-courses"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              ADAPTIVE LEARNING
+            </div>
+
+            <h1>
+              Courses
+            </h1>
+
+            <p>
+              Build subject-neutral adaptive training
+              experiences for each organization.
+            </p>
+
+          </div>
+
+          <button
+            class="btn btn-primary"
+            onclick="openCourseModal()"
+          >
+            + Create Course
+          </button>
+
+        </div>
+
+        <div class="card">
+
+          <div
+            class="table-wrap"
+            id="coursesContainer"
+          >
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           COURSE BUILDER
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-builder"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              NEXIVRA AUTHORING
+            </div>
+
+            <h1>
+              Course Builder
+            </h1>
+
+            <p>
+              Structure modules, define teaching behavior,
+              connect knowledge, design realistic practice,
+              and configure evaluation.
+            </p>
+
+          </div>
+
+          <button
+            class="btn btn-primary"
+            onclick="openModuleModal()"
+          >
+            + Add Module
+          </button>
+
+        </div>
+
+        <div class="builder-shell">
+
+          <div class="builder-sidebar">
+
+            <div class="card-title">
+              Course Modules
+            </div>
+
+            <div
+              style="
+                color:var(--muted);
+                font-size:11px;
+                margin:6px 0 15px;
+              "
+            >
+              Select a course to begin building.
+            </div>
+
+            <div id="moduleList">
+
+              <div class="empty">
+                No course selected.
+              </div>
+
+            </div>
+
+          </div>
+
+          <div class="builder-main">
+
+            <div class="eyebrow">
+              ADAPTIVE MODULE DESIGN
+            </div>
+
+            <h2
+              style="
+                font-size:32px;
+                margin:10px 0;
+              "
+            >
+              Build the learning experience
+            </h2>
+
+            <p
+              style="
+                max-width:700px;
+                color:var(--muted);
+                line-height:1.7;
+              "
+            >
+              Each module can teach conversationally,
+              observe understanding, adapt explanations,
+              create realistic practice, evaluate
+              demonstrated capability, and trigger
+              additional reinforcement.
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           UPLOADS
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-uploads"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              ORGANIZATIONAL INTELLIGENCE
+            </div>
+
+            <h1>
+              Knowledge Uploads
+            </h1>
+
+            <p>
+              Connect approved policies, procedures,
+              standards, manuals, product knowledge,
+              scenarios, and organizational material
+              to NEXIVRA.
+            </p>
+
+          </div>
+
+          <button
+            class="btn btn-primary"
+            onclick="openUploadModal()"
+          >
+            + Register Upload
+          </button>
+
+        </div>
+
+        <div class="card">
+
+          <div
+            class="table-wrap"
+            id="uploadsContainer"
+          >
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           USERS
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-users"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              PEOPLE
+            </div>
+
+            <h1>
+              Users
+            </h1>
+
+            <p>
+              Manage NEXIVRA administrators,
+              company administrators, and learners.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="card">
+
+          <div
+            class="table-wrap"
+            id="usersContainer"
+          >
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           ASSIGNMENTS
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-assignments"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              LEARNING DELIVERY
+            </div>
+
+            <h1>
+              Assignments
+            </h1>
+
+            <p>
+              Track assigned courses, completion,
+              due dates, and learner progress.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="card">
+
+          <div
+            class="table-wrap"
+            id="assignmentsContainer"
+          >
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           REPORTING
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-reporting"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              PERFORMANCE INTELLIGENCE
+            </div>
+
+            <h1>
+              Reporting
+            </h1>
+
+            <p>
+              Measure what learners can demonstrate,
+              where capability is improving,
+              and where reinforcement is needed next.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="metric-grid">
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Assignments
+            </div>
+            <div
+              class="metric-value"
+              id="reportAssignments"
+            >
+              0
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Evaluations
+            </div>
+            <div
+              class="metric-value"
+              id="reportEvaluations"
+            >
+              0
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Certifications
+            </div>
+            <div
+              class="metric-value"
+              id="reportCertifications"
+            >
+              0
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">
+              Active Assignments
+            </div>
+            <div
+              class="metric-value"
+              id="reportActiveAssignments"
+            >
+              0
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           DEMO MODE
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-demo"
+      >
+
+        <div class="card demo-card">
+
+          <div class="eyebrow">
+            NEXIVRA DEMO ENVIRONMENT
+          </div>
+
+          <h1 class="demo-title">
+            EXPERIENCE
+            <span class="cyan">
+              ADAPTIVE
+            </span>
+            LEARNING.
+            <br>
+            SEE
+            <span class="orange">
+              REAL
+            </span>
+            CAPABILITY.
+          </h1>
+
+          <p class="demo-description">
+            Demo Mode provides prospective organizations
+            with a safe, controlled experience of NEXIVRA:
+            learner introduction, adaptive teaching,
+            realistic role-play, behavioral evaluation,
+            coaching, second-attempt improvement,
+            progress visibility, certification readiness,
+            and management insight.
+          </p>
+
+          <div
+            style="
+              display:flex;
+              gap:10px;
+              margin-top:25px;
+              position:relative;
+              z-index:2;
+            "
+          >
+
+            <button
+              class="btn btn-primary"
+              onclick="launchDemo()"
+            >
+              Launch Demo Environment
+            </button>
+
+            <button
+              class="btn"
+              onclick="showToast(
+                'Demo configuration will be added next.',
+                'success'
+              )"
+            >
+              Configure Demo
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ==========================================
+           SETTINGS
+      =========================================== -->
+
+      <section
+        class="section"
+        id="section-settings"
+      >
+
+        <div class="section-header">
+
+          <div class="section-heading">
+
+            <div class="eyebrow">
+              PLATFORM CONFIGURATION
+            </div>
+
+            <h1>
+              System Settings
+            </h1>
+
+            <p>
+              NEXIVRA Core configuration,
+              platform behavior, integrations,
+              and administration.
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-body">
+
+            <div class="quick-actions">
+
+              <div class="quick-action">
+                <strong>
+                  Adaptive Learning Engine
+                </strong>
+                <span>
+                  ONLINE
+                </span>
+              </div>
+
+              <div class="quick-action">
+                <strong>
+                  Conversational Training
+                </strong>
+                <span>
+                  ENABLED
+                </span>
+              </div>
+
+              <div class="quick-action">
+                <strong>
+                  Performance Intelligence
+                </strong>
+                <span>
+                  ENABLED
+                </span>
+              </div>
+
+              <div class="quick-action">
+                <strong>
+                  NEXIVRA Core
+                </strong>
+                <span>
+                  v1
+                </span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+</div>
+
+<!-- ======================================================
+     ORGANIZATION MODAL
+====================================================== -->
+
+<div
+  class="modal-overlay"
+  id="organizationModal"
+>
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div class="modal-title">
+        Create Organization
+      </div>
+
+      <button
+        class="modal-close"
+        onclick="closeModal('organizationModal')"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="modal-body">
+
+      <div class="form-grid">
+
+        <div>
+          <label>
+            Organization Name
+          </label>
+
+          <input
+            id="orgName"
+            placeholder="Example: Centier Bank"
+          >
+        </div>
+
+        <div>
+          <label>
+            Organization Code
+          </label>
+
+          <input
+            id="orgCode"
+            placeholder="Example: CENTIER"
+          >
+        </div>
+
+        <div>
+          <label>
+            Notes
+          </label>
+
+          <textarea
+            id="orgNotes"
+            placeholder="Internal notes..."
+          ></textarea>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+
+      <button
+        class="btn"
+        onclick="closeModal('organizationModal')"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="btn btn-primary"
+        onclick="createOrganization()"
+      >
+        Create Organization
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ======================================================
+     COURSE MODAL
+====================================================== -->
+
+<div
+  class="modal-overlay"
+  id="courseModal"
+>
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div class="modal-title">
+        Create Course
+      </div>
+
+      <button
+        class="modal-close"
+        onclick="closeModal('courseModal')"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="modal-body">
+
+      <div class="form-grid">
+
+        <div>
+          <label>
+            Course Name
+          </label>
+
+          <input
+            id="courseName"
+            placeholder="Course name"
+          >
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              Organization
+            </label>
+
+            <select id="courseOrganization">
+              <option value="">
+                Select organization
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label>
+              Subject
+            </label>
+
+            <input
+              id="courseSubject"
+              placeholder="Training subject"
+            >
+          </div>
+
+        </div>
+
+        <div>
+          <label>
+            Description
+          </label>
+
+          <textarea
+            id="courseDescription"
+            placeholder="What should this course develop?"
+          ></textarea>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+
+      <button
+        class="btn"
+        onclick="closeModal('courseModal')"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="btn btn-primary"
+        onclick="createCourse()"
+      >
+        Create Course
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ======================================================
+     MODULE MODAL
+====================================================== -->
+
+<div
+  class="modal-overlay"
+  id="moduleModal"
+>
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div class="modal-title">
+        Add Course Module
+      </div>
+
+      <button
+        class="modal-close"
+        onclick="closeModal('moduleModal')"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="modal-body">
+
+      <div class="form-grid">
+
+        <div>
+          <label>
+            Course
+          </label>
+
+          <select id="moduleCourse">
+            <option value="">
+              Select course
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label>
+            Module Name
+          </label>
+
+          <input
+            id="moduleName"
+            placeholder="Module name"
+          >
+        </div>
+
+        <div>
+          <label>
+            Description
+          </label>
+
+          <textarea
+            id="moduleDescription"
+            placeholder="Module purpose..."
+          ></textarea>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+
+      <button
+        class="btn"
+        onclick="closeModal('moduleModal')"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="btn btn-primary"
+        onclick="createModule()"
+      >
+        Add Module
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ======================================================
+     UPLOAD MODAL
+====================================================== -->
+
+<div
+  class="modal-overlay"
+  id="uploadModal"
+>
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div class="modal-title">
+        Register Knowledge Upload
+      </div>
+
+      <button
+        class="modal-close"
+        onclick="closeModal('uploadModal')"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="modal-body">
+
+      <div class="form-grid">
+
+        <div>
+          <label>
+            Organization
+          </label>
+
+          <select id="uploadOrganization">
+            <option value="">
+              Select organization
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label>
+            Course
+          </label>
+
+          <select id="uploadCourse">
+            <option value="">
+              Optional course
+            </option>
+          </select>
+        </div>
+
+        <div>
+          <label>
+            File Name
+          </label>
+
+          <input
+            id="uploadFileName"
+            placeholder="Example: SOP Manual.pdf"
+          >
+        </div>
+
+        <div>
+          <label>
+            File URL
+          </label>
+
+          <input
+            id="uploadFileUrl"
+            placeholder="https://..."
+          >
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+
+      <button
+        class="btn"
+        onclick="closeModal('uploadModal')"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="btn btn-primary"
+        onclick="registerUpload()"
+      >
+        Register Upload
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div
+  class="toast"
+  id="toast"
+>
+</div>
+
+<script>
+
+/* ======================================================
+   STATE
+====================================================== */
+
+const state = {
+  dashboard: null,
+  organizations: [],
+  courses: [],
+  modules: [],
+  uploads: [],
+  users: [],
+  assignments: []
+};
+
+/* ======================================================
+   WIX BRIDGE
+====================================================== */
+
+function sendToWix(type, payload = {}) {
+
+  window.parent.postMessage(
+    {
+      source: 'NEXIVRA_MANAGEMENT',
+      type,
+      payload
+    },
+    '*'
+  );
+
+}
+
+/* ======================================================
+   INITIALIZATION
+====================================================== */
+
+window.addEventListener(
+  'DOMContentLoaded',
+  () => {
+
+    setupNavigation();
+
+    document
+      .getElementById('refreshButton')
+      .addEventListener(
+        'click',
+        requestDashboardData
+      );
+
+    sendToWix(
+      'NEXIVRA_READY'
+    );
+
+    requestDashboardData();
+
+  }
+);
+
+window.addEventListener(
+  'message',
+  event => {
+
+    const message =
+      event.data;
+
+    if (
+      !message ||
+      message.source !==
+        'NEXIVRA_WIX'
+    ) {
+      return;
+    }
+
+    handleWixMessage(
+      message
+    );
+
+  }
+);
+
+/* ======================================================
+   DATA REQUESTS
+====================================================== */
+
+function requestDashboardData() {
+
+  sendToWix(
+    'GET_DASHBOARD'
+  );
+
+  sendToWix(
+    'LIST_ORGANIZATIONS'
+  );
+
+  sendToWix(
+    'LIST_COURSES'
+  );
+
+  sendToWix(
+    'LIST_USERS'
+  );
+
+  sendToWix(
+    'LIST_UPLOADS'
+  );
+
+  sendToWix(
+    'LIST_ASSIGNMENTS'
+  );
+
+}
+
+/* ======================================================
+   MESSAGE HANDLING
+====================================================== */
+
+function handleWixMessage(
+  message
+) {
+
+  const {
+    type,
+    payload
+  } = message;
+
+  switch (type) {
+
+    case 'DASHBOARD_DATA':
+
+      state.dashboard =
+        payload;
+
+      renderDashboard(
+        payload
+      );
+
+      hideLoading();
+
+      break;
+
+    case 'ORGANIZATIONS_DATA':
+
+      state.organizations =
+        payload?.organizations ||
+        [];
+
+      renderOrganizations();
+
+      populateOrganizationSelects();
+
+      break;
+
+    case 'COURSES_DATA':
+
+      state.courses =
+        payload?.courses ||
+        [];
+
+      renderCourses();
+
+      populateCourseSelects();
+
+      break;
+
+    case 'USERS_DATA':
+
+      state.users =
+        payload?.users ||
+        [];
+
+      renderUsers();
+
+      break;
+
+    case 'UPLOADS_DATA':
+
+      state.uploads =
+        payload?.uploads ||
+        [];
+
+      renderUploads();
+
+      break;
+
+    case 'ASSIGNMENTS_DATA':
+
+      state.assignments =
+        payload?.assignments ||
+        [];
+
+      renderAssignments();
+
+      break;
+
+    case 'MODULES_DATA':
+
+      state.modules =
+        payload?.modules ||
+        [];
+
+      renderModules();
+
+      break;
+
+    case 'ACTION_SUCCESS':
+
+      showToast(
+        payload?.message ||
+        'Update completed.',
+        'success'
+      );
+
+      requestDashboardData();
+
+      break;
+
+    case 'ACTION_ERROR':
+
+      showToast(
+        payload?.message ||
+        'Unable to complete that action.',
+        'error'
+      );
+
+      break;
+
+  }
+
+}
+
+/* ======================================================
+   DASHBOARD
+====================================================== */
+
+function renderDashboard(
+  data
+) {
+
+  if (!data?.ok) {
+    return;
+  }
+
+  const metrics =
+    data.metrics || {};
+
+  setText(
+    'metricOrganizations',
+    metrics.activeOrganizations ??
+    metrics.organizations ??
+    0
+  );
+
+  setText(
+    'metricCourses',
+    metrics.courses || 0
+  );
+
+  setText(
+    'metricLearners',
+    metrics.learners || 0
+  );
+
+  setText(
+    'metricSessions',
+    metrics.sessions || 0
+  );
+
+  setText(
+    'reportAssignments',
+    metrics.assignments || 0
+  );
+
+  setText(
+    'reportEvaluations',
+    metrics.evaluations || 0
+  );
+
+  setText(
+    'reportCertifications',
+    metrics.certifications || 0
+  );
+
+  setText(
+    'reportActiveAssignments',
+    metrics.activeAssignments || 0
+  );
+
+  if (data.admin) {
+
+    const name =
+      [
+        data.admin.firstName,
+        data.admin.lastName
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+    setText(
+      'adminName',
+      name ||
+      'NEXIVRA Admin'
+    );
+
+    const initials =
+      [
+        data.admin.firstName?.[0],
+        data.admin.lastName?.[0]
+      ]
+        .filter(Boolean)
+        .join('')
+        .toUpperCase();
+
+    setText(
+      'adminInitials',
+      initials ||
+      'NX'
+    );
+
+  }
+
+  renderRecentCourses(
+    data.recentCourses || []
+  );
+
+}
+
+/* ======================================================
+   RECENT COURSES
+====================================================== */
+
+function renderRecentCourses(
+  courses
+) {
+
+  const container =
+    document.getElementById(
+      'recentCoursesContainer'
+    );
+
+  if (!courses.length) {
+
+    container.innerHTML =
+      emptyState(
+        'No courses yet',
+        'Create your first NEXIVRA course.'
+      );
+
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Course</th>
+          <th>Organization</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${courses.map(course => `
+          <tr>
+            <td>
+              ${escapeHTML(
+                course.title
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                course.organizationId
+              )}
+            </td>
+
+            <td>
+              ${statusBadge(
+                course.published
+                  ? 'published'
+                  : course.status ||
+                    'draft'
+              )}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+}
+
+/* ======================================================
+   ORGANIZATIONS
+====================================================== */
+
+function renderOrganizations() {
+
+  const container =
+    document.getElementById(
+      'organizationsContainer'
+    );
+
+  if (!state.organizations.length) {
+
+    container.innerHTML =
+      emptyState(
+        'No organizations',
+        'Create the first client environment.'
+      );
+
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Organization</th>
+          <th>Code</th>
+          <th>Status</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${state.organizations.map(org => `
+          <tr>
+            <td>
+              <strong>
+                ${escapeHTML(org.title)}
+              </strong>
+            </td>
+
+            <td>
+              ${escapeHTML(
+                org.organizationCode
+              )}
+            </td>
+
+            <td>
+              ${statusBadge(
+                org.status ||
+                'active'
+              )}
+            </td>
+
+            <td>
+              ${formatDate(
+                org.updatedDate
+              )}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+}
+
+/* ======================================================
+   COURSES
+====================================================== */
+
+function renderCourses() {
+
+  const container =
+    document.getElementById(
+      'coursesContainer'
+    );
+
+  if (!state.courses.length) {
+
+    container.innerHTML =
+      emptyState(
+        'No courses',
+        'Create a course to begin building.'
+      );
+
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Course</th>
+          <th>Organization</th>
+          <th>Subject</th>
+          <th>Version</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${state.courses.map(course => `
+          <tr>
+            <td>
+              <strong>
+                ${escapeHTML(course.title)}
+              </strong>
+            </td>
+
+            <td>
+              ${escapeHTML(
+                course.organizationId
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                course.subjectName
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                course.version ||
+                '1.0'
+              )}
+            </td>
+
+            <td>
+              ${statusBadge(
+                course.published
+                  ? 'published'
+                  : course.status ||
+                    'draft'
+              )}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+}
+
+/* ======================================================
+   USERS
+====================================================== */
+
+function renderUsers() {
+
+  const container =
+    document.getElementById(
+      'usersContainer'
+    );
+
+  if (!state.users.length) {
+
+    container.innerHTML =
+      emptyState(
+        'No users',
+        'Users will appear once they are added.'
+      );
+
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Email</th>
+          <th>Organization</th>
+          <th>Role</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${state.users.map(user => `
+          <tr>
+            <td>
+              ${escapeHTML(
+                [
+                  user.firstName,
+                  user.lastName
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                user.email
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                user.organizationId
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                readableRole(
+                  user.role
+                )
+              )}
+            </td>
+
+            <td>
+              ${statusBadge(
+                user.status ||
+                'active'
+              )}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+}
+
+/* ======================================================
+   UPLOADS
+====================================================== */
+
+function renderUploads() {
+
+  const container =
+    document.getElementById(
+      'uploadsContainer'
+    );
+
+  if (!state.uploads.length) {
+
+    container.innerHTML =
+      emptyState(
+        'No knowledge uploaded',
+        'Connect organizational knowledge to NEXIVRA.'
+      );
+
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>File</th>
+          <th>Organization</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${state.uploads.map(upload => `
+          <tr>
+            <td>
+              ${escapeHTML(
+                upload.fileName
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                upload.organizationId
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                upload.fileType ||
+                upload.sourceType
+              )}
+            </td>
+
+            <td>
+              ${statusBadge(
+                upload.status ||
+                'uploaded'
+              )}
+            </td>
+
+            <td>
+              ${formatDate(
+                upload.createdDate
+              )}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+}
+
+/* ======================================================
+   ASSIGNMENTS
+====================================================== */
+
+function renderAssignments() {
+
+  const container =
+    document.getElementById(
+      'assignmentsContainer'
+    );
+
+  if (!state.assignments.length) {
+
+    container.innerHTML =
+      emptyState(
+        'No assignments',
+        'Course assignments will appear here.'
+      );
+
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Organization</th>
+          <th>Course</th>
+          <th>Progress</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${state.assignments.map(item => `
+          <tr>
+            <td>
+              ${escapeHTML(
+                item.memberId
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                item.organizationId
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                item.courseId
+              )}
+            </td>
+
+            <td>
+              ${Number(
+                item.progressPercent ||
+                0
+              )}%
+            </td>
+
+            <td>
+              ${statusBadge(
+                item.status ||
+                'assigned'
+              )}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+
+}
+
+/* ======================================================
+   MODULES
+====================================================== */
+
+function renderModules() {
+
+  const list =
+    document.getElementById(
+      'moduleList'
+    );
+
+  if (!state.modules.length) {
+
+    list.innerHTML =
+      `<div class="empty">
+        No modules yet.
+      </div>`;
+
+    return;
+  }
+
+  list.innerHTML =
+    state.modules
+      .map(module => `
+        <div class="module-item">
+
+          <div class="module-number">
+            Module ${module.moduleOrder}
+          </div>
+
+          <div class="module-title">
+            ${escapeHTML(
+              module.title
+            )}
+          </div>
+
+        </div>
+      `)
+      .join('');
+
+}
+
+/* ======================================================
+   CREATE ORGANIZATION
+====================================================== */
+
+function createOrganization() {
+
+  const title =
+    document
+      .getElementById('orgName')
+      .value
+      .trim();
+
+  const organizationCode =
+    document
+      .getElementById('orgCode')
+      .value
+      .trim();
+
+  const notes =
+    document
+      .getElementById('orgNotes')
+      .value
+      .trim();
+
+  if (!title || !organizationCode) {
+
+    showToast(
+      'Organization name and code are required.',
+      'error'
+    );
+
+    return;
+  }
+
+  sendToWix(
+    'CREATE_ORGANIZATION',
+    {
+      title,
+      organizationCode,
+      notes
+    }
+  );
+
+  closeModal(
+    'organizationModal'
+  );
+
+}
+
+/* ======================================================
+   CREATE COURSE
+====================================================== */
+
+function createCourse() {
+
+  const title =
+    document
+      .getElementById('courseName')
+      .value
+      .trim();
+
+  const organizationId =
+    document
+      .getElementById(
+        'courseOrganization'
+      )
+      .value;
+
+  const subjectName =
+    document
+      .getElementById(
+        'courseSubject'
+      )
+      .value
+      .trim();
+
+  const description =
+    document
+      .getElementById(
+        'courseDescription'
+      )
+      .value
+      .trim();
+
+  if (
+    !title ||
+    !organizationId ||
+    !subjectName
+  ) {
+
+    showToast(
+      'Course name, organization, and subject are required.',
+      'error'
+    );
+
+    return;
+  }
+
+  sendToWix(
+    'CREATE_COURSE',
+    {
+      title,
+      organizationId,
+      subjectName,
+      description
+    }
+  );
+
+  closeModal(
+    'courseModal'
+  );
+
+}
+
+/* ======================================================
+   CREATE MODULE
+====================================================== */
+
+function createModule() {
+
+  const courseId =
+    document
+      .getElementById(
+        'moduleCourse'
+      )
+      .value;
+
+  const title =
+    document
+      .getElementById(
+        'moduleName'
+      )
+      .value
+      .trim();
+
+  const description =
+    document
+      .getElementById(
+        'moduleDescription'
+      )
+      .value
+      .trim();
+
+  if (!courseId || !title) {
+
+    showToast(
+      'Course and module name are required.',
+      'error'
+    );
+
+    return;
+  }
+
+  sendToWix(
+    'CREATE_MODULE',
+    {
+      courseId,
+      title,
+      description
+    }
+  );
+
+  closeModal(
+    'moduleModal'
+  );
+
+}
+
+/* ======================================================
+   REGISTER UPLOAD
+====================================================== */
+
+function registerUpload() {
+
+  const organizationId =
+    document
+      .getElementById(
+        'uploadOrganization'
+      )
+      .value;
+
+  const courseId =
+    document
+      .getElementById(
+        'uploadCourse'
+      )
+      .value;
+
+  const fileName =
+    document
+      .getElementById(
+        'uploadFileName'
+      )
+      .value
+      .trim();
+
+  const fileUrl =
+    document
+      .getElementById(
+        'uploadFileUrl'
+      )
+      .value
+      .trim();
+
+  if (
+    !organizationId ||
+    !fileName ||
+    !fileUrl
+  ) {
+
+    showToast(
+      'Organization, file name, and URL are required.',
+      'error'
+    );
+
+    return;
+  }
+
+  sendToWix(
+    'REGISTER_UPLOAD',
+    {
+      organizationId,
+      courseId,
+      fileName,
+      fileUrl,
+      sourceType:
+        'organizational_knowledge'
+    }
+  );
+
+  closeModal(
+    'uploadModal'
+  );
+
+}
+
+/* ======================================================
+   DEMO
+====================================================== */
+
+function launchDemo() {
+
+  sendToWix(
+    'LAUNCH_DEMO'
+  );
+
+  showToast(
+    'Preparing NEXIVRA Demo Mode...',
+    'success'
+  );
+
+}
+
+/* ======================================================
+   SELECTS
+====================================================== */
+
+function populateOrganizationSelects() {
+
+  const selects = [
+    'courseOrganization',
+    'uploadOrganization'
+  ];
+
+  selects.forEach(id => {
+
+    const select =
+      document.getElementById(id);
+
+    if (!select) {
+      return;
+    }
+
+    const original =
+      select.options[0]?.outerHTML ||
+      '<option value="">Select</option>';
+
+    select.innerHTML =
+      original +
+      state.organizations
+        .filter(org =>
+          org.status !==
+          'inactive'
+        )
+        .map(org => `
+          <option value="${escapeAttribute(
+            org.organizationCode
+          )}">
+            ${escapeHTML(org.title)}
+          </option>
+        `)
+        .join('');
+
+  });
+
+}
+
+function populateCourseSelects() {
+
+  const selects = [
+    'moduleCourse',
+    'uploadCourse'
+  ];
+
+  selects.forEach(id => {
+
+    const select =
+      document.getElementById(id);
+
+    if (!select) {
+      return;
+    }
+
+    const original =
+      select.options[0]?.outerHTML ||
+      '<option value="">Select</option>';
+
+    select.innerHTML =
+      original +
+      state.courses
+        .map(course => `
+          <option value="${escapeAttribute(
+            course.id
+          )}">
+            ${escapeHTML(
+              course.title
+            )}
+          </option>
+        `)
+        .join('');
+
+  });
+
+}
+
+/* ======================================================
+   NAVIGATION
+====================================================== */
+
+function setupNavigation() {
+
+  document
+    .querySelectorAll(
+      '.nav-button'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => {
+
+          goToSection(
+            button.dataset.section
+          );
+
+        }
+      );
+
+    });
+
+}
+
+function goToSection(
+  section
+) {
+
+  document
+    .querySelectorAll(
+      '.section'
+    )
+    .forEach(el => {
+      el.classList.remove(
+        'active'
+      );
+    });
+
+  document
+    .querySelectorAll(
+      '.nav-button'
+    )
+    .forEach(el => {
+      el.classList.remove(
+        'active'
+      );
+    });
+
+  document
+    .getElementById(
+      `section-${section}`
+    )
+    ?.classList.add(
+      'active'
+    );
+
+  document
+    .querySelector(
+      `[data-section="${section}"]`
+    )
+    ?.classList.add(
+      'active'
+    );
+
+  const titles = {
+    overview:
+      'Overview',
+
+    organizations:
+      'Organizations',
+
+    courses:
+      'Courses',
+
+    builder:
+      'Course Builder',
+
+    uploads:
+      'Knowledge Uploads',
+
+    users:
+      'Users',
+
+    assignments:
+      'Assignments',
+
+    reporting:
+      'Reporting',
+
+    demo:
+      'Demo Mode',
+
+    settings:
+      'System Settings'
+  };
+
+  setText(
+    'topbarTitle',
+    titles[section] ||
+    'NEXIVRA'
+  );
+
+}
+
+/* ======================================================
+   MODALS
+====================================================== */
+
+function openOrganizationModal() {
+
+  openModal(
+    'organizationModal'
+  );
+
+}
+
+function openCourseModal() {
+
+  populateOrganizationSelects();
+
+  openModal(
+    'courseModal'
+  );
+
+}
+
+function openModuleModal() {
+
+  populateCourseSelects();
+
+  openModal(
+    'moduleModal'
+  );
+
+}
+
+function openUploadModal() {
+
+  populateOrganizationSelects();
+  populateCourseSelects();
+
+  openModal(
+    'uploadModal'
+  );
+
+}
+
+function openModal(id) {
+
+  document
+    .getElementById(id)
+    ?.classList.add(
+      'open'
+    );
+
+}
+
+function closeModal(id) {
+
+  document
+    .getElementById(id)
+    ?.classList.remove(
+      'open'
+    );
+
+}
+
+/* ======================================================
+   HELPERS
+====================================================== */
+
+function setText(
+  id,
+  value
+) {
+
+  const element =
+    document.getElementById(id);
+
+  if (element) {
+    element.textContent =
+      value;
+  }
+
+}
+
+function hideLoading() {
+
+  const loading =
+    document.getElementById(
+      'loading'
+    );
+
+  if (!loading) {
+    return;
+  }
+
+  loading.style.opacity =
+    '0';
+
+  setTimeout(
+    () => {
+      loading.style.display =
+        'none';
+    },
+    250
+  );
+
+}
+
+function showToast(
+  message,
+  type = 'success'
+) {
+
+  const toast =
+    document.getElementById(
+      'toast'
+    );
+
+  toast.textContent =
+    message;
+
+  toast.className =
+    `toast ${type} show`;
+
+  clearTimeout(
+    window.__toastTimer
+  );
+
+  window.__toastTimer =
+    setTimeout(
+      () => {
+        toast.classList.remove(
+          'show'
+        );
+      },
+      3500
+    );
+
+}
+
+function statusBadge(
+  status
+) {
+
+  const safe =
+    String(
+      status || ''
+    )
+      .toLowerCase()
+      .replace(
+        /[^a-z0-9_-]/g,
+        ''
+      );
+
+  return `
+    <span class="status ${safe}">
+      ${escapeHTML(
+        String(status || '')
+      )}
+    </span>
+  `;
+
+}
+
+function readableRole(
+  role
+) {
+
+  const roles = {
+    nexivra_admin:
+      'NEXIVRA Admin',
+
+    company_admin:
+      'Company Admin',
+
+    learner:
+      'Learner'
+  };
+
+  return (
+    roles[role] ||
+    role ||
+    ''
+  );
+
+}
+
+function formatDate(
+  value
+) {
+
+  if (!value) {
+    return '—';
+  }
+
+  try {
+
+    return new Date(
+      value
+    ).toLocaleDateString();
+
+  } catch {
+
+    return '—';
+
+  }
+
+}
+
+function emptyState(
+  title,
+  description
+) {
+
+  return `
+    <div class="empty">
+
+      <div class="empty-symbol">
+        +
+      </div>
+
+      <strong>
+        ${escapeHTML(title)}
+      </strong>
+
+      <span>
+        ${escapeHTML(
+          description
+        )}
+      </span>
+
+    </div>
+  `;
+
+}
+
+function escapeHTML(
+  value
+) {
+
+  return String(
+    value ?? ''
+  )
+    .replace(
+      /&/g,
+      '&amp;'
+    )
+    .replace(
+      /</g,
+      '&lt;'
+    )
+    .replace(
+      />/g,
+      '&gt;'
+    )
+    .replace(
+      /"/g,
+      '&quot;'
+    )
+    .replace(
+      /'/g,
+      '&#039;'
+    );
+
+}
+
+function escapeAttribute(
+  value
+) {
+
+  return escapeHTML(
+    value
+  );
+
+}
+
+</script>
+
+</body>
+</html>
