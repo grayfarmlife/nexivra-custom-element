@@ -2,6 +2,29 @@ class NexivraHome extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
+
+    this.assets = {
+      logo:
+        "https://static.wixstatic.com/media/433270_aba4225e8fc54279ba41af267bab397a~mv2.png",
+
+      heroImage:
+        "https://static.wixstatic.com/media/433270_c2c3b23a9eb9422da7d8aca2c9239840~mv2.png",
+
+      hospitality:
+        "https://static.wixstatic.com/media/433270_a00caa15c8a64cc09e47e59ccb5a1081~mv2.png",
+
+      healthcare:
+        "https://static.wixstatic.com/media/433270_224fec054635445987e2b072424d5f49~mv2.png",
+
+      finance:
+        "https://static.wixstatic.com/media/433270_28132edbcc3945718e98edbcc864a722~mv2.png",
+
+      seniorLiving:
+        "https://static.wixstatic.com/media/433270_eed61d022cfc4157ae2a06614a0e4ecf~mv2.png",
+
+      multiLocation:
+        "https://static.wixstatic.com/media/433270_082c2ff6123241e18afb516df3af9b6b~mv2.png"
+    };
   }
 
   connectedCallback() {
@@ -15,13 +38,9 @@ class NexivraHome extends HTMLElement {
         :host {
           display: block;
           width: 100%;
-          background: #020408;
-          color: #ffffff;
-          font-family:
-            Inter,
-            Arial,
-            Helvetica,
-            sans-serif;
+          background: #02060b;
+          color: #fff;
+          font-family: Arial, Helvetica, sans-serif;
         }
 
         * {
@@ -38,28 +57,33 @@ class NexivraHome extends HTMLElement {
         }
 
         button {
-          font-family: inherit;
+          font: inherit;
         }
 
-        .site {
+        .page {
           width: 100%;
           overflow: hidden;
           background:
             radial-gradient(
-              circle at 70% 10%,
-              rgba(0, 145, 255, 0.12),
+              circle at 72% 7%,
+              rgba(0, 154, 255, .12),
               transparent 28%
             ),
             radial-gradient(
-              circle at 82% 14%,
-              rgba(255, 120, 0, 0.08),
+              circle at 83% 9%,
+              rgba(255, 133, 0, .08),
               transparent 22%
             ),
-            #020408;
+            linear-gradient(
+              180deg,
+              #02060b 0%,
+              #030811 55%,
+              #02060b 100%
+            );
         }
 
         .container {
-          width: min(1180px, calc(100% - 40px));
+          width: min(1500px, calc(100% - 60px));
           margin: 0 auto;
         }
 
@@ -67,78 +91,80 @@ class NexivraHome extends HTMLElement {
            NAVIGATION
         ========================= */
 
+        .nav-wrap {
+          border-bottom:
+            1px solid rgba(255,255,255,.055);
+          position: relative;
+          z-index: 50;
+        }
+
         .nav {
-          height: 84px;
+          min-height: 105px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          position: relative;
-          z-index: 20;
-          border-bottom:
-            1px solid rgba(255,255,255,0.04);
+          gap: 30px;
         }
 
-        .logo {
-          font-size: 24px;
-          letter-spacing: 0.18em;
-          font-weight: 700;
-          color: #f2f6fb;
-          position: relative;
+        .brand {
+          display: flex;
+          align-items: center;
+          min-width: 250px;
         }
 
-        .logo::after {
-          content: "";
-          width: 36px;
-          height: 2px;
-          display: inline-block;
-          margin-left: 5px;
-          vertical-align: middle;
-          background:
-            linear-gradient(
-              90deg,
-              #00bfff,
-              #ff8500
-            );
-          box-shadow:
-            0 0 12px rgba(0,180,255,.55);
+        .brand img {
+          display: block;
+          width: 300px;
+          max-width: 31vw;
+          height: auto;
+        }
+
+        .nav-right {
+          display: flex;
+          align-items: center;
+          gap: 30px;
         }
 
         .nav-links {
           display: flex;
           align-items: center;
           gap: 30px;
+          color: #aebed0;
           font-size: 13px;
-          color: #a9b6c8;
         }
 
         .nav-links a {
-          transition: 0.2s;
+          transition: .2s ease;
         }
 
         .nav-links a:hover {
           color: #ffffff;
         }
 
-        .demo-button {
-          padding: 11px 18px;
-          border-radius: 7px;
-          border:
-            1px solid rgba(0,174,255,.8);
-          background:
-            rgba(0,132,255,.10);
-          color: #fff;
-          font-size: 12px;
+        .login-link {
+          color: #23c6ff;
+          font-size: 13px;
           font-weight: 700;
-          box-shadow:
-            0 0 18px rgba(0,157,255,.16);
-          transition: .2s;
+          white-space: nowrap;
         }
 
-        .demo-button:hover {
+        .nav-demo {
+          border: 1px solid #00a9ff;
           background:
-            rgba(0,145,255,.22);
-          transform:
-            translateY(-1px);
+            linear-gradient(
+              135deg,
+              rgba(0,122,255,.15),
+              rgba(0,188,255,.08)
+            );
+          color: #ffffff;
+          padding: 13px 20px;
+          border-radius: 9px;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          white-space: nowrap;
+          box-shadow:
+            0 0 22px rgba(0,157,255,.12);
         }
 
         /* =========================
@@ -146,599 +172,439 @@ class NexivraHome extends HTMLElement {
         ========================= */
 
         .hero {
-          min-height: 690px;
-          position: relative;
           display: grid;
+          grid-template-columns: .9fr 1.1fr;
+          gap: 42px;
           align-items: center;
-          border-bottom:
-            1px solid rgba(0,149,255,.16);
+          min-height: 760px;
+          padding: 38px 0 30px;
         }
 
-        .hero-grid {
-          display: grid;
-          grid-template-columns:
-            0.9fr 1.1fr;
-          gap: 20px;
-          align-items: center;
+        .hero-copy-wrap {
+          position: relative;
+          z-index: 3;
         }
 
         .eyebrow {
-          color: #65d5ff;
-          letter-spacing: .34em;
+          color: #26cbff;
           text-transform: uppercase;
-          font-size: 11px;
-          font-weight: 700;
-          margin-bottom: 22px;
-        }
-
-        .headline {
-          font-size:
-            clamp(48px, 6.5vw, 88px);
-          line-height: .95;
+          letter-spacing: .38em;
+          font-size: 12px;
           font-weight: 800;
-          letter-spacing: -.03em;
+          margin-bottom: 20px;
+        }
+
+        .hero h1 {
           margin: 0;
+          font-size:
+            clamp(54px, 5.7vw, 90px);
+          line-height: .96;
+          letter-spacing: -.025em;
           text-transform: uppercase;
+          max-width: 780px;
         }
 
-        .headline span {
-          display: block;
-        }
-
-        .headline .blue {
+        .gradient-text {
           background:
             linear-gradient(
               90deg,
-              #007cff,
-              #39dcff
+              #008dff 0%,
+              #11caff 27%,
+              #e8edf4 54%,
+              #ff9a20 88%
             );
-          -webkit-background-clip:
-            text;
-          -webkit-text-fill-color:
-            transparent;
-        }
-
-        .headline .orange {
-          background:
-            linear-gradient(
-              90deg,
-              #27c8ff,
-              #ff8c00
-            );
-          -webkit-background-clip:
-            text;
-          -webkit-text-fill-color:
-            transparent;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
 
         .hero-copy {
-          max-width: 610px;
+          max-width: 720px;
+          margin-top: 26px;
           font-size: 18px;
-          line-height: 1.6;
-          color: #a8b5c8;
-          margin-top: 27px;
+          line-height: 1.65;
+          color: #a6b5c7;
         }
 
-        .button-row {
+        .actions {
           display: flex;
           flex-wrap: wrap;
-          gap: 14px;
-          margin-top: 30px;
+          gap: 16px;
+          margin-top: 32px;
         }
 
-        .primary {
+        .primary-btn {
           border: 0;
+          border-radius: 9px;
+          padding: 15px 24px;
           background:
             linear-gradient(
               135deg,
-              #0088ff,
-              #29c5ff
+              #008cff,
+              #25c6ff
             );
-          color: #041019;
-          padding: 14px 22px;
-          border-radius: 7px;
+          color: #03111a;
+          font-weight: 900;
+          cursor: pointer;
+          box-shadow:
+            0 0 30px rgba(0,164,255,.26);
+          transition: .2s ease;
+        }
+
+        .primary-btn:hover {
+          transform: translateY(-2px);
+        }
+
+        .outline-btn {
+          border: 1px solid #00aaff;
+          border-radius: 9px;
+          padding: 14px 23px;
+          background: rgba(0,0,0,.15);
+          color: #ffffff;
           font-weight: 800;
           cursor: pointer;
-          box-shadow:
-            0 0 25px rgba(0,151,255,.22);
         }
 
-        .secondary {
+        .hero-visual {
+          min-height: 650px;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .hero-image-shell {
+          width: 100%;
+          max-width: 850px;
+          position: relative;
+          border-radius: 22px;
+          overflow: hidden;
           border:
-            1px solid rgba(0,174,255,.62);
-          background:
-            rgba(1,12,23,.6);
-          color: #fff;
-          padding: 13px 22px;
-          border-radius: 7px;
-          font-weight: 700;
-          cursor: pointer;
+            1px solid rgba(0,161,255,.24);
+          box-shadow:
+            0 0 60px rgba(0,115,255,.10);
         }
 
-        .visual {
-          min-height: 580px;
-          position: relative;
-          display: grid;
-          place-items: center;
-        }
-
-        .orb {
-          width: min(500px, 80vw);
-          aspect-ratio: 1;
-          border-radius: 50%;
-          position: relative;
-          display: grid;
-          place-items: center;
-          background:
-            radial-gradient(
-              circle,
-              rgba(0,132,255,.10),
-              rgba(0,0,0,.15) 55%,
-              rgba(0,0,0,.75) 72%
-            );
-        }
-
-        .orb::before {
+        .hero-image-shell::after {
           content: "";
           position: absolute;
-          inset: 8%;
-          border-radius: 50%;
-          border-top:
-            2px solid #15bfff;
-          border-left:
-            2px solid rgba(21,191,255,.45);
-          border-right:
-            2px solid #ff8700;
-          border-bottom:
-            2px solid rgba(255,135,0,.28);
-          filter:
-            drop-shadow(
-              0 0 15px rgba(0,174,255,.3)
-            );
-          animation:
-            rotateRing 16s linear infinite;
-        }
-
-        .orb::after {
-          content: "";
-          position: absolute;
-          width: 3px;
-          height: 115%;
-          background:
-            linear-gradient(
-              to bottom,
-              transparent,
-              #13baff,
-              transparent
-            );
-          opacity: .65;
-          filter:
-            drop-shadow(
-              0 0 10px #00aaff
-            );
-        }
-
-        @keyframes rotateRing {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-
-        .n-mark {
-          position: relative;
-          z-index: 4;
-          font-size:
-            clamp(130px, 22vw, 250px);
-          font-weight: 900;
-          font-style: italic;
-          letter-spacing: -.13em;
-          background:
-            linear-gradient(
-              135deg,
-              #dae8f7 10%,
-              #168dff 34%,
-              #f7f7f7 54%,
-              #ff8b00 82%
-            );
-          -webkit-background-clip:
-            text;
-          -webkit-text-fill-color:
-            transparent;
-          filter:
-            drop-shadow(
-              -4px 4px 10px rgba(0,152,255,.28)
-            )
-            drop-shadow(
-              5px 2px 10px rgba(255,119,0,.15)
-            );
-        }
-
-        .circuit-left,
-        .circuit-right {
-          position: absolute;
-          width: 37%;
-          height: 170px;
-          opacity: .7;
-        }
-
-        .circuit-left {
-          left: 0;
-          top: 48%;
-        }
-
-        .circuit-right {
-          right: 0;
-          top: 52%;
-        }
-
-        .circuit-line {
-          height: 1px;
-          margin: 15px 0;
-          position: relative;
-        }
-
-        .circuit-left .circuit-line {
+          inset: 0;
+          pointer-events: none;
           background:
             linear-gradient(
               90deg,
-              transparent,
-              #00b8ff
+              rgba(2,6,11,.14),
+              transparent 20%,
+              transparent 78%,
+              rgba(2,6,11,.12)
             );
         }
 
-        .circuit-right .circuit-line {
-          background:
-            linear-gradient(
-              90deg,
-              #ff8500,
-              transparent
-            );
-        }
-
-        .circuit-line::after {
-          content: "";
-          position: absolute;
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-          top: -2px;
-        }
-
-        .circuit-left
-        .circuit-line::after {
-          right: 0;
-          background: #29d7ff;
-          box-shadow:
-            0 0 12px #00c3ff;
-        }
-
-        .circuit-right
-        .circuit-line::after {
-          left: 0;
-          background: #ff8c00;
-          box-shadow:
-            0 0 12px #ff7600;
+        .hero-image-shell img {
+          display: block;
+          width: 100%;
+          height: auto;
         }
 
         /* =========================
-           SECTION GENERAL
+           DIFFERENCE
         ========================= */
 
-        .section {
-          padding:
-            105px 0;
-          position: relative;
+        .difference {
+          padding: 100px 0;
+          text-align: center;
+          border-top:
+            1px solid rgba(0,155,255,.10);
+          border-bottom:
+            1px solid rgba(0,155,255,.08);
+          background:
+            radial-gradient(
+              circle at center,
+              rgba(0,141,255,.055),
+              transparent 55%
+            );
         }
 
         .section-label {
-          text-align: center;
-          color: #30c9ff;
+          color: #28caff;
           font-size: 11px;
           letter-spacing: .36em;
           text-transform: uppercase;
-          font-weight: 700;
+          font-weight: 800;
         }
 
         .section-title {
-          text-align: center;
+          margin: 14px auto 20px;
+          max-width: 1000px;
           font-size:
-            clamp(34px, 4vw, 54px);
-          line-height: 1.08;
-          margin:
-            14px auto 20px;
-          max-width: 900px;
+            clamp(36px, 4.3vw, 58px);
+          line-height: 1.03;
           text-transform: uppercase;
         }
 
         .section-copy {
-          color: #97a5ba;
-          max-width: 780px;
+          max-width: 850px;
           margin: 0 auto;
-          text-align: center;
-          line-height: 1.7;
+          color: #98a9bc;
           font-size: 16px;
+          line-height: 1.75;
         }
 
-        /* =========================
-           ADVANTAGE
-        ========================= */
-
-        .feature-grid {
-          margin-top: 60px;
+        .difference-grid {
+          margin-top: 55px;
           display: grid;
           grid-template-columns:
-            repeat(4, 1fr);
-          gap: 0;
+            repeat(4, minmax(0, 1fr));
+          gap: 16px;
         }
 
-        .feature {
-          padding: 12px 30px 30px;
-          text-align: center;
-          border-right:
-            1px solid rgba(255,255,255,.08);
+        .difference-card {
+          border:
+            1px solid rgba(0,156,255,.14);
+          border-radius: 14px;
+          padding: 28px 23px;
+          background:
+            linear-gradient(
+              180deg,
+              rgba(5,15,27,.82),
+              rgba(2,8,15,.92)
+            );
         }
 
-        .feature:last-child {
-          border-right: 0;
-        }
-
-        .icon-ring {
-          width: 72px;
-          height: 72px;
+        .difference-icon {
+          width: 58px;
+          height: 58px;
           border-radius: 50%;
-          margin:
-            0 auto 22px;
+          margin: 0 auto 18px;
           display: grid;
           place-items: center;
           border:
-            1px solid rgba(0,174,255,.65);
+            1px solid rgba(0,174,255,.55);
+          color: #2acaff;
+          font-size: 23px;
           box-shadow:
-            inset 0 0 18px rgba(0,142,255,.09),
-            0 0 16px rgba(0,142,255,.08);
-          font-size: 28px;
+            inset 0 0 14px rgba(0,146,255,.08);
         }
 
-        .feature h3 {
-          margin:
-            0 0 12px;
+        .difference-card h3 {
+          margin: 0 0 10px;
           font-size: 17px;
         }
 
-        .feature p {
-          color: #8593a7;
-          line-height: 1.55;
+        .difference-card p {
+          margin: 0;
+          color: #899aae;
+          line-height: 1.6;
           font-size: 14px;
-          margin: 0;
-        }
-
-        /* =========================
-           HUMAN SECTION
-        ========================= */
-
-        .human-section {
-          padding: 100px 0;
-          background:
-            linear-gradient(
-              90deg,
-              rgba(0,119,210,.045),
-              rgba(0,0,0,0)
-            );
-          border-top:
-            1px solid rgba(0,149,255,.09);
-          border-bottom:
-            1px solid rgba(0,149,255,.09);
-        }
-
-        .human-grid {
-          display: grid;
-          grid-template-columns:
-            1fr 1fr;
-          gap: 80px;
-          align-items: center;
-        }
-
-        .human-title {
-          margin: 0;
-          font-size:
-            clamp(40px, 5vw, 65px);
-          line-height: 1.02;
-          text-transform: uppercase;
-        }
-
-        .human-title .people {
-          background:
-            linear-gradient(
-              90deg,
-              #00baff,
-              #ff8b00
-            );
-          -webkit-background-clip:
-            text;
-          -webkit-text-fill-color:
-            transparent;
-        }
-
-        .human-copy {
-          margin-top: 26px;
-          color: #a0aec1;
-          line-height: 1.7;
-          font-size: 16px;
-        }
-
-        .human-visual {
-          position: relative;
-          min-height: 420px;
-          border:
-            1px solid rgba(0,157,255,.2);
-          border-radius: 20px;
-          overflow: hidden;
-          background:
-            radial-gradient(
-              circle at 50% 45%,
-              rgba(0,139,255,.18),
-              transparent 45%
-            ),
-            linear-gradient(
-              135deg,
-              #06111c,
-              #020306 65%
-            );
-        }
-
-        .human-face {
-          position: absolute;
-          left: 19%;
-          top: 12%;
-          width: 230px;
-          height: 310px;
-          border-radius:
-            55% 45% 48% 52%;
-          border-right:
-            2px solid #ff8200;
-          border-left:
-            2px solid #00aaff;
-          background:
-            radial-gradient(
-              circle at 65% 40%,
-              rgba(255,128,0,.10),
-              rgba(0,91,170,.14) 45%,
-              rgba(0,0,0,.1)
-            );
-          filter:
-            drop-shadow(
-              0 0 20px rgba(0,129,255,.18)
-            );
-        }
-
-        .human-word {
-          position: absolute;
-          right: 8%;
-          color: #dce9f7;
-          letter-spacing: .11em;
-          font-size: 13px;
-        }
-
-        .hw1 { top: 18%; }
-        .hw2 { top: 37%; }
-        .hw3 { top: 57%; }
-        .hw4 { top: 76%; }
-
-        .human-word::before {
-          content: "";
-          width: 75px;
-          height: 1px;
-          position: absolute;
-          right: calc(100% + 13px);
-          top: 50%;
-          background:
-            linear-gradient(
-              90deg,
-              transparent,
-              #00aeff
-            );
         }
 
         /* =========================
            INDUSTRIES
         ========================= */
 
+        .industries {
+          padding: 100px 0 105px;
+        }
+
+        .industries-head {
+          max-width: 820px;
+          margin-bottom: 45px;
+        }
+
+        .industries-head h2 {
+          margin: 12px 0 18px;
+          font-size:
+            clamp(36px, 4vw, 56px);
+          text-transform: uppercase;
+          line-height: 1.02;
+        }
+
+        .industries-head p {
+          color: #97a7ba;
+          line-height: 1.7;
+        }
+
         .industry-grid {
-          margin-top: 54px;
           display: grid;
           grid-template-columns:
-            repeat(5, 1fr);
-          gap: 14px;
+            repeat(5, minmax(0, 1fr));
+          gap: 15px;
         }
 
-        .industry {
-          min-height: 280px;
-          border:
-            1px solid rgba(0,148,255,.22);
-          border-radius: 13px;
+        .industry-card {
+          min-height: 415px;
+          border-radius: 14px;
           overflow: hidden;
-          display: flex;
-          align-items: flex-end;
-          padding: 22px;
-          position: relative;
+          border:
+            1px solid rgba(0,156,255,.30);
           background:
-            linear-gradient(
-              to top,
-              rgba(0,4,10,.98),
-              rgba(0,13,25,.42)
-            ),
-            radial-gradient(
-              circle at 60% 20%,
-              rgba(0,145,255,.20),
-              transparent 60%
-            );
+            #05101b;
+          display: flex;
+          flex-direction: column;
+          box-shadow:
+            0 0 30px rgba(0,121,255,.03);
         }
 
-        .industry::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          background:
-            linear-gradient(
-              135deg,
-              rgba(0,160,255,.04),
-              rgba(255,134,0,.04)
-            );
+        .industry-image {
+          height: 190px;
+          overflow: hidden;
+          background: #07131f;
+        }
+
+        .industry-image img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+          transition:
+            transform .35s ease;
+        }
+
+        .industry-card:hover
+        .industry-image img {
+          transform: scale(1.025);
         }
 
         .industry-content {
-          position: relative;
-          z-index: 2;
+          padding: 20px 20px 22px;
+          display: flex;
+          flex-direction: column;
+          flex: 1;
         }
 
-        .industry h3 {
-          margin:
-            0 0 7px;
-          font-size: 17px;
+        .industry-content h3 {
+          margin: 0 0 10px;
+          font-size: 18px;
+          line-height: 1.15;
         }
 
-        .industry p {
+        .industry-content p {
           margin: 0;
+          color: #98a9bc;
           font-size: 13px;
-          line-height: 1.45;
-          color: #9ca9bb;
+          line-height: 1.55;
+        }
+
+        .industry-arrow {
+          margin-top: auto;
+          padding-top: 20px;
+        }
+
+        .industry-arrow span {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          border: 1px solid #00aaff;
+          color: #ffffff;
         }
 
         /* =========================
-           IMPACT
+           PLATFORM
         ========================= */
 
-        .impact {
-          padding: 90px 0;
+        .platform {
+          padding: 100px 0;
+          background:
+            linear-gradient(
+              180deg,
+              rgba(0, 140, 255, .025),
+              transparent
+            ),
+            #02070d;
           border-top:
+            1px solid rgba(0,157,255,.09);
+          border-bottom:
             1px solid rgba(0,157,255,.08);
         }
 
-        .impact-grid {
-          margin-top: 46px;
+        .platform-head {
+          max-width: 900px;
+          margin-bottom: 48px;
+        }
+
+        .platform-head h2 {
+          margin: 12px 0 18px;
+          font-size:
+            clamp(38px, 4.3vw, 58px);
+          text-transform: uppercase;
+          line-height: 1.02;
+        }
+
+        .platform-grid {
           display: grid;
           grid-template-columns:
-            repeat(4, 1fr);
+            repeat(4, minmax(0, 1fr));
+          gap: 18px;
         }
 
-        .impact-item {
-          text-align: center;
-          padding: 15px;
-          border-right:
-            1px solid rgba(255,255,255,.06);
+        .platform-card {
+          border:
+            1px solid rgba(0,154,255,.16);
+          border-radius: 14px;
+          padding: 29px 26px;
+          background:
+            rgba(4,13,23,.78);
         }
 
-        .impact-item:last-child {
-          border-right: 0;
+        .platform-card h3 {
+          margin: 0 0 11px;
+          font-size: 17px;
         }
 
-        .impact-icon {
-          font-size: 35px;
-          margin-bottom: 15px;
-        }
-
-        .impact-item h3 {
+        .platform-card p {
           margin: 0;
-          font-size: 18px;
+          color: #90a1b5;
+          line-height: 1.65;
+          font-size: 14px;
+        }
+
+        /* =========================
+           LOGIN SECTION
+        ========================= */
+
+        .access {
+          padding: 95px 0;
+        }
+
+        .access-grid {
+          display: grid;
+          grid-template-columns:
+            1fr 1fr;
+          gap: 24px;
+        }
+
+        .access-card {
+          border:
+            1px solid rgba(0,156,255,.20);
+          border-radius: 15px;
+          padding: 38px;
+          background:
+            linear-gradient(
+              145deg,
+              rgba(5,17,30,.92),
+              rgba(2,8,15,.96)
+            );
+        }
+
+        .access-card h3 {
+          margin: 0 0 12px;
+          font-size: 25px;
+        }
+
+        .access-card p {
+          color: #96a7ba;
+          line-height: 1.65;
+          margin-bottom: 23px;
+        }
+
+        .access-card a {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #29caff;
+          font-weight: 800;
         }
 
         /* =========================
@@ -746,85 +612,69 @@ class NexivraHome extends HTMLElement {
         ========================= */
 
         .cta-wrap {
-          padding:
-            30px 0 100px;
+          padding-bottom: 105px;
         }
 
         .cta {
-          min-height: 340px;
-          border-radius: 15px;
+          min-height: 350px;
+          border-radius: 18px;
           border:
-            1px solid rgba(0,159,255,.25);
-          padding:
-            55px 58px;
+            1px solid rgba(0,159,255,.27);
+          padding: 58px;
           display: flex;
           align-items: center;
-          position: relative;
-          overflow: hidden;
           background:
             radial-gradient(
-              circle at 85% 50%,
-              rgba(0,137,255,.2),
-              transparent 36%
+              circle at 87% 45%,
+              rgba(0,142,255,.22),
+              transparent 28%
             ),
             radial-gradient(
-              circle at 88% 20%,
-              rgba(255,119,0,.14),
-              transparent 25%
+              circle at 92% 17%,
+              rgba(255,130,0,.13),
+              transparent 20%
             ),
             linear-gradient(
               135deg,
-              #06111d,
-              #020408 60%
+              #06121e,
+              #02070d 62%
             );
+          position: relative;
+          overflow: hidden;
         }
 
         .cta::after {
           content: "";
           position: absolute;
-          width: 430px;
-          height: 430px;
-          right: -100px;
-          bottom: -230px;
+          width: 460px;
+          height: 460px;
+          right: -130px;
+          bottom: -270px;
           border-radius: 50%;
           border:
-            1px solid rgba(0,183,255,.65);
+            1px solid rgba(0,186,255,.52);
           box-shadow:
-            0 0 70px rgba(0,128,255,.15);
+            0 0 65px rgba(0,140,255,.12);
         }
 
         .cta-content {
+          max-width: 850px;
           position: relative;
           z-index: 2;
-          max-width: 720px;
         }
 
         .cta h2 {
+          margin: 12px 0 18px;
           font-size:
-            clamp(40px, 5vw, 65px);
+            clamp(40px, 5vw, 68px);
           line-height: .98;
           text-transform: uppercase;
-          margin:
-            12px 0 20px;
-        }
-
-        .cta .gradient {
-          background:
-            linear-gradient(
-              90deg,
-              #11caff,
-              #ff8a00
-            );
-          -webkit-background-clip:
-            text;
-          -webkit-text-fill-color:
-            transparent;
         }
 
         .cta p {
-          color: #9aa8bc;
+          max-width: 650px;
+          color: #9cadbf;
           line-height: 1.65;
-          max-width: 570px;
         }
 
         /* =========================
@@ -832,347 +682,290 @@ class NexivraHome extends HTMLElement {
         ========================= */
 
         footer {
+          padding: 58px 0 32px;
           border-top:
-            1px solid rgba(255,255,255,.06);
-          padding:
-            52px 0 30px;
+            1px solid rgba(255,255,255,.055);
         }
 
         .footer-grid {
           display: grid;
           grid-template-columns:
             1.4fr 1fr 1fr;
-          gap: 40px;
+          gap: 50px;
         }
 
-        .footer-brand {
-          font-size: 25px;
-          font-weight: 700;
-          letter-spacing: .18em;
-        }
-
-        .footer-tag {
-          margin-top: 13px;
-          color: #5aaed6;
-          letter-spacing: .18em;
-          text-transform: uppercase;
-          font-size: 10px;
-          line-height: 1.6;
+        .footer-logo img {
+          width: 310px;
+          max-width: 100%;
+          display: block;
         }
 
         .footer-links {
           display: grid;
-          gap: 10px;
-          color: #96a4b7;
+          gap: 11px;
+          color: #99aabd;
           font-size: 13px;
         }
 
-        .copyright {
+        .footer-links a:hover {
+          color: #fff;
+        }
+
+        .footer-bottom {
+          margin-top: 45px;
+          padding-top: 21px;
           border-top:
             1px solid rgba(255,255,255,.05);
-          margin-top: 45px;
-          padding-top: 22px;
           display: flex;
           justify-content: space-between;
           gap: 20px;
-          color: #5f6d80;
+          color: #637589;
           font-size: 11px;
         }
 
-        .mini-gradient {
+        .footer-tag {
           background:
             linear-gradient(
               90deg,
-              #00baff,
-              #ff8500
+              #12c8ff,
+              #ff8d10
             );
-          -webkit-background-clip:
-            text;
-          -webkit-text-fill-color:
-            transparent;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
         }
 
         /* =========================
            RESPONSIVE
         ========================= */
 
-        @media
-        (max-width: 1000px) {
-
-          .nav-links a:not(.demo-button) {
+        @media (max-width: 1180px) {
+          .nav-links {
             display: none;
           }
 
-          .hero-grid,
-          .human-grid {
+          .hero {
             grid-template-columns: 1fr;
+            padding-top: 70px;
           }
 
-          .visual {
-            min-height: 470px;
-          }
-
-          .feature-grid {
-            grid-template-columns:
-              repeat(2, 1fr);
-          }
-
-          .feature {
-            border-bottom:
-              1px solid rgba(255,255,255,.06);
+          .hero-visual {
+            min-height: auto;
           }
 
           .industry-grid {
             grid-template-columns:
-              repeat(2, 1fr);
+              repeat(2, minmax(0, 1fr));
           }
 
-          .impact-grid {
+          .platform-grid,
+          .difference-grid {
             grid-template-columns:
-              repeat(2, 1fr);
+              repeat(2, minmax(0, 1fr));
           }
         }
 
-        @media
-        (max-width: 640px) {
-
+        @media (max-width: 760px) {
           .container {
             width:
-              min(
-                100% - 26px,
-                1180px
-              );
+              min(100% - 26px, 1500px);
           }
 
           .nav {
-            height: 72px;
+            min-height: 78px;
           }
 
-          .logo {
-            font-size: 18px;
+          .brand img {
+            width: 185px;
+            max-width: 54vw;
           }
 
-          .demo-button {
-            padding: 9px 12px;
+          .nav-right {
+            gap: 12px;
+          }
+
+          .login-link {
+            display: none;
+          }
+
+          .nav-demo {
+            padding: 10px 12px;
+            font-size: 10px;
           }
 
           .hero {
-            padding:
-              40px 0 65px;
-            min-height: 0;
+            min-height: auto;
+            padding: 45px 0 60px;
           }
 
-          .headline {
-            font-size: 46px;
+          .hero h1 {
+            font-size: 44px;
           }
 
           .hero-copy {
             font-size: 16px;
           }
 
-          .visual {
-            min-height: 365px;
-          }
-
-          .orb {
-            width: 340px;
-          }
-
-          .n-mark {
-            font-size: 150px;
-          }
-
-          .section,
-          .human-section {
+          .difference,
+          .industries,
+          .platform,
+          .access {
             padding:
-              75px 0;
+              72px 0;
           }
 
-          .feature-grid,
+          .difference-grid,
+          .platform-grid,
           .industry-grid,
-          .impact-grid,
+          .access-grid,
           .footer-grid {
             grid-template-columns: 1fr;
           }
 
-          .feature,
-          .impact-item {
-            border-right: 0;
-            border-bottom:
-              1px solid rgba(255,255,255,.06);
-            padding:
-              28px 10px;
+          .industry-card {
+            min-height: auto;
           }
 
-          .industry {
-            min-height: 220px;
-          }
-
-          .human-visual {
-            min-height: 360px;
-          }
-
-          .human-face {
-            width: 170px;
-            height: 240px;
+          .industry-image {
+            height: 220px;
           }
 
           .cta {
-            padding:
-              40px 28px;
+            padding: 40px 26px;
           }
 
-          .copyright {
+          .footer-bottom {
             flex-direction: column;
           }
         }
-
       </style>
 
+      <div class="page">
 
-      <div class="site">
+        <!-- NAVIGATION -->
 
-        <!-- NAV -->
+        <div class="nav-wrap">
+          <div class="container">
 
-        <div class="container">
-
-          <nav class="nav">
-
-            <a
-              class="logo"
-              href="#top"
-            >
-              NEXIVRA
-            </a>
-
-
-            <div class="nav-links">
-
-              <a href="#platform">
-                Platform
-              </a>
-
-              <a href="#solutions">
-                Solutions
-              </a>
-
-              <a href="#industries">
-                Industries
-              </a>
-
-              <a href="#about">
-                About
-              </a>
+            <nav class="nav">
 
               <a
-                class="demo-button"
-                href="#demo"
+                class="brand"
+                href="#top"
               >
-                Request a Demo
+                <img
+                  src="${this.assets.logo}"
+                  alt="NEXIVRA"
+                />
               </a>
 
-            </div>
+              <div class="nav-right">
 
-          </nav>
+                <div class="nav-links">
+                  <a href="#platform">
+                    Platform
+                  </a>
 
+                  <a href="#industries">
+                    Industries
+                  </a>
+
+                  <a href="#about">
+                    About
+                  </a>
+
+                  <a href="#access">
+                    Login
+                  </a>
+
+                  <a href="#contact">
+                    Contact
+                  </a>
+                </div>
+
+                <a
+                  class="login-link"
+                  href="/login"
+                >
+                  Client Login
+                </a>
+
+                <button
+                  class="nav-demo"
+                  data-demo
+                >
+                  Request a Demo
+                </button>
+
+              </div>
+
+            </nav>
+
+          </div>
         </div>
 
 
         <!-- HERO -->
 
         <section
-          class="hero"
+          class="container hero"
           id="top"
         >
 
-          <div
-            class="
-              container
-              hero-grid
-            "
-          >
+          <div class="hero-copy-wrap">
 
-            <div>
+            <div class="eyebrow">
+              AI Training. Real Performance.
+            </div>
 
-              <div class="eyebrow">
-                The Next Generation of Connected Intelligence
-              </div>
+            <h1>
 
+              Human-Centered
+              <br>
+              AI Training
 
-              <h1 class="headline">
+              <span class="gradient-text">
+                For a Smarter Tomorrow
+              </span>
 
-                <span>
-                  People.
-                </span>
+            </h1>
 
-                <span>
-                  Practice.
-                </span>
+            <p class="hero-copy">
+              NEXIVRA is an adaptive AI training platform
+              that learns the learner, teaches through
+              conversation, creates realistic practice,
+              observes performance, and helps organizations
+              turn knowledge into demonstrated skill.
+            </p>
 
-                <span class="orange">
-                  Progress.
-                </span>
+            <div class="actions">
 
-              </h1>
+              <button
+                class="primary-btn"
+                data-demo
+              >
+                Request a Demo →
+              </button>
 
-
-              <p class="hero-copy">
-                AI-powered training that understands the learner,
-                adapts in real time, and turns knowledge into
-                demonstrated skill.
-              </p>
-
-
-              <div class="button-row">
-
-                <button
-                  class="primary"
-                  data-scroll="demo"
-                >
-                  See It In Action
-                </button>
-
-                <button
-                  class="secondary"
-                  data-scroll="platform"
-                >
-                  Explore the Platform
-                </button>
-
-              </div>
+              <button
+                class="outline-btn"
+                data-scroll="platform"
+              >
+                Explore the Platform
+              </button>
 
             </div>
 
-
-            <div class="visual">
-
-              <div class="circuit-left">
-
-                <div class="circuit-line"></div>
-                <div class="circuit-line"></div>
-                <div class="circuit-line"></div>
-                <div class="circuit-line"></div>
-
-              </div>
+          </div>
 
 
-              <div class="orb">
+          <div class="hero-visual">
 
-                <div class="n-mark">
-                  N
-                </div>
+            <div class="hero-image-shell">
 
-              </div>
-
-
-              <div class="circuit-right">
-
-                <div class="circuit-line"></div>
-                <div class="circuit-line"></div>
-                <div class="circuit-line"></div>
-                <div class="circuit-line"></div>
-
-              </div>
+              <img
+                src="${this.assets.heroImage}"
+                alt="NEXIVRA connected human future"
+              />
 
             </div>
 
@@ -1181,188 +974,59 @@ class NexivraHome extends HTMLElement {
         </section>
 
 
-        <!-- ADVANTAGE -->
+        <!-- DIFFERENCE -->
 
         <section
-          class="section"
-          id="platform"
+          class="difference"
+          id="about"
         >
 
           <div class="container">
 
             <div class="section-label">
-              The NEXIVRA Advantage
+              The NEXIVRA Difference
             </div>
 
-
             <h2 class="section-title">
-              Real Conversations.
+              Learn the Learner.
               <br>
-              Real Growth.
+              Then Teach.
             </h2>
 
-
             <p class="section-copy">
-              NEXIVRA combines conversational AI,
-              adaptive learning, behavioral observation,
-              realistic practice, and measurable performance
-              into one intelligent training experience.
+              Traditional training delivers the same content
+              to everyone. NEXIVRA learns how each person
+              communicates, responds, processes information,
+              practices, and performs — then adapts the
+              experience around them.
             </p>
 
 
-            <div class="feature-grid">
+            <div class="difference-grid">
 
-              <div class="feature">
+              ${this.differenceCard(
+                "◉",
+                "Conversational AI",
+                "Natural training through real interaction instead of passive content."
+              )}
 
-                <div class="icon-ring">
-                  ◌
-                </div>
+              ${this.differenceCard(
+                "↻",
+                "Adaptive Teaching",
+                "NEXIVRA changes how it teaches based on how the learner responds."
+              )}
 
-                <h3>
-                  Conversational AI
-                </h3>
+              ${this.differenceCard(
+                "◎",
+                "Realistic Practice",
+                "Role-play, scenarios, feedback, coaching, and repeated practice build capability."
+              )}
 
-                <p>
-                  Natural interaction that listens,
-                  responds, teaches, challenges,
-                  and adapts.
-                </p>
-
-              </div>
-
-
-              <div class="feature">
-
-                <div class="icon-ring">
-                  ▥
-                </div>
-
-                <h3>
-                  Adaptive Learning
-                </h3>
-
-                <p>
-                  Training changes based on the learner's
-                  understanding, behavior, confidence,
-                  and performance.
-                </p>
-
-              </div>
-
-
-              <div class="feature">
-
-                <div class="icon-ring">
-                  ◎
-                </div>
-
-                <h3>
-                  Demonstrated Skill
-                </h3>
-
-                <p>
-                  NEXIVRA evaluates what learners can
-                  actually do — not simply what content
-                  they completed.
-                </p>
-
-              </div>
-
-
-              <div class="feature">
-
-                <div class="icon-ring">
-                  ∞
-                </div>
-
-                <h3>
-                  Built to Scale
-                </h3>
-
-                <p>
-                  From one learner to enterprise-wide
-                  development across teams, locations,
-                  roles, and subjects.
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <!-- HUMAN-CENTERED -->
-
-        <section
-          class="human-section"
-          id="about"
-        >
-
-          <div
-            class="
-              container
-              human-grid
-            "
-          >
-
-            <div>
-
-              <div class="eyebrow">
-                AI Training for a More Human Tomorrow
-              </div>
-
-
-              <h2 class="human-title">
-
-                Intelligence
-                <br>
-                That Inspires
-                <br>
-
-                <span class="people">
-                  People.
-                </span>
-
-              </h2>
-
-
-              <p class="human-copy">
-                NEXIVRA doesn't simply deliver information.
-                It creates conversations, practice,
-                feedback, coaching, and experiences that
-                help people develop real capability.
-                <br><br>
-                The platform learns how the learner responds
-                and adjusts how it teaches — allowing the same
-                course to become a different experience for
-                different people.
-              </p>
-
-            </div>
-
-
-            <div class="human-visual">
-
-              <div class="human-face"></div>
-
-              <div class="human-word hw1">
-                SKILLS
-              </div>
-
-              <div class="human-word hw2">
-                CONFIDENCE
-              </div>
-
-              <div class="human-word hw3">
-                BETTER PERFORMANCE
-              </div>
-
-              <div class="human-word hw4">
-                STRONGER TEAMS
-              </div>
+              ${this.differenceCard(
+                "↗",
+                "Performance Intelligence",
+                "Measure what learners can demonstrate, where they improve, and what they need next."
+              )}
 
             </div>
 
@@ -1374,130 +1038,65 @@ class NexivraHome extends HTMLElement {
         <!-- INDUSTRIES -->
 
         <section
-          class="section"
+          class="industries"
           id="industries"
         >
 
           <div class="container">
 
-            <div class="section-label">
-              Intelligence That Adapts
+            <div class="industries-head">
+
+              <div class="section-label">
+                Designed Around Your Organization
+              </div>
+
+              <h2>
+                Training That Speaks
+                <br>
+                Your Language
+              </h2>
+
+              <p>
+                NEXIVRA Core provides the intelligence.
+                Your organization's knowledge, standards,
+                behaviors, scenarios, goals, and culture
+                shape the learning experience.
+              </p>
+
             </div>
-
-
-            <h2 class="section-title">
-              Training That Speaks
-              <br>
-              Your Language
-            </h2>
-
-
-            <p class="section-copy">
-              NEXIVRA Core remains the same.
-              The subject intelligence, scenarios,
-              standards, behaviors, knowledge,
-              and outcomes change for every organization.
-            </p>
 
 
             <div class="industry-grid">
 
-              <div class="industry">
+              ${this.industryCard(
+                this.assets.hospitality,
+                "Hospitality",
+                "Create stronger service, communication, emotional awareness, and memorable guest experiences."
+              )}
 
-                <div class="industry-content">
+              ${this.industryCard(
+                this.assets.healthcare,
+                "Healthcare",
+                "Strengthen trust, communication, compassion, service recovery, and patient experience."
+              )}
 
-                  <h3>
-                    Hospitality
-                  </h3>
+              ${this.industryCard(
+                this.assets.finance,
+                "Financial Services",
+                "Build confidence, stronger conversations, deeper relationships, and client trust."
+              )}
 
-                  <p>
-                    Create memorable interactions,
-                    stronger service,
-                    and lasting loyalty.
-                  </p>
+              ${this.industryCard(
+                this.assets.seniorLiving,
+                "Senior Living",
+                "Develop communication rooted in dignity, empathy, trust, connection, and respect."
+              )}
 
-                </div>
-
-              </div>
-
-
-              <div class="industry">
-
-                <div class="industry-content">
-
-                  <h3>
-                    Healthcare
-                  </h3>
-
-                  <p>
-                    Strengthen trust,
-                    communication,
-                    compassion,
-                    and patient experience.
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="industry">
-
-                <div class="industry-content">
-
-                  <h3>
-                    Financial Services
-                  </h3>
-
-                  <p>
-                    Turn transactions into
-                    stronger conversations
-                    and relationships.
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="industry">
-
-                <div class="industry-content">
-
-                  <h3>
-                    Senior Living
-                  </h3>
-
-                  <p>
-                    Develop communication
-                    rooted in dignity,
-                    trust,
-                    and respect.
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              <div class="industry">
-
-                <div class="industry-content">
-
-                  <h3>
-                    Multi-Location Organizations
-                  </h3>
-
-                  <p>
-                    Build consistent capability
-                    across teams,
-                    roles,
-                    and locations.
-                  </p>
-
-                </div>
-
-              </div>
+              ${this.industryCard(
+                this.assets.multiLocation,
+                "Multi-Location Organizations",
+                "Create consistent capability across people, locations, teams, leaders, and roles."
+              )}
 
             </div>
 
@@ -1506,72 +1105,135 @@ class NexivraHome extends HTMLElement {
         </section>
 
 
-        <!-- IMPACT -->
+        <!-- PLATFORM -->
 
-        <section class="impact">
+        <section
+          class="platform"
+          id="platform"
+        >
+
+          <div class="container">
+
+            <div class="platform-head">
+
+              <div class="section-label">
+                One Intelligent Platform
+              </div>
+
+              <h2>
+                Conversation.
+                <br>
+                Practice.
+                <br>
+                Performance.
+              </h2>
+
+              <p class="section-copy"
+                 style="
+                   text-align:left;
+                   margin:0;
+                 ">
+                NEXIVRA combines adaptive AI, real-time
+                conversation, behavioral observation,
+                realistic practice, evaluation, coaching,
+                and learner memory into one connected
+                development experience.
+              </p>
+
+            </div>
+
+
+            <div class="platform-grid">
+
+              ${this.platformCard(
+                "Learn the Learner",
+                "NEXIVRA builds an understanding of the individual and uses that understanding to shape the learning experience."
+              )}
+
+              ${this.platformCard(
+                "Teach Adaptively",
+                "The platform adjusts explanations, questions, pacing, practice, and coaching based on the learner."
+              )}
+
+              ${this.platformCard(
+                "Practice Real Work",
+                "Learners interact with realistic situations, conversations, role-play, and scenarios drawn from the subject."
+              )}
+
+              ${this.platformCard(
+                "Demonstrate Capability",
+                "NEXIVRA evaluates demonstrated performance and helps determine what the learner should practice next."
+              )}
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ACCESS -->
+
+        <section
+          class="access"
+          id="access"
+        >
 
           <div class="container">
 
             <div class="section-label">
-              A Stronger Tomorrow
+              Your NEXIVRA Environment
             </div>
 
-
-            <h2 class="section-title">
-              Built to Make a Real Impact
+            <h2 class="section-title"
+                style="
+                  text-align:left;
+                  margin-left:0;
+                ">
+              One Platform.
+              <br>
+              Different Experiences.
             </h2>
 
 
-            <div class="impact-grid">
+            <div class="access-grid">
 
-              <div class="impact-item">
-
-                <div class="impact-icon">
-                  ◉
-                </div>
+              <div class="access-card">
 
                 <h3>
-                  Higher Engagement
+                  Company Dashboard
                 </h3>
+
+                <p>
+                  Authorized company leaders and administrators
+                  can manage learners, assign training,
+                  review progress, monitor development,
+                  and access organization reporting.
+                </p>
+
+                <a href="/login">
+                  Client Login →
+                </a>
 
               </div>
 
 
-              <div class="impact-item">
-
-                <div class="impact-icon">
-                  ▥
-                </div>
+              <div class="access-card">
 
                 <h3>
-                  Improved Performance
+                  Learner Experience
                 </h3>
 
-              </div>
+                <p>
+                  Learners log in to their assigned environment,
+                  access their courses, continue previous sessions,
+                  practice with the AI instructor,
+                  and see their development progress.
+                </p>
 
-
-              <div class="impact-item">
-
-                <div class="impact-icon">
-                  ♡
-                </div>
-
-                <h3>
-                  Stronger Relationships
-                </h3>
-
-              </div>
-
-
-              <div class="impact-item">
-
-                <div class="impact-icon">
-                  ☆
-                </div>
-
-                <h3>
-                  Healthier Cultures
-                </h3>
+                <a href="/login">
+                  Learner Login →
+                </a>
 
               </div>
 
@@ -1584,10 +1246,7 @@ class NexivraHome extends HTMLElement {
 
         <!-- CTA -->
 
-        <div
-          class="cta-wrap"
-          id="demo"
-        >
+        <div class="cta-wrap">
 
           <div class="container">
 
@@ -1595,40 +1254,37 @@ class NexivraHome extends HTMLElement {
 
               <div class="cta-content">
 
-                <div class="eyebrow">
-                  Let's Build What's Next
+                <div class="section-label"
+                     style="text-align:left;">
+                  The Future of Learning Is Personal
                 </div>
-
 
                 <h2>
 
-                  The Future of
-                  <br>
-                  Human Potential
+                  Build Stronger People.
+
                   <br>
 
-                  <span class="gradient">
-                    Starts Here.
+                  <span class="gradient-text">
+                    Build a Stronger Organization.
                   </span>
 
                 </h2>
 
-
                 <p>
-                  See how NEXIVRA can help your organization
-                  train smarter, adapt faster,
-                  develop stronger people,
-                  and turn learning into measurable performance.
+                  Turn your organization's knowledge,
+                  standards, scenarios, goals, and culture
+                  into an adaptive AI training experience
+                  built around the people you are developing.
                 </p>
 
-
-                <div class="button-row">
+                <div class="actions">
 
                   <button
-                    class="primary"
-                    data-demo-click
+                    class="primary-btn"
+                    data-demo
                   >
-                    Request a Demo
+                    Request a Demo →
                   </button>
 
                 </div>
@@ -1644,23 +1300,18 @@ class NexivraHome extends HTMLElement {
 
         <!-- FOOTER -->
 
-        <footer>
+        <footer id="contact">
 
           <div class="container">
 
             <div class="footer-grid">
 
-              <div>
+              <div class="footer-logo">
 
-                <div class="footer-brand">
-                  NEXIVRA
-                </div>
-
-                <div class="footer-tag">
-                  The Next Generation of
-                  <br>
-                  Connected Intelligence
-                </div>
+                <img
+                  src="${this.assets.logo}"
+                  alt="NEXIVRA"
+                />
 
               </div>
 
@@ -1679,20 +1330,24 @@ class NexivraHome extends HTMLElement {
                   About
                 </a>
 
+                <a href="#access">
+                  Login
+                </a>
+
               </div>
 
 
               <div class="footer-links">
 
-                <a href="#demo">
-                  Request a Demo
+                <a href="/login">
+                  Client Login
                 </a>
 
-                <a href="#">
+                <a href="#contact">
                   Contact
                 </a>
 
-                <a href="#">
+                <a href="/privacy">
                   Privacy
                 </a>
 
@@ -1701,15 +1356,15 @@ class NexivraHome extends HTMLElement {
             </div>
 
 
-            <div class="copyright">
+            <div class="footer-bottom">
 
               <span>
                 © 2026 NEXIVRA.
                 All rights reserved.
               </span>
 
-              <span class="mini-gradient">
-                People. Practice. Progress.
+              <span class="footer-tag">
+                The Next Generation of Connected Intelligence
               </span>
 
             </div>
@@ -1722,64 +1377,158 @@ class NexivraHome extends HTMLElement {
     `;
   }
 
+
+  differenceCard(
+    icon,
+    title,
+    copy
+  ) {
+    return `
+      <article class="difference-card">
+
+        <div class="difference-icon">
+          ${icon}
+        </div>
+
+        <h3>
+          ${title}
+        </h3>
+
+        <p>
+          ${copy}
+        </p>
+
+      </article>
+    `;
+  }
+
+
+  industryCard(
+    image,
+    title,
+    copy
+  ) {
+    return `
+      <article class="industry-card">
+
+        <div class="industry-image">
+
+          <img
+            src="${image}"
+            alt="${title}"
+          />
+
+        </div>
+
+        <div class="industry-content">
+
+          <h3>
+            ${title}
+          </h3>
+
+          <p>
+            ${copy}
+          </p>
+
+          <div class="industry-arrow">
+            <span>→</span>
+          </div>
+
+        </div>
+
+      </article>
+    `;
+  }
+
+
+  platformCard(
+    title,
+    copy
+  ) {
+    return `
+      <article class="platform-card">
+
+        <h3>
+          ${title}
+        </h3>
+
+        <p>
+          ${copy}
+        </p>
+
+      </article>
+    `;
+  }
+
+
   bindEvents() {
+
     this.shadowRoot
-      .querySelectorAll("[data-scroll]")
-      .forEach((button) => {
+      .querySelectorAll(
+        "[data-scroll]"
+      )
+      .forEach(
+        (button) => {
 
-        button.addEventListener(
-          "click",
-          () => {
+          button.addEventListener(
+            "click",
+            () => {
 
-            const id =
-              button.getAttribute(
-                "data-scroll"
-              );
+              const id =
+                button.getAttribute(
+                  "data-scroll"
+                );
 
-            const target =
-              this.shadowRoot
-                .getElementById(id);
+              const target =
+                this.shadowRoot
+                  .getElementById(id);
 
-            if (target) {
-              target.scrollIntoView({
-                behavior: "smooth"
-              });
-            }
-          }
-        );
-      });
+              if (target) {
 
-    const demo =
-      this.shadowRoot
-        .querySelector(
-          "[data-demo-click]"
-        );
-
-    if (demo) {
-      demo.addEventListener(
-        "click",
-        () => {
-
-          this.dispatchEvent(
-            new CustomEvent(
-              "nexivra-demo-request",
-              {
-                bubbles: true,
-                composed: true
+                target.scrollIntoView({
+                  behavior: "smooth"
+                });
               }
-            )
+            }
           );
         }
       );
-    }
+
+
+    this.shadowRoot
+      .querySelectorAll(
+        "[data-demo]"
+      )
+      .forEach(
+        (button) => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              this.dispatchEvent(
+                new CustomEvent(
+                  "nexivra-demo-request",
+                  {
+                    bubbles: true,
+                    composed: true
+                  }
+                )
+              );
+            }
+          );
+        }
+      );
   }
 }
+
 
 if (
   !customElements.get(
     "nexivra-home"
   )
 ) {
+
   customElements.define(
     "nexivra-home",
     NexivraHome
