@@ -99,36 +99,36 @@ class NexivraHome extends HTMLElement {
         }
 
         .nav {
-          min-height: 105px;
+          min-height: 84px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 30px;
+          gap: 28px;
         }
 
         .brand {
           display: flex;
           align-items: center;
-          min-width: 250px;
+          min-width: 190px;
         }
 
         .brand img {
           display: block;
-          width: 300px;
-          max-width: 31vw;
+          width: 215px;
+          max-width: 24vw;
           height: auto;
         }
 
         .nav-right {
           display: flex;
           align-items: center;
-          gap: 30px;
+          gap: 24px;
         }
 
         .nav-links {
           display: flex;
           align-items: center;
-          gap: 30px;
+          gap: 28px;
           color: #aebed0;
           font-size: 13px;
         }
@@ -144,7 +144,7 @@ class NexivraHome extends HTMLElement {
         .login-link {
           color: #23c6ff;
           font-size: 13px;
-          font-weight: 700;
+          font-weight: 800;
           white-space: nowrap;
         }
 
@@ -157,7 +157,7 @@ class NexivraHome extends HTMLElement {
               rgba(0,188,255,.08)
             );
           color: #ffffff;
-          padding: 13px 20px;
+          padding: 12px 18px;
           border-radius: 9px;
           font-size: 12px;
           font-weight: 800;
@@ -173,16 +173,17 @@ class NexivraHome extends HTMLElement {
 
         .hero {
           display: grid;
-          grid-template-columns: .9fr 1.1fr;
+          grid-template-columns: 0.88fr 1.12fr;
           gap: 42px;
           align-items: center;
-          min-height: 760px;
-          padding: 38px 0 30px;
+          min-height: 635px;
+          padding: 28px 0 42px;
         }
 
         .hero-copy-wrap {
           position: relative;
           z-index: 3;
+          align-self: center;
         }
 
         .eyebrow {
@@ -191,17 +192,21 @@ class NexivraHome extends HTMLElement {
           letter-spacing: .38em;
           font-size: 12px;
           font-weight: 800;
-          margin-bottom: 20px;
+          margin-bottom: 18px;
         }
 
         .hero h1 {
           margin: 0;
           font-size:
-            clamp(54px, 5.7vw, 90px);
-          line-height: .96;
+            clamp(48px, 4.95vw, 78px);
+          line-height: .97;
           letter-spacing: -.025em;
           text-transform: uppercase;
-          max-width: 780px;
+          max-width: 690px;
+        }
+
+        .hero-line {
+          display: block;
         }
 
         .gradient-text {
@@ -219,9 +224,9 @@ class NexivraHome extends HTMLElement {
         }
 
         .hero-copy {
-          max-width: 720px;
-          margin-top: 26px;
-          font-size: 18px;
+          max-width: 650px;
+          margin-top: 24px;
+          font-size: 17px;
           line-height: 1.65;
           color: #a6b5c7;
         }
@@ -230,7 +235,7 @@ class NexivraHome extends HTMLElement {
           display: flex;
           flex-wrap: wrap;
           gap: 16px;
-          margin-top: 32px;
+          margin-top: 30px;
         }
 
         .primary-btn {
@@ -266,23 +271,25 @@ class NexivraHome extends HTMLElement {
         }
 
         .hero-visual {
-          min-height: 650px;
+          min-height: 520px;
           position: relative;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           justify-content: center;
+          padding-top: 30px;
         }
 
         .hero-image-shell {
           width: 100%;
-          max-width: 850px;
+          max-width: 900px;
           position: relative;
-          border-radius: 22px;
+          border-radius: 20px;
           overflow: hidden;
           border:
             1px solid rgba(0,161,255,.24);
           box-shadow:
             0 0 60px rgba(0,115,255,.10);
+          transform: translateY(-5px);
         }
 
         .hero-image-shell::after {
@@ -293,10 +300,10 @@ class NexivraHome extends HTMLElement {
           background:
             linear-gradient(
               90deg,
-              rgba(2,6,11,.14),
-              transparent 20%,
-              transparent 78%,
-              rgba(2,6,11,.12)
+              rgba(2,6,11,.10),
+              transparent 18%,
+              transparent 82%,
+              rgba(2,6,11,.10)
             );
         }
 
@@ -695,7 +702,7 @@ class NexivraHome extends HTMLElement {
         }
 
         .footer-logo img {
-          width: 310px;
+          width: 270px;
           max-width: 100%;
           display: block;
         }
@@ -745,11 +752,12 @@ class NexivraHome extends HTMLElement {
 
           .hero {
             grid-template-columns: 1fr;
-            padding-top: 70px;
+            padding-top: 55px;
           }
 
           .hero-visual {
             min-height: auto;
+            padding-top: 10px;
           }
 
           .industry-grid {
@@ -771,34 +779,38 @@ class NexivraHome extends HTMLElement {
           }
 
           .nav {
-            min-height: 78px;
+            min-height: 74px;
           }
 
           .brand img {
-            width: 185px;
-            max-width: 54vw;
+            width: 165px;
+            max-width: 50vw;
           }
 
           .nav-right {
-            gap: 12px;
+            gap: 10px;
           }
 
-          .login-link {
+          .nav-links {
             display: none;
           }
 
+          .login-link {
+            font-size: 11px;
+          }
+
           .nav-demo {
-            padding: 10px 12px;
+            padding: 10px 11px;
             font-size: 10px;
           }
 
           .hero {
             min-height: auto;
-            padding: 45px 0 60px;
+            padding: 38px 0 54px;
           }
 
           .hero h1 {
-            font-size: 44px;
+            font-size: 42px;
           }
 
           .hero-copy {
@@ -873,10 +885,6 @@ class NexivraHome extends HTMLElement {
                     About
                   </a>
 
-                  <a href="#access">
-                    Login
-                  </a>
-
                   <a href="#contact">
                     Contact
                   </a>
@@ -886,7 +894,7 @@ class NexivraHome extends HTMLElement {
                   class="login-link"
                   href="/login"
                 >
-                  Client Login
+                  Login
                 </a>
 
                 <button
@@ -919,11 +927,20 @@ class NexivraHome extends HTMLElement {
 
             <h1>
 
-              Human-Centered
-              <br>
-              AI Training
+              <span class="hero-line">
+                Human-Centered
+              </span>
 
-              <span class="gradient-text">
+              <span class="hero-line">
+                AI Training
+              </span>
+
+              <span
+                class="
+                  hero-line
+                  gradient-text
+                "
+              >
                 For a Smarter Tomorrow
               </span>
 
@@ -1128,16 +1145,21 @@ class NexivraHome extends HTMLElement {
                 Performance.
               </h2>
 
-              <p class="section-copy"
-                 style="
-                   text-align:left;
-                   margin:0;
-                 ">
-                NEXIVRA combines adaptive AI, real-time
-                conversation, behavioral observation,
-                realistic practice, evaluation, coaching,
-                and learner memory into one connected
-                development experience.
+              <p
+                class="section-copy"
+                style="
+                  text-align:left;
+                  margin:0;
+                "
+              >
+                NEXIVRA combines adaptive AI,
+                real-time conversation,
+                behavioral observation,
+                realistic practice,
+                evaluation,
+                coaching,
+                and learner memory
+                into one connected development experience.
               </p>
 
             </div>
@@ -1185,11 +1207,13 @@ class NexivraHome extends HTMLElement {
               Your NEXIVRA Environment
             </div>
 
-            <h2 class="section-title"
-                style="
-                  text-align:left;
-                  margin-left:0;
-                ">
+            <h2
+              class="section-title"
+              style="
+                text-align:left;
+                margin-left:0;
+              "
+            >
               One Platform.
               <br>
               Different Experiences.
@@ -1254,8 +1278,10 @@ class NexivraHome extends HTMLElement {
 
               <div class="cta-content">
 
-                <div class="section-label"
-                     style="text-align:left;">
+                <div
+                  class="section-label"
+                  style="text-align:left;"
+                >
                   The Future of Learning Is Personal
                 </div>
 
@@ -1330,7 +1356,7 @@ class NexivraHome extends HTMLElement {
                   About
                 </a>
 
-                <a href="#access">
+                <a href="/login">
                   Login
                 </a>
 
@@ -1338,10 +1364,6 @@ class NexivraHome extends HTMLElement {
 
 
               <div class="footer-links">
-
-                <a href="/login">
-                  Client Login
-                </a>
 
                 <a href="#contact">
                   Contact
@@ -1484,7 +1506,6 @@ class NexivraHome extends HTMLElement {
                   .getElementById(id);
 
               if (target) {
-
                 target.scrollIntoView({
                   behavior: "smooth"
                 });
