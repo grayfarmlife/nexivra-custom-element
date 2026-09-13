@@ -3167,6 +3167,149 @@ function handleWixMessage(
 
 }
 
+  function renderModuleWorkspace(
+  module
+) {
+
+  const workspace =
+    document.querySelector(
+      '.builder-main'
+    );
+
+  if (!workspace) {
+    return;
+  }
+
+  if (!module) {
+    return;
+  }
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <div class="eyebrow">
+        ADAPTIVE MODULE DESIGN
+      </div>
+
+      <h2>
+        ${escapeHTML(
+          module.title
+        )}
+      </h2>
+
+      <p>
+        ${escapeHTML(
+          module.description ||
+          'Configure how NEXIVRA teaches, practices, evaluates, and reinforces this module.'
+        )}
+      </p>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:
+            repeat(2,minmax(0,1fr));
+          gap:16px;
+          margin-top:28px;
+        "
+      >
+
+        ${moduleWorkspaceCard(
+          'Teaching',
+          'Define what NEXIVRA teaches and how it adapts explanations.',
+          'TEACHING'
+        )}
+
+        ${moduleWorkspaceCard(
+          'Knowledge',
+          'Connect approved knowledge and source material.',
+          'KNOWLEDGE'
+        )}
+
+        ${moduleWorkspaceCard(
+          'Practice',
+          'Create conversational exercises and guided practice.',
+          'PRACTICE'
+        )}
+
+        ${moduleWorkspaceCard(
+          'Role-Play',
+          'Design realistic AI guest interactions.',
+          'ROLE_PLAY'
+        )}
+
+        ${moduleWorkspaceCard(
+          'Evaluation',
+          'Define demonstrated capability and evaluation standards.',
+          'EVALUATION'
+        )}
+
+        ${moduleWorkspaceCard(
+          'Remediation',
+          'Configure reinforcement when additional practice is required.',
+          'REMEDIATION'
+        )}
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+function moduleWorkspaceCard(
+  title,
+  description,
+  area
+) {
+
+  return `
+
+    <button
+      type="button"
+      data-module-area="${escapeAttribute(
+        area
+      )}"
+      style="
+        text-align:left;
+        padding:18px;
+        border-radius:14px;
+        border:
+          1px solid rgba(255,255,255,.08);
+        background:
+          rgba(255,255,255,.03);
+        color:#fff;
+        cursor:pointer;
+      "
+    >
+
+      <div
+        style="
+          font-size:15px;
+          font-weight:800;
+          margin-bottom:7px;
+        "
+      >
+        ${escapeHTML(title)}
+      </div>
+
+      <div
+        style="
+          color:var(--muted);
+          font-size:12px;
+          line-height:1.5;
+        "
+      >
+        ${escapeHTML(description)}
+      </div>
+
+    </button>
+
+  `;
+
+}
 /* ======================================================
    DASHBOARD
 ====================================================== */
