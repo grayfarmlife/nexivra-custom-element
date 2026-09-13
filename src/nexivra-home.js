@@ -20,7 +20,7 @@ const FINANCIAL_IMAGE =
   "https://static.wixstatic.com/media/433270_28132edbcc3945718e98edbcc864a722~mv2.png";
 
 const LOGIN_URL =
-  "https://createdbyken.wixstudio.com/my-site-5/login";
+  "https://nexivratech.com/login";
 
 
 class NexivraHome extends HTMLElement {
