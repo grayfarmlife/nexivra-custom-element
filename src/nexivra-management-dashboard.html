@@ -3171,7 +3171,436 @@ function renderOrganizations() {
     });
 
 }
+function openOrganizationDetail(
+  organizationId
+) {
 
+  const organization =
+    state.organizations.find(
+      item =>
+        item.id ===
+        organizationId
+    );
+
+
+  if (!organization) {
+
+    console.error(
+      'NEXIVRA organization not found:',
+      organizationId
+    );
+
+    return;
+
+  }
+
+
+  state.selectedOrganization =
+    organization;
+
+
+  const container =
+    document.getElementById(
+      'organizationsContainer'
+    );
+
+
+  container.innerHTML = `
+
+    <div class="organization-detail">
+
+      <div class="organization-detail-header">
+
+        <div>
+
+          <button
+            type="button"
+            class="organization-back-button"
+            id="organizationBackButton"
+          >
+            ← Back to Organizations
+          </button>
+
+          <div class="eyebrow">
+            CLIENT ENVIRONMENT
+          </div>
+
+          <h2>
+            ${escapeHTML(
+              organization.title
+            )}
+          </h2>
+
+          <div class="organization-detail-meta">
+
+            <span>
+              ${escapeHTML(
+                organization.organizationCode
+              )}
+            </span>
+
+            ${statusBadge(
+              organization.status ||
+              'active'
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="organization-metrics-grid">
+
+        ${organizationMetricCard(
+          'Users',
+          '0',
+          'Organization members'
+        )}
+
+        ${organizationMetricCard(
+          'Courses',
+          '0',
+          'Training environments'
+        )}
+
+        ${organizationMetricCard(
+          'Knowledge Sources',
+          '0',
+          'Approved content'
+        )}
+
+        ${organizationMetricCard(
+          'Assignments',
+          '0',
+          'Active learner assignments'
+        )}
+
+        ${organizationMetricCard(
+          'Sessions',
+          '0',
+          'Training interactions'
+        )}
+
+        ${organizationMetricCard(
+          'Performance',
+          '—',
+          'Learning intelligence'
+        )}
+
+      </div>
+
+
+      <div class="organization-detail-grid">
+
+        <div class="organization-panel">
+
+          <div class="organization-panel-header">
+
+            <div>
+
+              <div class="eyebrow">
+                ORGANIZATION
+              </div>
+
+              <h3>
+                Environment Overview
+              </h3>
+
+            </div>
+
+          </div>
+
+
+          <div class="organization-info-list">
+
+            <div class="organization-info-row">
+              <span>Name</span>
+              <strong>
+                ${escapeHTML(
+                  organization.title
+                )}
+              </strong>
+            </div>
+
+            <div class="organization-info-row">
+              <span>Organization Code</span>
+              <strong>
+                ${escapeHTML(
+                  organization.organizationCode
+                )}
+              </strong>
+            </div>
+
+            <div class="organization-info-row">
+              <span>Status</span>
+              <strong>
+                ${escapeHTML(
+                  organization.status ||
+                  'active'
+                )}
+              </strong>
+            </div>
+
+            <div class="organization-info-row">
+              <span>Last Updated</span>
+              <strong>
+                ${formatDate(
+                  organization.updatedDate
+                )}
+              </strong>
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="organization-panel">
+
+          <div class="organization-panel-header">
+
+            <div>
+
+              <div class="eyebrow">
+                QUICK ACCESS
+              </div>
+
+              <h3>
+                Manage Environment
+              </h3>
+
+            </div>
+
+          </div>
+
+
+          <div class="organization-action-list">
+
+            ${organizationActionButton(
+              'Courses',
+              'Manage organization courses',
+              'courses'
+            )}
+
+            ${organizationActionButton(
+              'Knowledge',
+              'Manage approved knowledge sources',
+              'knowledge'
+            )}
+
+            ${organizationActionButton(
+              'Users',
+              'Manage admins and learners',
+              'users'
+            )}
+
+            ${organizationActionButton(
+              'Assignments',
+              'Manage learner assignments',
+              'assignments'
+            )}
+
+            ${organizationActionButton(
+              'Reporting',
+              'View performance intelligence',
+              'reporting'
+            )}
+
+            ${organizationActionButton(
+              'Settings',
+              'Environment configuration',
+              'settings'
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+
+  document
+    .getElementById(
+      'organizationBackButton'
+    )
+    ?.addEventListener(
+      'click',
+      () => {
+
+        state.selectedOrganization =
+          null;
+
+        renderOrganizations();
+
+      }
+    );
+
+
+  container
+    .querySelectorAll(
+      '[data-organization-action]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => {
+
+          const action =
+            button.getAttribute(
+              'data-organization-action'
+            );
+
+          openOrganizationArea(
+            action,
+            organization
+          );
+
+        }
+      );
+
+    });
+
+}
+
+
+function organizationMetricCard(
+  label,
+  value,
+  description
+) {
+
+  return `
+    <div class="organization-metric-card">
+
+      <div class="organization-metric-label">
+        ${escapeHTML(label)}
+      </div>
+
+      <div class="organization-metric-value">
+        ${escapeHTML(value)}
+      </div>
+
+      <div class="organization-metric-description">
+        ${escapeHTML(description)}
+      </div>
+
+    </div>
+  `;
+
+}
+
+
+function organizationActionButton(
+  label,
+  description,
+  action
+) {
+
+  return `
+    <button
+      type="button"
+      class="organization-action-button"
+      data-organization-action="${escapeHTML(action)}"
+    >
+
+      <div>
+
+        <strong>
+          ${escapeHTML(label)}
+        </strong>
+
+        <span>
+          ${escapeHTML(description)}
+        </span>
+
+      </div>
+
+      <span class="organization-action-arrow">
+        →
+      </span>
+
+    </button>
+  `;
+
+}
+
+
+function openOrganizationArea(
+  action,
+  organization
+) {
+
+  console.log(
+    'NEXIVRA organization action:',
+    action,
+    organization
+  );
+
+
+  switch (action) {
+
+    case 'courses':
+
+      showSection(
+        'courses'
+      );
+
+      break;
+
+
+    case 'knowledge':
+
+      showSection(
+        'knowledge'
+      );
+
+      break;
+
+
+    case 'users':
+
+      showSection(
+        'users'
+      );
+
+      break;
+
+
+    case 'assignments':
+
+      showSection(
+        'assignments'
+      );
+
+      break;
+
+
+    case 'reporting':
+
+      showSection(
+        'reporting'
+      );
+
+      break;
+
+
+    case 'settings':
+
+      console.log(
+        'Organization settings coming next.'
+      );
+
+      break;
+
+  }
+
+}
 /* ======================================================
    COURSES
 ====================================================== */
