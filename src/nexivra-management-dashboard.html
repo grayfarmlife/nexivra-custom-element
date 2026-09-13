@@ -4527,7 +4527,49 @@ function populateCourseSelects() {
         .join('');
 
   });
+if (id === 'moduleCourse') {
 
+  select.onchange = () => {
+
+    const courseId =
+      select.value;
+
+    state.selectedCourseId =
+      courseId || null;
+
+
+    if (!courseId) {
+
+      state.modules = [];
+
+      renderModules();
+
+      return;
+
+    }
+
+
+    window.parent.postMessage(
+      {
+        source:
+          'NEXIVRA_MANAGEMENT',
+
+        type:
+          'LIST_MODULES',
+
+        payload: {
+          courseId
+        }
+      },
+      '*'
+    );
+
+
+    renderModules();
+
+  };
+
+}
 }
 
 /* ======================================================
