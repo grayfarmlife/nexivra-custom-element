@@ -4164,6 +4164,11 @@ function renderModules() {
       'moduleList'
     );
 
+  if (!list) {
+    return;
+  }
+
+
   if (!state.modules.length) {
 
     list.innerHTML =
@@ -4171,13 +4176,30 @@ function renderModules() {
         No modules yet.
       </div>`;
 
+    renderModuleWorkspace(
+      null
+    );
+
     return;
+
   }
+
 
   list.innerHTML =
     state.modules
       .map(module => `
-        <div class="module-item">
+
+        <button
+          type="button"
+          class="module-item ${
+            state.selectedModuleId === module.id
+              ? 'active'
+              : ''
+          }"
+          data-module-id="${escapeAttribute(
+            module.id
+          )}"
+        >
 
           <div class="module-number">
             Module ${module.moduleOrder}
@@ -4189,9 +4211,87 @@ function renderModules() {
             )}
           </div>
 
-        </div>
+        </button>
+
       `)
       .join('');
+
+
+  list
+    .querySelectorAll(
+      '[data-module-id]'
+    )
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => {
+
+          const moduleId =
+            button.getAttribute(
+              'data-module-id'
+            );
+
+
+          state.selectedModuleId =
+            moduleId;
+
+
+          const selectedModule =
+            state.modules.find(
+              module =>
+                module.id ===
+                moduleId
+            );
+
+
+          renderModules();
+
+          renderModuleWorkspace(
+            selectedModule ||
+            null
+          );
+
+        }
+      );
+
+    });
+
+
+  if (!state.selectedModuleId) {
+
+    const firstModule =
+      state.modules[0];
+
+
+    if (firstModule) {
+
+      state.selectedModuleId =
+        firstModule.id;
+
+      renderModuleWorkspace(
+        firstModule
+      );
+
+    }
+
+  } else {
+
+    const selectedModule =
+      state.modules.find(
+        module =>
+          module.id ===
+          state.selectedModuleId
+      );
+
+
+    renderModuleWorkspace(
+      selectedModule ||
+      state.modules[0] ||
+      null
+    );
+
+  }
 
 }
 
