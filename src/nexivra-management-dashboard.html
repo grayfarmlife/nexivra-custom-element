@@ -3182,6 +3182,8 @@ function handleWixMessage(
 
   if (!module) {
     return;
+
+ 
   }
 
   workspace.innerHTML = `
@@ -3256,9 +3258,162 @@ function handleWixMessage(
     </div>
 
   `;
+workspace
+  .querySelectorAll(
+    '[data-module-area]'
+  )
+  .forEach(button => {
+
+    button.addEventListener(
+      'click',
+      () => {
+
+        const area =
+          button.getAttribute(
+            'data-module-area'
+          );
+
+        openModuleArea(
+          module,
+          area
+        );
+
+      }
+    );
+
+  });
+}
+function openModuleArea(
+  module,
+  area
+) {
+
+  const workspace =
+    document.querySelector(
+      '.builder-main'
+    );
+
+  if (!workspace) {
+    return;
+  }
+
+
+  const areaTitles = {
+    TEACHING:
+      'Teaching',
+    KNOWLEDGE:
+      'Knowledge',
+    PRACTICE:
+      'Practice',
+    ROLE_PLAY:
+      'Role-Play',
+    EVALUATION:
+      'Evaluation',
+    REMEDIATION:
+      'Remediation'
+  };
+
+
+  const title =
+    areaTitles[area] ||
+    area;
+
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <button
+        type="button"
+        onclick="renderModuleWorkspaceById('${escapeAttribute(
+          module.id
+        )}')"
+        style="
+          margin-bottom:20px;
+          border:none;
+          background:transparent;
+          color:var(--cyan);
+          cursor:pointer;
+          font-weight:700;
+        "
+      >
+        ← Back to Module
+      </button>
+
+
+      <div class="eyebrow">
+        ${escapeHTML(
+          module.title
+        )}
+      </div>
+
+
+      <h2>
+        ${escapeHTML(
+          title
+        )}
+      </h2>
+
+
+      <p>
+        Configure the ${escapeHTML(
+          title
+        ).toLowerCase()} experience for this module.
+      </p>
+
+
+      <div
+        style="
+          margin-top:28px;
+          padding:24px;
+          border-radius:16px;
+          border:
+            1px solid rgba(255,255,255,.08);
+          background:
+            rgba(255,255,255,.03);
+        "
+      >
+
+        <div
+          style="
+            color:var(--muted);
+            font-size:13px;
+            line-height:1.6;
+          "
+        >
+          Authoring controls for
+          <strong style="color:#fff;">
+            ${escapeHTML(title)}
+          </strong>
+          will be built here.
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+  function renderModuleWorkspaceById(
+  moduleId
+) {
+
+  const module =
+    state.modules.find(
+      item =>
+        item.id === moduleId
+    );
+
+  renderModuleWorkspace(
+    module ||
+    null
+  );
 
 }
 
+window.renderModuleWorkspaceById =
+  renderModuleWorkspaceById;
 function moduleWorkspaceCard(
   title,
   description,
