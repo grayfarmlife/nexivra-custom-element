@@ -9,13 +9,11 @@
 <style>
 :root {
   --bg: #020711;
-  --panel: rgba(5, 18, 33, 0.92);
   --cyan: #00c8ff;
   --blue: #118dff;
   --orange: #ff8a00;
   --text: #f7fbff;
   --muted: #91a6b9;
-  --border: rgba(0, 200, 255, 0.28);
   --green: #49d597;
   --red: #ff6262;
 }
@@ -45,7 +43,8 @@ body {
   min-height: 100vh;
 }
 
-button {
+button,
+input {
   font: inherit;
 }
 
@@ -81,10 +80,6 @@ button {
     );
 }
 
-/* =====================================================
-   BACKGROUND EFFECTS
-===================================================== */
-
 .grid {
   position: absolute;
   inset: 0;
@@ -102,7 +97,8 @@ button {
       transparent 1px
     );
 
-  background-size: 70px 70px;
+  background-size:
+    70px 70px;
 
   mask-image:
     radial-gradient(
@@ -129,8 +125,6 @@ button {
     1px solid rgba(0, 200, 255, 0.1);
 
   border-radius: 50%;
-
-  pointer-events: none;
 }
 
 .orbit::before {
@@ -156,48 +150,6 @@ button {
 
   border-radius: 50%;
 }
-
-.glow-blue {
-  position: absolute;
-
-  width: 420px;
-  height: 420px;
-
-  left: -170px;
-  top: -150px;
-
-  border-radius: 50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(0, 174, 255, 0.17),
-      transparent 68%
-    );
-}
-
-.glow-orange {
-  position: absolute;
-
-  width: 420px;
-  height: 420px;
-
-  right: -190px;
-  bottom: -160px;
-
-  border-radius: 50%;
-
-  background:
-    radial-gradient(
-      circle,
-      rgba(255, 138, 0, 0.11),
-      transparent 68%
-    );
-}
-
-/* =====================================================
-   LOGIN SHELL
-===================================================== */
 
 .shell {
   position: relative;
@@ -225,13 +177,8 @@ button {
     0 40px 120px rgba(0, 0, 0, 0.55),
     0 0 70px rgba(0, 174, 255, 0.05);
 
-  backdrop-filter:
-    blur(18px);
+  backdrop-filter: blur(18px);
 }
-
-/* =====================================================
-   BRAND PANEL
-===================================================== */
 
 .brand-panel {
   min-height: 650px;
@@ -241,10 +188,6 @@ button {
   justify-content: space-between;
 
   padding: 55px;
-
-  position: relative;
-
-  overflow: hidden;
 
   background:
     linear-gradient(
@@ -257,41 +200,11 @@ button {
     1px solid rgba(0, 200, 255, 0.14);
 }
 
-.brand-panel::after {
-  content: "";
-
-  position: absolute;
-
-  width: 450px;
-  height: 450px;
-
-  right: -220px;
-  top: 130px;
-
-  border-radius: 50%;
-
-  border:
-    1px solid rgba(0, 200, 255, 0.2);
-
-  box-shadow:
-    0 0 100px rgba(0, 174, 255, 0.07);
-}
-
 .logo {
-  position: relative;
-  z-index: 2;
-
   width: 310px;
   max-width: 85%;
 
   display: block;
-}
-
-.brand-content {
-  position: relative;
-  z-index: 2;
-
-  max-width: 550px;
 }
 
 .eyebrow {
@@ -319,17 +232,15 @@ button {
   text-transform: uppercase;
 }
 
-.brand-title .cyan {
+.cyan {
   color: var(--cyan);
 }
 
-.brand-title .orange {
+.orange {
   color: var(--orange);
 }
 
 .brand-copy {
-  max-width: 520px;
-
   color: var(--muted);
 
   font-size: 16px;
@@ -338,19 +249,12 @@ button {
 }
 
 .brand-footer {
-  position: relative;
-  z-index: 2;
-
   color: #60788d;
 
   font-size: 11px;
 
   letter-spacing: 1px;
 }
-
-/* =====================================================
-   SIGN-IN PANEL
-===================================================== */
 
 .login-panel {
   min-height: 650px;
@@ -425,7 +329,7 @@ button {
 .divider {
   height: 1px;
 
-  margin: 32px 0;
+  margin: 28px 0;
 
   background:
     linear-gradient(
@@ -435,8 +339,56 @@ button {
     );
 }
 
+.field {
+  margin-bottom: 17px;
+}
+
+.field label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #b7c7d6;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 0.8px;
+
+  text-transform: uppercase;
+}
+
+.field input {
+  width: 100%;
+
+  padding: 14px 15px;
+
+  border:
+    1px solid rgba(0, 200, 255, 0.22);
+
+  border-radius: 10px;
+
+  outline: none;
+
+  background:
+    rgba(255, 255, 255, 0.03);
+
+  color: white;
+
+  transition: 0.2s ease;
+}
+
+.field input:focus {
+  border-color: var(--cyan);
+
+  box-shadow:
+    0 0 0 3px rgba(0, 200, 255, 0.06);
+}
+
 .signin-button {
   width: 100%;
+
+  margin-top: 5px;
 
   padding: 16px 18px;
 
@@ -455,106 +407,18 @@ button {
 
   font-weight: 900;
 
-  font-size: 14px;
-
   cursor: pointer;
-
-  transition: 0.2s ease;
-
-  box-shadow:
-    0 12px 35px rgba(0, 174, 255, 0.13);
-}
-
-.signin-button:hover {
-  transform:
-    translateY(-2px);
-
-  box-shadow:
-    0 17px 45px rgba(0, 174, 255, 0.22);
 }
 
 .signin-button:disabled {
-  cursor: wait;
   opacity: 0.65;
-  transform: none;
-}
-
-.signin-subtext {
-  margin-top: 13px;
-
-  color: #667d90;
-
-  text-align: center;
-
-  font-size: 11px;
-
-  line-height: 1.55;
-}
-
-.access-list {
-  display: grid;
-  gap: 12px;
-
-  margin-top: 32px;
-}
-
-.access-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  padding: 13px 14px;
-
-  border:
-    1px solid rgba(255, 255, 255, 0.06);
-
-  border-radius: 11px;
-
-  background:
-    rgba(255, 255, 255, 0.018);
-}
-
-.access-icon {
-  width: 31px;
-  height: 31px;
-
-  display: grid;
-  place-items: center;
-
-  flex: 0 0 31px;
-
-  border:
-    1px solid rgba(0, 200, 255, 0.25);
-
-  border-radius: 50%;
-
-  color: var(--cyan);
-
-  font-size: 12px;
-}
-
-.access-copy strong {
-  display: block;
-
-  color: #dce8f2;
-
-  font-size: 11px;
-}
-
-.access-copy span {
-  display: block;
-
-  margin-top: 3px;
-
-  color: #60788d;
-
-  font-size: 10px;
+  cursor: wait;
 }
 
 .status-message {
   display: none;
 
-  margin-top: 18px;
+  margin-top: 16px;
 
   padding: 12px 14px;
 
@@ -587,61 +451,78 @@ button {
   color: #ffb4b4;
 }
 
-/* =====================================================
-   RESPONSIVE
-===================================================== */
+.access-list {
+  display: grid;
+  gap: 10px;
+
+  margin-top: 25px;
+}
+
+.access-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 11px 12px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.06);
+
+  border-radius: 11px;
+
+  background:
+    rgba(255, 255, 255, 0.018);
+}
+
+.access-icon {
+  width: 31px;
+  height: 31px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid rgba(0, 200, 255, 0.25);
+
+  border-radius: 50%;
+
+  color: var(--cyan);
+
+  font-size: 11px;
+}
+
+.access-copy strong {
+  display: block;
+
+  font-size: 11px;
+}
+
+.access-copy span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #60788d;
+
+  font-size: 10px;
+}
 
 @media (max-width: 850px) {
-
-  .page {
-    align-items: flex-start;
-  }
 
   .shell {
     grid-template-columns: 1fr;
   }
 
-  .brand-panel {
+  .brand-panel,
+  .login-panel {
     min-height: auto;
 
     padding:
       38px 30px;
   }
 
-  .brand-footer {
-    margin-top: 40px;
-  }
-
-  .login-panel {
-    min-height: auto;
-
-    padding:
-      42px 30px;
-  }
-
 }
 
-@media (max-width: 480px) {
-
-  .page {
-    padding: 15px;
-  }
-
-  .shell {
-    border-radius: 18px;
-  }
-
-  .brand-panel,
-  .login-panel {
-    padding:
-      30px 22px;
-  }
-
-  .brand-title {
-    letter-spacing: -2px;
-  }
-
-}
 </style>
 </head>
 
@@ -651,14 +532,8 @@ button {
 
   <div class="grid"></div>
   <div class="orbit"></div>
-  <div class="glow-blue"></div>
-  <div class="glow-orange"></div>
 
   <div class="shell">
-
-    <!-- ============================================
-         BRAND
-    ============================================= -->
 
     <section class="brand-panel">
 
@@ -668,7 +543,7 @@ button {
         alt="NEXIVRA"
       >
 
-      <div class="brand-content">
+      <div>
 
         <div class="eyebrow">
           CONNECTED INTELLIGENCE
@@ -701,9 +576,6 @@ button {
 
     </section>
 
-    <!-- ============================================
-         LOGIN
-    ============================================= -->
 
     <section class="login-panel">
 
@@ -720,11 +592,42 @@ button {
 
         <p class="login-copy">
           Sign in with your authorized NEXIVRA account.
-          We'll automatically connect you to the correct
-          environment based on your role and organization.
         </p>
 
         <div class="divider"></div>
+
+
+        <div class="field">
+
+          <label for="email">
+            Email
+          </label>
+
+          <input
+            id="email"
+            type="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+          >
+
+        </div>
+
+
+        <div class="field">
+
+          <label for="password">
+            Password
+          </label>
+
+          <input
+            id="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Enter your password"
+          >
+
+        </div>
+
 
         <button
           id="signinButton"
@@ -734,15 +637,12 @@ button {
           SIGN IN TO NEXIVRA →
         </button>
 
-        <div class="signin-subtext">
-          Authentication is securely managed through
-          your NEXIVRA member account.
-        </div>
 
         <div
           id="statusMessage"
           class="status-message"
         ></div>
+
 
         <div class="access-list">
 
@@ -764,6 +664,7 @@ button {
 
           </div>
 
+
           <div class="access-item">
 
             <div class="access-icon">
@@ -781,6 +682,7 @@ button {
             </div>
 
           </div>
+
 
           <div class="access-item">
 
@@ -810,11 +712,18 @@ button {
 
 </div>
 
+
 <script>
 
-/* =====================================================
-   ELEMENTS
-===================================================== */
+const emailInput =
+  document.getElementById(
+    'email'
+  );
+
+const passwordInput =
+  document.getElementById(
+    'password'
+  );
 
 const signinButton =
   document.getElementById(
@@ -827,50 +736,87 @@ const statusMessage =
   );
 
 
-/* =====================================================
-   LOGIN BUTTON
-===================================================== */
-
 signinButton.addEventListener(
   'click',
-  () => {
+  submitLogin
+);
 
-    signinButton.disabled =
-      true;
 
-    signinButton.textContent =
-      'CONNECTING...';
+passwordInput.addEventListener(
+  'keydown',
+  event => {
 
-    showStatus(
-      'Opening secure NEXIVRA sign in...',
-      false
-    );
+    if (
+      event.key ===
+      'Enter'
+    ) {
 
-    sendToWix(
-      'LOGIN_REQUEST'
-    );
+      submitLogin();
+
+    }
 
   }
 );
 
 
-/* =====================================================
-   SEND MESSAGE TO WIX
-===================================================== */
+function submitLogin() {
 
-function sendToWix(
-  type,
-  payload = {}
-) {
+  const email =
+    emailInput.value.trim();
+
+  const password =
+    passwordInput.value;
+
+
+  if (!email) {
+
+    showStatus(
+      'Please enter your email address.',
+      true
+    );
+
+    return;
+
+  }
+
+
+  if (!password) {
+
+    showStatus(
+      'Please enter your password.',
+      true
+    );
+
+    return;
+
+  }
+
+
+  signinButton.disabled =
+    true;
+
+  signinButton.textContent =
+    'CONNECTING...';
+
+
+  showStatus(
+    'Authenticating your NEXIVRA account...',
+    false
+  );
+
 
   window.parent.postMessage(
     {
       source:
         'NEXIVRA_LOGIN',
 
-      type,
+      type:
+        'LOGIN_REQUEST',
 
-      payload
+      payload: {
+        email,
+        password
+      }
     },
     '*'
   );
@@ -878,16 +824,13 @@ function sendToWix(
 }
 
 
-/* =====================================================
-   RECEIVE MESSAGE FROM WIX
-===================================================== */
-
 window.addEventListener(
   'message',
   event => {
 
     const message =
       event.data;
+
 
     if (
       !message ||
@@ -902,33 +845,11 @@ window.addEventListener(
       message.type
     ) {
 
-      case 'LOGIN_STARTED':
-
-        showStatus(
-          'Secure sign in is open.',
-          false
-        );
-
-        break;
-
-
       case 'LOGIN_SUCCESS':
 
         showStatus(
-          'Sign in successful. Connecting to your NEXIVRA environment...',
+          'Sign in successful. Loading your NEXIVRA environment...',
           false
-        );
-
-        break;
-
-
-      case 'LOGIN_CANCELLED':
-
-        resetButton();
-
-        showStatus(
-          'Sign in was cancelled.',
-          true
         );
 
         break;
@@ -946,25 +867,22 @@ window.addEventListener(
 
         break;
 
-
-      case 'ALREADY_LOGGED_IN':
-
-        showStatus(
-          'You are already signed in. Connecting to your NEXIVRA environment...',
-          false
-        );
-
-        break;
-
     }
 
   }
 );
 
 
-/* =====================================================
-   STATUS
-===================================================== */
+function resetButton() {
+
+  signinButton.disabled =
+    false;
+
+  signinButton.textContent =
+    'SIGN IN TO NEXIVRA →';
+
+}
+
 
 function showStatus(
   text,
@@ -980,37 +898,6 @@ function showStatus(
       : 'status-message show';
 
 }
-
-
-/* =====================================================
-   RESET BUTTON
-===================================================== */
-
-function resetButton() {
-
-  signinButton.disabled =
-    false;
-
-  signinButton.textContent =
-    'SIGN IN TO NEXIVRA →';
-
-}
-
-
-/* =====================================================
-   TELL WIX LOGIN INTERFACE IS READY
-===================================================== */
-
-window.addEventListener(
-  'DOMContentLoaded',
-  () => {
-
-    sendToWix(
-      'NEXIVRA_LOGIN_READY'
-    );
-
-  }
-);
 
 </script>
 
