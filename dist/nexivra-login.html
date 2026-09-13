@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>NEXIVRA | Sign In</title>
+
+<style>
+:root {
+  --bg: #020711;
+  --panel: rgba(5, 18, 33, 0.92);
+  --cyan: #00c8ff;
+  --blue: #118dff;
+  --orange: #ff8a00;
+  --text: #f7fbff;
+  --muted: #91a6b9;
+  --border: rgba(0, 200, 255, 0.28);
+  --green: #49d597;
+  --red: #ff6262;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+
+  background: var(--bg);
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  color: var(--text);
+}
+
+body {
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+}
+
+.page {
+  position: relative;
+
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  overflow: hidden;
+
+  padding: 40px 20px;
+
+  background:
+    radial-gradient(
+      circle at 20% 15%,
+      rgba(0, 174, 255, 0.14),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 85% 75%,
+      rgba(255, 138, 0, 0.08),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      #020711,
+      #04101d 55%,
+      #020711
+    );
+}
+
+/* =====================================================
+   BACKGROUND EFFECTS
+===================================================== */
+
+.grid {
+  position: absolute;
+  inset: 0;
+
+  opacity: 0.12;
+
+  background-image:
+    linear-gradient(
+      rgba(0, 200, 255, 0.16) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(0, 200, 255, 0.16) 1px,
+      transparent 1px
+    );
+
+  background-size: 70px 70px;
+
+  mask-image:
+    radial-gradient(
+      circle at center,
+      black,
+      transparent 72%
+    );
+
+  -webkit-mask-image:
+    radial-gradient(
+      circle at center,
+      black,
+      transparent 72%
+    );
+}
+
+.orbit {
+  position: absolute;
+
+  width: 720px;
+  height: 720px;
+
+  border:
+    1px solid rgba(0, 200, 255, 0.1);
+
+  border-radius: 50%;
+
+  pointer-events: none;
+}
+
+.orbit::before {
+  content: "";
+
+  position: absolute;
+  inset: 70px;
+
+  border:
+    1px solid rgba(0, 200, 255, 0.08);
+
+  border-radius: 50%;
+}
+
+.orbit::after {
+  content: "";
+
+  position: absolute;
+  inset: 160px;
+
+  border:
+    1px solid rgba(255, 138, 0, 0.08);
+
+  border-radius: 50%;
+}
+
+.glow-blue {
+  position: absolute;
+
+  width: 420px;
+  height: 420px;
+
+  left: -170px;
+  top: -150px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(0, 174, 255, 0.17),
+      transparent 68%
+    );
+}
+
+.glow-orange {
+  position: absolute;
+
+  width: 420px;
+  height: 420px;
+
+  right: -190px;
+  bottom: -160px;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 138, 0, 0.11),
+      transparent 68%
+    );
+}
+
+/* =====================================================
+   LOGIN SHELL
+===================================================== */
+
+.shell {
+  position: relative;
+  z-index: 5;
+
+  width: min(1120px, 100%);
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.05fr)
+    minmax(390px, 0.95fr);
+
+  border:
+    1px solid rgba(0, 200, 255, 0.25);
+
+  border-radius: 26px;
+
+  overflow: hidden;
+
+  background:
+    rgba(3, 13, 24, 0.86);
+
+  box-shadow:
+    0 40px 120px rgba(0, 0, 0, 0.55),
+    0 0 70px rgba(0, 174, 255, 0.05);
+
+  backdrop-filter:
+    blur(18px);
+}
+
+/* =====================================================
+   BRAND PANEL
+===================================================== */
+
+.brand-panel {
+  min-height: 650px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  padding: 55px;
+
+  position: relative;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(4, 24, 42, 0.95),
+      rgba(2, 9, 17, 0.97)
+    );
+
+  border-right:
+    1px solid rgba(0, 200, 255, 0.14);
+}
+
+.brand-panel::after {
+  content: "";
+
+  position: absolute;
+
+  width: 450px;
+  height: 450px;
+
+  right: -220px;
+  top: 130px;
+
+  border-radius: 50%;
+
+  border:
+    1px solid rgba(0, 200, 255, 0.2);
+
+  box-shadow:
+    0 0 100px rgba(0, 174, 255, 0.07);
+}
+
+.logo {
+  position: relative;
+  z-index: 2;
+
+  width: 310px;
+  max-width: 85%;
+
+  display: block;
+}
+
+.brand-content {
+  position: relative;
+  z-index: 2;
+
+  max-width: 550px;
+}
+
+.eyebrow {
+  color: var(--cyan);
+
+  font-size: 11px;
+  font-weight: 800;
+
+  letter-spacing: 4px;
+
+  text-transform: uppercase;
+}
+
+.brand-title {
+  margin:
+    18px 0 22px;
+
+  font-size:
+    clamp(48px, 5vw, 74px);
+
+  line-height: 0.96;
+
+  letter-spacing: -3px;
+
+  text-transform: uppercase;
+}
+
+.brand-title .cyan {
+  color: var(--cyan);
+}
+
+.brand-title .orange {
+  color: var(--orange);
+}
+
+.brand-copy {
+  max-width: 520px;
+
+  color: var(--muted);
+
+  font-size: 16px;
+
+  line-height: 1.7;
+}
+
+.brand-footer {
+  position: relative;
+  z-index: 2;
+
+  color: #60788d;
+
+  font-size: 11px;
+
+  letter-spacing: 1px;
+}
+
+/* =====================================================
+   SIGN-IN PANEL
+===================================================== */
+
+.login-panel {
+  min-height: 650px;
+
+  display: flex;
+  align-items: center;
+
+  padding: 55px;
+}
+
+.login-content {
+  width: 100%;
+}
+
+.security-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 7px 10px;
+
+  border:
+    1px solid rgba(73, 213, 151, 0.18);
+
+  border-radius: 999px;
+
+  background:
+    rgba(73, 213, 151, 0.05);
+
+  color: #a8efd0;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 1.2px;
+
+  text-transform: uppercase;
+}
+
+.security-dot {
+  width: 7px;
+  height: 7px;
+
+  border-radius: 50%;
+
+  background: var(--green);
+
+  box-shadow:
+    0 0 10px var(--green);
+}
+
+.login-title {
+  margin:
+    24px 0 10px;
+
+  font-size:
+    clamp(34px, 4vw, 48px);
+
+  letter-spacing: -1.5px;
+}
+
+.login-copy {
+  margin: 0;
+
+  color: var(--muted);
+
+  line-height: 1.65;
+
+  font-size: 14px;
+}
+
+.divider {
+  height: 1px;
+
+  margin: 32px 0;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 200, 255, 0.28),
+      rgba(255, 255, 255, 0.04)
+    );
+}
+
+.signin-button {
+  width: 100%;
+
+  padding: 16px 18px;
+
+  border: 0;
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--blue),
+      var(--cyan)
+    );
+
+  color: #00131e;
+
+  font-weight: 900;
+
+  font-size: 14px;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+
+  box-shadow:
+    0 12px 35px rgba(0, 174, 255, 0.13);
+}
+
+.signin-button:hover {
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    0 17px 45px rgba(0, 174, 255, 0.22);
+}
+
+.signin-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+  transform: none;
+}
+
+.signin-subtext {
+  margin-top: 13px;
+
+  color: #667d90;
+
+  text-align: center;
+
+  font-size: 11px;
+
+  line-height: 1.55;
+}
+
+.access-list {
+  display: grid;
+  gap: 12px;
+
+  margin-top: 32px;
+}
+
+.access-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 13px 14px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.06);
+
+  border-radius: 11px;
+
+  background:
+    rgba(255, 255, 255, 0.018);
+}
+
+.access-icon {
+  width: 31px;
+  height: 31px;
+
+  display: grid;
+  place-items: center;
+
+  flex: 0 0 31px;
+
+  border:
+    1px solid rgba(0, 200, 255, 0.25);
+
+  border-radius: 50%;
+
+  color: var(--cyan);
+
+  font-size: 12px;
+}
+
+.access-copy strong {
+  display: block;
+
+  color: #dce8f2;
+
+  font-size: 11px;
+}
+
+.access-copy span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #60788d;
+
+  font-size: 10px;
+}
+
+.status-message {
+  display: none;
+
+  margin-top: 18px;
+
+  padding: 12px 14px;
+
+  border-radius: 10px;
+
+  border:
+    1px solid rgba(0, 200, 255, 0.2);
+
+  background:
+    rgba(0, 200, 255, 0.04);
+
+  color: #b8eefe;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+}
+
+.status-message.show {
+  display: block;
+}
+
+.status-message.error {
+  border-color:
+    rgba(255, 98, 98, 0.28);
+
+  background:
+    rgba(255, 98, 98, 0.05);
+
+  color: #ffb4b4;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 850px) {
+
+  .page {
+    align-items: flex-start;
+  }
+
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-panel {
+    min-height: auto;
+
+    padding:
+      38px 30px;
+  }
+
+  .brand-footer {
+    margin-top: 40px;
+  }
+
+  .login-panel {
+    min-height: auto;
+
+    padding:
+      42px 30px;
+  }
+
+}
+
+@media (max-width: 480px) {
+
+  .page {
+    padding: 15px;
+  }
+
+  .shell {
+    border-radius: 18px;
+  }
+
+  .brand-panel,
+  .login-panel {
+    padding:
+      30px 22px;
+  }
+
+  .brand-title {
+    letter-spacing: -2px;
+  }
+
+}
+</style>
+</head>
+
+<body>
+
+<div class="page">
+
+  <div class="grid"></div>
+  <div class="orbit"></div>
+  <div class="glow-blue"></div>
+  <div class="glow-orange"></div>
+
+  <div class="shell">
+
+    <!-- ============================================
+         BRAND
+    ============================================= -->
+
+    <section class="brand-panel">
+
+      <img
+        class="logo"
+        src="https://static.wixstatic.com/media/433270_aba4225e8fc54279ba41af267bab397a~mv2.png"
+        alt="NEXIVRA"
+      >
+
+      <div class="brand-content">
+
+        <div class="eyebrow">
+          CONNECTED INTELLIGENCE
+        </div>
+
+        <h1 class="brand-title">
+          YOUR
+          <span class="cyan">
+            LEARNING
+          </span>
+          EXPERIENCE
+          <span class="orange">
+            STARTS HERE.
+          </span>
+        </h1>
+
+        <p class="brand-copy">
+          One secure entrance connects every authorized
+          NEXIVRA user to the experience designed for them.
+          Your account determines whether you enter
+          NEXIVRA Management, your organization's management
+          environment, or your learner dashboard.
+        </p>
+
+      </div>
+
+      <div class="brand-footer">
+        THE NEXT GENERATION OF CONNECTED INTELLIGENCE
+      </div>
+
+    </section>
+
+    <!-- ============================================
+         LOGIN
+    ============================================= -->
+
+    <section class="login-panel">
+
+      <div class="login-content">
+
+        <div class="security-label">
+          <span class="security-dot"></span>
+          Secure Access
+        </div>
+
+        <h2 class="login-title">
+          Welcome to NEXIVRA
+        </h2>
+
+        <p class="login-copy">
+          Sign in with your authorized NEXIVRA account.
+          We'll automatically connect you to the correct
+          environment based on your role and organization.
+        </p>
+
+        <div class="divider"></div>
+
+        <button
+          id="signinButton"
+          class="signin-button"
+          type="button"
+        >
+          SIGN IN TO NEXIVRA →
+        </button>
+
+        <div class="signin-subtext">
+          Authentication is securely managed through
+          your NEXIVRA member account.
+        </div>
+
+        <div
+          id="statusMessage"
+          class="status-message"
+        ></div>
+
+        <div class="access-list">
+
+          <div class="access-item">
+
+            <div class="access-icon">
+              NX
+            </div>
+
+            <div class="access-copy">
+              <strong>
+                NEXIVRA Management
+              </strong>
+
+              <span>
+                Platform administration and authoring
+              </span>
+            </div>
+
+          </div>
+
+          <div class="access-item">
+
+            <div class="access-icon">
+              CO
+            </div>
+
+            <div class="access-copy">
+              <strong>
+                Company Dashboard
+              </strong>
+
+              <span>
+                Organization management and reporting
+              </span>
+            </div>
+
+          </div>
+
+          <div class="access-item">
+
+            <div class="access-icon">
+              LR
+            </div>
+
+            <div class="access-copy">
+              <strong>
+                Learner Dashboard
+              </strong>
+
+              <span>
+                Training, practice, progress and development
+              </span>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </div>
+
+</div>
+
+<script>
+
+/* =====================================================
+   ELEMENTS
+===================================================== */
+
+const signinButton =
+  document.getElementById(
+    'signinButton'
+  );
+
+const statusMessage =
+  document.getElementById(
+    'statusMessage'
+  );
+
+
+/* =====================================================
+   LOGIN BUTTON
+===================================================== */
+
+signinButton.addEventListener(
+  'click',
+  () => {
+
+    signinButton.disabled =
+      true;
+
+    signinButton.textContent =
+      'CONNECTING...';
+
+    showStatus(
+      'Opening secure NEXIVRA sign in...',
+      false
+    );
+
+    sendToWix(
+      'LOGIN_REQUEST'
+    );
+
+  }
+);
+
+
+/* =====================================================
+   SEND MESSAGE TO WIX
+===================================================== */
+
+function sendToWix(
+  type,
+  payload = {}
+) {
+
+  window.parent.postMessage(
+    {
+      source:
+        'NEXIVRA_LOGIN',
+
+      type,
+
+      payload
+    },
+    '*'
+  );
+
+}
+
+
+/* =====================================================
+   RECEIVE MESSAGE FROM WIX
+===================================================== */
+
+window.addEventListener(
+  'message',
+  event => {
+
+    const message =
+      event.data;
+
+    if (
+      !message ||
+      message.source !==
+        'NEXIVRA_WIX_LOGIN'
+    ) {
+      return;
+    }
+
+
+    switch (
+      message.type
+    ) {
+
+      case 'LOGIN_STARTED':
+
+        showStatus(
+          'Secure sign in is open.',
+          false
+        );
+
+        break;
+
+
+      case 'LOGIN_SUCCESS':
+
+        showStatus(
+          'Sign in successful. Connecting to your NEXIVRA environment...',
+          false
+        );
+
+        break;
+
+
+      case 'LOGIN_CANCELLED':
+
+        resetButton();
+
+        showStatus(
+          'Sign in was cancelled.',
+          true
+        );
+
+        break;
+
+
+      case 'LOGIN_ERROR':
+
+        resetButton();
+
+        showStatus(
+          message.payload?.message ||
+          'We could not complete your sign in.',
+          true
+        );
+
+        break;
+
+
+      case 'ALREADY_LOGGED_IN':
+
+        showStatus(
+          'You are already signed in. Connecting to your NEXIVRA environment...',
+          false
+        );
+
+        break;
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   STATUS
+===================================================== */
+
+function showStatus(
+  text,
+  isError
+) {
+
+  statusMessage.textContent =
+    text;
+
+  statusMessage.className =
+    isError
+      ? 'status-message show error'
+      : 'status-message show';
+
+}
+
+
+/* =====================================================
+   RESET BUTTON
+===================================================== */
+
+function resetButton() {
+
+  signinButton.disabled =
+    false;
+
+  signinButton.textContent =
+    'SIGN IN TO NEXIVRA →';
+
+}
+
+
+/* =====================================================
+   TELL WIX LOGIN INTERFACE IS READY
+===================================================== */
+
+window.addEventListener(
+  'DOMContentLoaded',
+  () => {
+
+    sendToWix(
+      'NEXIVRA_LOGIN_READY'
+    );
+
+  }
+);
+
+</script>
+
+</body>
+</html>
