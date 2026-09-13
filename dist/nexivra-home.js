@@ -18,2453 +18,1777 @@ var NexivraHome = class extends HTMLElement {
     this.render();
     this.bindEvents();
   }
-  /* =====================================================
-     EVENTS
-  ===================================================== */
   bindEvents() {
-    const scrollLinks = this.shadowRoot.querySelectorAll(
-      "[data-scroll]"
-    );
-    scrollLinks.forEach(
-      (link) => {
-        link.addEventListener(
-          "click",
-          (event) => {
-            event.preventDefault();
-            const targetId = link.getAttribute(
-              "data-scroll"
-            );
-            const target = this.shadowRoot.getElementById(
-              targetId
-            );
-            if (target) {
-              target.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-              });
-            }
-          }
-        );
-      }
-    );
-    const loginButtons = this.shadowRoot.querySelectorAll(
-      "[data-login]"
-    );
-    loginButtons.forEach(
-      (button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            window.top.location.href = LOGIN_URL;
-          }
-        );
-      }
-    );
-    const demoButtons = this.shadowRoot.querySelectorAll(
-      "[data-demo]"
-    );
-    demoButtons.forEach(
-      (button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            const contact = this.shadowRoot.getElementById(
-              "contact"
-            );
-            if (contact) {
-              contact.scrollIntoView({
-                behavior: "smooth",
-                block: "start"
-              });
-            }
-          }
-        );
-      }
-    );
+    this.shadowRoot.querySelectorAll("[data-scroll]").forEach((button) => {
+      button.addEventListener(
+        "click",
+        (event) => {
+          event.preventDefault();
+          const id = button.getAttribute(
+            "data-scroll"
+          );
+          const target = this.shadowRoot.getElementById(
+            id
+          );
+          target?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }
+      );
+    });
+    this.shadowRoot.querySelectorAll("[data-login]").forEach((button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          window.top.location.href = LOGIN_URL;
+        }
+      );
+    });
+    this.shadowRoot.querySelectorAll("[data-demo]").forEach((button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          this.shadowRoot.getElementById("contact")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }
+      );
+    });
   }
-  /* =====================================================
-     PAGE
-  ===================================================== */
   render() {
     this.shadowRoot.innerHTML = `
 
-      <style>
+<style>
 
-        :host {
-          display: block;
-          width: 100%;
-          background: #020711;
-          color: #ffffff;
+:host {
+  display: block;
+  width: 100%;
+  background: #020711;
+  color: #ffffff;
 
-          font-family:
-            Arial,
-            Helvetica,
-            sans-serif;
-        }
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
 
+button,
+a {
+  font: inherit;
+}
 
-        * {
-          box-sizing: border-box;
-        }
+button {
+  cursor: pointer;
+}
 
+a {
+  color: inherit;
+  text-decoration: none;
+}
 
-        button,
-        a {
-          font: inherit;
-        }
+.site {
+  width: 100%;
 
+  background:
+    radial-gradient(
+      circle at 80% 8%,
+      rgba(0, 174, 255, .09),
+      transparent 34%
+    ),
+    #020711;
+}
 
-        a {
-          color: inherit;
-          text-decoration: none;
-        }
 
+/* =========================================================
+   HEADER
+========================================================= */
 
-        button {
-          cursor: pointer;
-        }
+.header {
+  min-height: 118px;
 
+  position: sticky;
+  top: 0;
+  z-index: 100;
 
-        .page {
-          width: 100%;
-          min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 
-          background:
-            radial-gradient(
-              circle at 70% 10%,
-              rgba(0,174,255,.10),
-              transparent 35%
-            ),
-            radial-gradient(
-              circle at 90% 30%,
-              rgba(255,128,0,.05),
-              transparent 30%
-            ),
-            #020711;
-        }
+  padding:
+    0 32px;
 
+  background:
+    rgba(3, 16, 29, .92);
 
-        .container {
-          width: min(1440px, 100%);
-          margin: 0 auto;
-        }
+  backdrop-filter:
+    blur(20px);
 
+  border-bottom:
+    1px solid rgba(255,255,255,.06);
+}
 
+.header-logo {
+  width: 300px;
+  max-width: 27vw;
+  display: block;
+}
 
-        /* =================================================
-           HEADER
-        ================================================= */
+.nav {
+  display: flex;
+  align-items: center;
 
-        header {
-          min-height: 120px;
+  gap: 29px;
+}
 
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
+.nav button {
+  border: 0;
+  background: transparent;
 
-          padding:
-            0 32px;
+  padding: 5px 0;
 
-          position: sticky;
-          top: 0;
+  color: #a9b9c9;
 
-          z-index: 50;
+  font-size: 14px;
 
-          border-bottom:
-            1px solid rgba(255,255,255,.06);
+  transition:
+    .2s ease;
+}
 
-          background:
-            rgba(3,15,27,.82);
+.nav button:hover {
+  color: #00c9ff;
+}
 
-          backdrop-filter:
-            blur(18px);
-        }
+.nav .login {
+  color: #00c9ff;
+  font-weight: 800;
+}
 
+.nav .demo {
+  padding:
+    14px 22px;
 
-        .logo {
-          width: 300px;
-          max-width: 26vw;
+  border:
+    1px solid #00aef0;
 
-          display: block;
-        }
+  border-radius:
+    11px;
 
+  color: white;
 
-        nav {
-          display: flex;
-          align-items: center;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(0, 140, 255, .18),
+      rgba(0, 200, 255, .05)
+    );
+}
 
-          gap: 28px;
-        }
 
+/* =========================================================
+   HERO
+========================================================= */
 
-        nav a,
-        nav button {
-          border: 0;
+.hero {
+  min-height: 760px;
 
-          background:
-            transparent;
+  display: grid;
 
-          color:
-            #a8b7c7;
+  grid-template-columns:
+    minmax(0, .88fr)
+    minmax(0, 1.12fr);
 
-          font-size:
-            14px;
+  align-items: center;
 
-          transition:
-            .2s ease;
-        }
+  gap: 54px;
 
+  padding:
+    70px 30px 82px;
+}
 
-        nav a:hover,
-        nav button:hover {
-          color:
-            #00c8ff;
-        }
+.eyebrow {
+  color: #00c8ff;
 
+  font-size: 11px;
+  font-weight: 800;
 
-        .login-button {
-          color:
-            #00c8ff;
+  letter-spacing: 5px;
 
-          font-weight:
-            800;
-        }
+  text-transform: uppercase;
+}
 
+.hero h1 {
+  margin:
+    24px 0 26px;
 
-        .demo-button {
-          padding:
-            14px 22px;
+  font-size:
+    clamp(
+      58px,
+      6.5vw,
+      105px
+    );
 
-          border:
-            1px solid #00aee8;
+  line-height: .91;
 
-          border-radius:
-            12px;
+  letter-spacing: -4px;
 
-          background:
-            linear-gradient(
-              90deg,
-              rgba(0,150,255,.16),
-              rgba(0,200,255,.05)
-            );
+  text-transform: uppercase;
+}
 
-          color:
-            white;
+.blue {
+  color: #069df8;
+}
 
-          font-weight:
-            800;
-        }
+.cyan {
+  color: #32c6f3;
+}
 
+.orange {
+  color: #ff9927;
+}
 
+.hero-copy {
+  max-width: 600px;
 
-        /* =================================================
-           HERO
-        ================================================= */
+  margin: 0;
 
-        .hero {
-          min-height:
-            760px;
+  color: #a0b2c4;
 
-          display:
-            grid;
+  font-size: 19px;
 
-          grid-template-columns:
-            minmax(0,.9fr)
-            minmax(0,1.1fr);
+  line-height: 1.68;
+}
 
-          gap:
-            46px;
+.hero-actions {
+  display: flex;
 
-          align-items:
-            center;
+  gap: 15px;
 
-          padding:
-            70px 32px 80px;
-        }
+  margin-top: 34px;
+}
 
+.primary {
+  padding:
+    15px 25px;
 
-        .eyebrow {
-          color:
-            #00c8ff;
+  border: 0;
 
-          font-size:
-            12px;
+  border-radius: 10px;
 
-          font-weight:
-            800;
+  background:
+    linear-gradient(
+      90deg,
+      #079bf5,
+      #23cfff
+    );
 
-          letter-spacing:
-            5px;
+  color: #00121d;
 
-          text-transform:
-            uppercase;
-        }
+  font-weight: 800;
+}
 
+.secondary {
+  padding:
+    15px 25px;
 
-        h1 {
-          margin:
-            24px 0 22px;
+  border:
+    1px solid #00aef0;
 
-          font-size:
-            clamp(
-              58px,
-              7vw,
-              108px
-            );
+  border-radius: 10px;
 
-          line-height:
-            .92;
+  background: transparent;
 
-          letter-spacing:
-            -4px;
+  color: white;
 
-          text-transform:
-            uppercase;
-        }
+  font-weight: 800;
+}
 
+.hero-image-wrap {
+  overflow: hidden;
 
-        .cyan {
-          color:
-            #00aef0;
-        }
+  border:
+    1px solid rgba(0, 174, 240, .38);
 
+  border-radius: 21px;
 
-        .cyan-soft {
-          color:
-            #73dbff;
-        }
+  box-shadow:
+    0 0 80px rgba(0, 174, 240, .07);
+}
 
+.hero-image {
+  display: block;
 
-        .orange-soft {
-          color:
-            #ff9a27;
-        }
+  width: 100%;
+}
 
 
-        .hero-copy {
-          max-width:
-            630px;
+/* =========================================================
+   SECTIONS
+========================================================= */
 
-          color:
-            #a8b7c7;
+.section {
+  padding:
+    105px 30px;
 
-          font-size:
-            20px;
+  border-top:
+    1px solid rgba(255,255,255,.06);
+}
 
-          line-height:
-            1.65;
-        }
+.center-heading {
+  max-width: 990px;
 
+  margin:
+    0 auto 56px;
 
-        .hero-actions {
-          display:
-            flex;
+  text-align: center;
+}
 
-          flex-wrap:
-            wrap;
+.center-heading h2,
+.left-heading h2 {
+  margin:
+    17px 0 22px;
 
-          gap:
-            16px;
+  font-size:
+    clamp(
+      46px,
+      5.4vw,
+      76px
+    );
 
-          margin-top:
-            34px;
-        }
+  line-height: .97;
 
+  letter-spacing: -2px;
 
-        .primary-button,
-        .secondary-button {
+  text-transform: uppercase;
+}
 
-          padding:
-            15px 24px;
+.center-heading p,
+.left-heading p {
+  color: #98abbe;
 
-          border-radius:
-            11px;
+  font-size: 17px;
 
-          font-size:
-            13px;
+  line-height: 1.65;
+}
 
-          font-weight:
-            800;
-        }
+.left-heading {
+  max-width: 890px;
 
+  margin-bottom: 48px;
+}
 
-        .primary-button {
-          border:
-            0;
 
-          background:
-            linear-gradient(
-              90deg,
-              #089cf6,
-              #20cfff
-            );
+/* =========================================================
+   LEARN THE LEARNER
+========================================================= */
 
-          color:
-            #00131f;
-        }
+.feature-grid {
+  display: grid;
 
+  grid-template-columns:
+    repeat(4, 1fr);
 
-        .secondary-button {
+  gap: 18px;
+}
 
-          border:
-            1px solid #00aef0;
+.feature {
+  min-height: 235px;
 
-          background:
-            transparent;
+  padding: 26px;
 
-          color:
-            white;
-        }
+  border:
+    1px solid rgba(0, 174, 240, .22);
 
+  border-radius: 18px;
 
-        .hero-visual {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 26, 44, .93),
+      rgba(2, 9, 18, .98)
+    );
+}
 
-          border:
-            1px solid rgba(
-              0,
-              174,
-              240,
-              .45
-            );
+.feature-icon {
+  width: 58px;
+  height: 58px;
 
-          border-radius:
-            22px;
+  display: grid;
+  place-items: center;
 
-          overflow:
-            hidden;
+  margin-bottom: 22px;
 
-          box-shadow:
-            0 0 70px
-            rgba(
-              0,
-              174,
-              240,
-              .08
-            );
-        }
+  border:
+    1px solid #00aef0;
 
+  border-radius: 50%;
 
-        .hero-visual img {
-          width:
-            100%;
+  color: #00c8ff;
 
-          height:
-            auto;
+  font-size: 22px;
+}
 
-          display:
-            block;
-        }
+.feature h3 {
+  margin:
+    0 0 12px;
 
+  font-size: 20px;
+}
 
+.feature p {
+  margin: 0;
 
-        /* =================================================
-           GENERAL SECTIONS
-        ================================================= */
+  color: #8da2b6;
 
-        section {
+  line-height: 1.6;
+}
 
-          border-top:
-            1px solid rgba(
-              255,
-              255,
-              255,
-              .06
-            );
 
-          padding:
-            110px 32px;
-        }
+/* =========================================================
+   INDUSTRIES
+========================================================= */
 
+.industry-grid {
+  display: grid;
 
-        .section-heading {
+  grid-template-columns:
+    repeat(5, 1fr);
 
-          max-width:
-            980px;
+  gap: 16px;
+}
 
-          margin:
-            0 auto 60px;
+.industry-card {
+  overflow: hidden;
 
-          text-align:
-            center;
-        }
+  border:
+    1px solid rgba(0,174,240,.29);
 
+  border-radius: 17px;
 
-        .section-heading h2 {
+  background: #04111d;
+}
 
-          margin:
-            18px 0;
+.industry-card img {
+  width: 100%;
 
-          font-size:
-            clamp(
-              46px,
-              6vw,
-              76px
-            );
+  aspect-ratio:
+    1.12 / 1;
 
-          line-height:
-            .98;
+  display: block;
 
-          letter-spacing:
-            -2px;
+  object-fit: cover;
+}
 
-          text-transform:
-            uppercase;
-        }
+.industry-content {
+  padding: 20px;
+}
 
+.industry-content h3 {
+  margin:
+    0 0 12px;
 
-        .section-heading p {
+  font-size: 19px;
+}
 
-          color:
-            #9cafc1;
+.industry-content p {
+  min-height: 100px;
 
-          font-size:
-            18px;
+  margin: 0;
 
-          line-height:
-            1.65;
-        }
+  color: #93a7ba;
 
+  font-size: 14px;
 
+  line-height: 1.55;
+}
 
-        /* =================================================
-           DIFFERENCE
-        ================================================= */
+.round-arrow {
+  width: 38px;
+  height: 38px;
 
-        .feature-grid {
+  display: grid;
+  place-items: center;
 
-          display:
-            grid;
+  margin-top: 18px;
 
-          grid-template-columns:
-            repeat(
-              4,
-              minmax(
-                0,
-                1fr
-              )
-            );
+  border:
+    1px solid #00aef0;
 
-          gap:
-            18px;
-        }
+  border-radius: 50%;
+}
 
 
-        .feature-card {
+/* =========================================================
+   PLATFORM
+========================================================= */
 
-          min-height:
-            245px;
+.platform-grid {
+  display: grid;
 
-          padding:
-            28px;
+  grid-template-columns:
+    repeat(4, 1fr);
 
-          border:
-            1px solid rgba(
-              0,
-              174,
-              240,
-              .22
-            );
+  gap: 18px;
+}
 
-          border-radius:
-            18px;
+.platform-card {
+  min-height: 205px;
 
-          background:
-            linear-gradient(
-              145deg,
-              rgba(
-                7,
-                26,
-                45,
-                .92
-              ),
-              rgba(
-                2,
-                9,
-                17,
-                .96
-              )
-            );
-        }
+  padding: 26px;
 
+  border:
+    1px solid rgba(0,174,240,.22);
 
-        .feature-icon {
+  border-radius: 17px;
 
-          width:
-            58px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 25, 43, .93),
+      rgba(2, 9, 17, .98)
+    );
+}
 
-          height:
-            58px;
+.platform-card h3 {
+  margin:
+    0 0 14px;
 
-          display:
-            grid;
+  font-size: 19px;
+}
 
-          place-items:
-            center;
+.platform-card p {
+  margin: 0;
 
-          margin-bottom:
-            22px;
+  color: #91a6b9;
 
-          border:
-            1px solid
-            #00aef0;
+  line-height: 1.64;
+}
 
-          border-radius:
-            50%;
 
-          color:
-            #00c8ff;
+/* =========================================================
+   ONE LOGIN
+========================================================= */
 
-          font-size:
-            24px;
-        }
+.access-heading {
+  max-width: 900px;
 
+  margin-bottom: 42px;
+}
 
-        .feature-card h3 {
+.access-heading h2 {
+  margin:
+    16px 0 20px;
 
-          margin:
-            0 0 12px;
+  font-size:
+    clamp(
+      47px,
+      5.4vw,
+      75px
+    );
 
-          font-size:
-            20px;
-        }
+  line-height: .97;
 
+  text-transform: uppercase;
+}
 
-        .feature-card p {
+.access-heading p {
+  max-width: 760px;
 
-          margin:
-            0;
+  color: #97aabd;
 
-          color:
-            #90a4b8;
+  line-height: 1.65;
+}
 
-          line-height:
-            1.65;
-        }
+.access-grid {
+  display: grid;
 
+  grid-template-columns:
+    1.05fr .95fr;
 
+  gap: 20px;
+}
 
-        /* =================================================
-           INDUSTRIES
-        ================================================= */
+.login-card {
+  padding: 40px;
 
-        .industry-intro {
+  border:
+    1px solid rgba(0,174,240,.30);
 
-          max-width:
-            900px;
+  border-radius: 19px;
 
-          margin-bottom:
-            44px;
-        }
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 27, 45, .95),
+      rgba(2, 9, 18, .98)
+    );
+}
 
+.login-card h3 {
+  margin:
+    10px 0 15px;
 
-        .industry-intro h2 {
+  font-size: 33px;
+}
 
-          margin:
-            16px 0 20px;
+.login-card p {
+  max-width: 610px;
 
-          font-size:
-            clamp(
-              46px,
-              5vw,
-              72px
-            );
+  color: #97aabd;
 
-          line-height:
-            .98;
+  line-height: 1.68;
+}
 
-          text-transform:
-            uppercase;
-        }
+.login-card .primary {
+  margin-top: 18px;
+}
 
+.role-stack {
+  display: grid;
 
-        .industry-intro p {
+  gap: 12px;
+}
 
-          color:
-            #9cafc1;
+.role {
+  display: flex;
 
-          line-height:
-            1.6;
-        }
+  gap: 14px;
 
+  align-items: center;
 
-        .industry-grid {
+  padding: 17px;
 
-          display:
-            grid;
+  border:
+    1px solid rgba(255,255,255,.07);
 
-          grid-template-columns:
-            repeat(
-              5,
-              minmax(
-                0,
-                1fr
-              )
-            );
+  border-radius: 14px;
 
-          gap:
-            16px;
-        }
+  background:
+    rgba(255,255,255,.018);
+}
 
+.role-code {
+  width: 42px;
+  height: 42px;
 
-        .industry-card {
+  flex: 0 0 42px;
 
-          overflow:
-            hidden;
+  display: grid;
+  place-items: center;
 
-          border:
-            1px solid rgba(
-              0,
-              174,
-              240,
-              .28
-            );
+  border:
+    1px solid rgba(0,200,255,.3);
 
-          border-radius:
-            18px;
+  border-radius: 50%;
 
-          background:
-            #04111d;
-        }
+  color: #00c8ff;
 
+  font-size: 12px;
 
-        .industry-card img {
+  font-weight: 800;
+}
 
-          width:
-            100%;
+.role strong {
+  display: block;
 
-          aspect-ratio:
-            1.18 / 1;
+  margin-bottom: 4px;
+}
 
-          display:
-            block;
+.role span {
+  color: #768da2;
 
-          object-fit:
-            cover;
-        }
+  font-size: 12px;
 
+  line-height: 1.4;
+}
 
-        .industry-body {
 
-          padding:
-            22px;
-        }
+/* =========================================================
+   CTA
+========================================================= */
 
+.cta {
+  position: relative;
 
-        .industry-card h3 {
+  overflow: hidden;
 
-          margin:
-            0 0 12px;
+  padding: 65px;
 
-          font-size:
-            19px;
-        }
+  border:
+    1px solid rgba(0,174,240,.3);
 
+  border-radius: 23px;
 
-        .industry-card p {
+  background:
+    radial-gradient(
+      circle at 78% 55%,
+      rgba(0, 145, 255, .18),
+      transparent 37%
+    ),
+    linear-gradient(
+      145deg,
+      #061725,
+      #020811
+    );
+}
 
-          min-height:
-            105px;
+.cta h2 {
+  max-width: 920px;
 
-          margin:
-            0;
+  margin:
+    17px 0 24px;
 
-          color:
-            #9cafc1;
+  font-size:
+    clamp(
+      52px,
+      6.4vw,
+      92px
+    );
 
-          font-size:
-            14px;
+  line-height: .94;
 
-          line-height:
-            1.55;
-        }
+  letter-spacing: -2px;
 
+  text-transform: uppercase;
+}
 
-        .arrow {
+.cta p {
+  max-width: 730px;
 
-          width:
-            38px;
+  color: #97aabd;
 
-          height:
-            38px;
+  line-height: 1.65;
+}
 
-          display:
-            grid;
 
-          place-items:
-            center;
+/* =========================================================
+   FOOTER
+========================================================= */
 
-          margin-top:
-            20px;
+.footer {
+  padding:
+    70px 30px 30px;
 
-          border:
-            1px solid
-            #00aef0;
+  border-top:
+    1px solid rgba(255,255,255,.06);
+}
 
-          border-radius:
-            50%;
+.footer-grid {
+  display: grid;
 
-          color:
-            white;
-        }
+  grid-template-columns:
+    1.25fr 1fr 1fr;
 
+  gap: 55px;
+}
 
+.footer-logo {
+  width: 310px;
+  max-width: 100%;
+}
 
-        /* =================================================
-           PLATFORM
-        ================================================= */
+.footer-links {
+  display: grid;
 
-        .platform-heading {
+  gap: 18px;
 
-          max-width:
-            860px;
+  color: #98aabd;
+}
 
-          margin-bottom:
-            56px;
-        }
+.footer-links button {
+  border: 0;
 
+  padding: 0;
 
-        .platform-heading h2 {
+  background: none;
 
-          margin:
-            16px 0 24px;
+  color: inherit;
 
-          font-size:
-            clamp(
-              50px,
-              6vw,
-              82px
-            );
+  text-align: left;
+}
 
-          line-height:
-            .96;
+.footer-links button:hover {
+  color: #00c8ff;
+}
 
-          text-transform:
-            uppercase;
-        }
+.footer-bottom {
+  display: flex;
 
+  justify-content: space-between;
 
-        .platform-heading p {
+  gap: 20px;
 
-          color:
-            #9cafc1;
+  margin-top: 48px;
 
-          font-size:
-            18px;
+  padding-top: 23px;
 
-          line-height:
-            1.65;
-        }
+  border-top:
+    1px solid rgba(255,255,255,.06);
 
+  color: #6d8397;
 
-        .platform-grid {
+  font-size: 12px;
+}
 
-          display:
-            grid;
+.footer-tagline {
+  color: #00c8ff;
+}
 
-          grid-template-columns:
-            repeat(
-              4,
-              minmax(
-                0,
-                1fr
-              )
-            );
+.footer-tagline span {
+  color: #ff9827;
+}
 
-          gap:
-            18px;
-        }
 
+/* =========================================================
+   RESPONSIVE
+========================================================= */
 
-        .platform-card {
+@media (max-width: 1100px) {
 
-          min-height:
-            215px;
+  .feature-grid,
+  .platform-grid {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
 
-          padding:
-            28px;
+  .industry-grid {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
 
-          border:
-            1px solid rgba(
-              0,
-              174,
-              240,
-              .23
-            );
+}
 
-          border-radius:
-            17px;
+@media (max-width: 850px) {
 
-          background:
-            linear-gradient(
-              145deg,
-              rgba(
-                6,
-                25,
-                42,
-                .94
-              ),
-              rgba(
-                3,
-                10,
-                18,
-                .98
-              )
-            );
-        }
+  .header {
+    min-height: auto;
 
+    padding:
+      17px 20px;
+  }
 
-        .platform-card h3 {
+  .header-logo {
+    width: 180px;
+    max-width: 45vw;
+  }
 
-          margin:
-            0 0 14px;
+  .nav button:not(.login) {
+    display: none;
+  }
 
-          font-size:
-            20px;
-        }
+  .hero {
+    grid-template-columns:
+      1fr;
 
+    min-height: auto;
 
-        .platform-card p {
+    padding:
+      65px 20px;
+  }
 
-          color:
-            #95a8bb;
+  .section {
+    padding:
+      78px 20px;
+  }
 
-          line-height:
-            1.65;
-        }
+  .feature-grid,
+  .platform-grid,
+  .industry-grid,
+  .access-grid {
+    grid-template-columns:
+      1fr;
+  }
 
+  .industry-content p {
+    min-height: auto;
+  }
 
+  .cta {
+    padding:
+      40px 24px;
+  }
 
-        /* =================================================
-           ONE LOGIN EXPERIENCE
-        ================================================= */
+  .footer-grid {
+    grid-template-columns:
+      1fr;
+  }
 
-        .access-intro {
+  .footer-bottom {
+    flex-direction: column;
+  }
 
-          max-width:
-            900px;
+}
 
-          margin-bottom:
-            46px;
-        }
+</style>
 
 
-        .access-intro h2 {
+<div class="site">
 
-          margin:
-            16px 0 20px;
 
-          font-size:
-            clamp(
-              46px,
-              5vw,
-              72px
-            );
+<!-- =====================================================
+     HEADER
+===================================================== -->
 
-          line-height:
-            .98;
+<header class="header">
 
-          text-transform:
-            uppercase;
-        }
+  <img
+    class="header-logo"
+    src="${LOGO_URL}"
+    alt="NEXIVRA"
+  >
 
 
-        .access-intro p {
+  <nav class="nav">
 
-          max-width:
-            760px;
+    <button data-scroll="platform">
+      Platform
+    </button>
 
-          color:
-            #9cafc1;
+    <button data-scroll="industries">
+      Industries
+    </button>
 
-          line-height:
-            1.65;
-        }
+    <button data-scroll="about">
+      About
+    </button>
 
+    <button data-scroll="contact">
+      Contact
+    </button>
 
-        .access-wrapper {
+    <button
+      class="login"
+      data-login
+    >
+      Login
+    </button>
 
-          display:
-            grid;
+    <button
+      class="demo"
+      data-demo
+    >
+      Request a Demo
+    </button>
 
-          grid-template-columns:
-            minmax(
-              0,
-              1.1fr
-            )
-            minmax(
-              340px,
-              .9fr
-            );
+  </nav>
 
-          gap:
-            22px;
-        }
+</header>
 
 
-        .login-access {
+<!-- =====================================================
+     HERO
+===================================================== -->
 
-          padding:
-            42px;
+<section class="hero">
 
-          border:
-            1px solid rgba(
-              0,
-              174,
-              240,
-              .32
-            );
+  <div>
 
-          border-radius:
-            20px;
+    <div class="eyebrow">
+      AI TRAINING. REAL PERFORMANCE.
+    </div>
 
-          background:
-            linear-gradient(
-              145deg,
-              rgba(
-                6,
-                26,
-                44,
-                .95
-              ),
-              rgba(
-                2,
-                9,
-                18,
-                .96
-              )
-            );
-        }
 
+    <h1>
 
-        .login-access h3 {
+      HUMAN-
+      CENTERED
+      AI TRAINING
 
-          margin:
-            0 0 15px;
+      <span class="blue">
+        FOR A
+      </span>
 
-          font-size:
-            34px;
-        }
+      <span class="cyan">
+        SMARTER
+      </span>
 
+      <span class="orange">
+        TOMORROW
+      </span>
 
-        .login-access p {
+    </h1>
 
-          color:
-            #9cafc1;
 
-          line-height:
-            1.7;
-        }
+    <p class="hero-copy">
 
+      NEXIVRA is an adaptive AI training platform
+      that learns the learner,
+      teaches through conversation,
+      creates realistic practice,
+      observes performance,
+      and helps organizations turn knowledge
+      into demonstrated skill.
 
-        .login-access button {
+    </p>
 
-          margin-top:
-            20px;
-        }
 
+    <div class="hero-actions">
 
-        .role-list {
+      <button
+        class="primary"
+        data-demo
+      >
+        Request a Demo \u2192
+      </button>
 
-          display:
-            grid;
 
-          gap:
-            12px;
-        }
+      <button
+        class="secondary"
+        data-scroll="platform"
+      >
+        Explore the Platform
+      </button>
 
+    </div>
 
-        .role-card {
+  </div>
 
-          display:
-            flex;
 
-          align-items:
-            center;
+  <div class="hero-image-wrap">
 
-          gap:
-            14px;
+    <img
+      class="hero-image"
+      src="${HERO_IMAGE}"
+      alt="NEXIVRA AI people real impact"
+    >
 
-          padding:
-            18px;
+  </div>
 
-          border:
-            1px solid rgba(
-              255,
-              255,
-              255,
-              .07
-            );
+</section>
 
-          border-radius:
-            14px;
 
-          background:
-            rgba(
-              255,
-              255,
-              255,
-              .02
-            );
-        }
+<!-- =====================================================
+     DIFFERENCE
+===================================================== -->
 
+<section
+  id="about"
+  class="section"
+>
 
-        .role-icon {
+  <div class="center-heading">
 
-          width:
-            42px;
+    <div class="eyebrow">
+      THE NEXIVRA DIFFERENCE
+    </div>
 
-          height:
-            42px;
 
-          display:
-            grid;
+    <h2>
+      LEARN THE LEARNER.
+      <br>
+      THEN TEACH.
+    </h2>
 
-          place-items:
-            center;
 
-          flex:
-            0 0 42px;
+    <p>
 
-          border:
-            1px solid rgba(
-              0,
-              200,
-              255,
-              .3
-            );
+      Traditional training delivers
+      the same content to everyone.
 
-          border-radius:
-            50%;
+      NEXIVRA learns how each person
+      communicates, responds,
+      processes information,
+      practices, and performs \u2014
+      then adapts the experience around them.
 
-          color:
-            #00c8ff;
+    </p>
 
-          font-size:
-            12px;
+  </div>
 
-          font-weight:
-            800;
-        }
 
+  <div class="feature-grid">
 
-        .role-card strong {
+    <div class="feature">
 
-          display:
-            block;
+      <div class="feature-icon">
+        \u25CE
+      </div>
 
-          margin-bottom:
-            4px;
+      <h3>
+        Conversational AI
+      </h3>
 
-          font-size:
-            14px;
-        }
+      <p>
+        Natural training through real interaction
+        instead of passive content.
+      </p>
 
+    </div>
 
-        .role-card span {
 
-          color:
-            #7890a5;
+    <div class="feature">
 
-          font-size:
-            12px;
+      <div class="feature-icon">
+        \u21BB
+      </div>
 
-          line-height:
-            1.45;
-        }
+      <h3>
+        Adaptive Teaching
+      </h3>
 
+      <p>
+        NEXIVRA changes how it teaches
+        based on how the learner responds.
+      </p>
 
+    </div>
 
-        /* =================================================
-           CTA
-        ================================================= */
 
-        .cta-box {
+    <div class="feature">
 
-          position:
-            relative;
+      <div class="feature-icon">
+        \u25C9
+      </div>
 
-          overflow:
-            hidden;
+      <h3>
+        Realistic Practice
+      </h3>
 
-          padding:
-            70px;
+      <p>
+        Role-play, scenarios, feedback,
+        coaching, and repeated practice
+        build capability.
+      </p>
 
-          border:
-            1px solid rgba(
-              0,
-              174,
-              240,
-              .3
-            );
+    </div>
 
-          border-radius:
-            24px;
 
-          background:
-            radial-gradient(
-              circle at 75% 50%,
-              rgba(
-                0,
-                148,
-                255,
-                .18
-              ),
-              transparent 36%
-            ),
-            linear-gradient(
-              145deg,
-              #061725,
-              #020811
-            );
-        }
+    <div class="feature">
 
+      <div class="feature-icon">
+        \u2197
+      </div>
 
-        .cta-box h2 {
+      <h3>
+        Performance Intelligence
+      </h3>
 
-          max-width:
-            900px;
+      <p>
+        Measure what learners can demonstrate,
+        where they improve,
+        and what they need next.
+      </p>
 
-          margin:
-            18px 0 24px;
+    </div>
 
-          font-size:
-            clamp(
-              54px,
-              7vw,
-              96px
-            );
+  </div>
 
-          line-height:
-            .94;
+</section>
 
-          text-transform:
-            uppercase;
-        }
 
+<!-- =====================================================
+     INDUSTRIES
+===================================================== -->
 
-        .cta-box p {
+<section
+  id="industries"
+  class="section"
+>
 
-          max-width:
-            740px;
+  <div class="left-heading">
 
-          color:
-            #9cafc1;
+    <div class="eyebrow">
+      DESIGNED AROUND YOUR ORGANIZATION
+    </div>
 
-          line-height:
-            1.65;
-        }
 
+    <h2>
+      TRAINING THAT SPEAKS
+      <br>
+      YOUR LANGUAGE
+    </h2>
 
 
-        /* =================================================
-           FOOTER
-        ================================================= */
+    <p>
 
-        footer {
+      NEXIVRA Core provides the intelligence.
+      Your organization's knowledge,
+      standards, behaviors, scenarios,
+      goals, and culture shape
+      the learning experience.
 
-          padding:
-            70px 32px 32px;
+    </p>
 
-          border-top:
-            1px solid rgba(
-              255,
-              255,
-              255,
-              .06
-            );
-        }
+  </div>
 
 
-        .footer-top {
+  <div class="industry-grid">
 
-          display:
-            grid;
 
-          grid-template-columns:
-            1.2fr
-            1fr
-            1fr;
+    <div class="industry-card">
 
-          gap:
-            50px;
+      <img
+        src="${HOSPITALITY_IMAGE}"
+        alt="Hospitality"
+      >
 
-          align-items:
-            start;
-        }
+      <div class="industry-content">
 
+        <h3>
+          Hospitality
+        </h3>
 
-        .footer-logo {
+        <p>
 
-          width:
-            310px;
+          Create stronger service,
+          communication,
+          emotional awareness,
+          and memorable guest experiences.
 
-          max-width:
-            100%;
-        }
+        </p>
 
+        <div class="round-arrow">
+          \u2192
+        </div>
 
-        .footer-links {
+      </div>
 
-          display:
-            grid;
+    </div>
 
-          gap:
-            18px;
 
-          color:
-            #9cafc1;
-        }
+    <div class="industry-card">
 
+      <img
+        src="${HEALTHCARE_IMAGE}"
+        alt="Healthcare"
+      >
 
-        .footer-links button {
+      <div class="industry-content">
 
-          border:
-            0;
+        <h3>
+          Healthcare
+        </h3>
 
-          background:
-            transparent;
+        <p>
 
-          padding:
-            0;
+          Strengthen trust,
+          communication,
+          compassion,
+          service recovery,
+          and patient experience.
 
-          color:
-            inherit;
+        </p>
 
-          text-align:
-            left;
-        }
+        <div class="round-arrow">
+          \u2192
+        </div>
 
+      </div>
 
-        .footer-links button:hover {
+    </div>
 
-          color:
-            #00c8ff;
-        }
 
+    <div class="industry-card">
 
-        .footer-bottom {
+      <img
+        src="${FINANCIAL_IMAGE}"
+        alt="Financial Services"
+      >
 
-          display:
-            flex;
+      <div class="industry-content">
 
-          justify-content:
-            space-between;
+        <h3>
+          Financial Services
+        </h3>
 
-          gap:
-            20px;
+        <p>
 
-          margin-top:
-            48px;
+          Build confidence,
+          stronger conversations,
+          deeper relationships,
+          and client trust.
 
-          padding-top:
-            24px;
+        </p>
 
-          border-top:
-            1px solid rgba(
-              255,
-              255,
-              255,
-              .06
-            );
+        <div class="round-arrow">
+          \u2192
+        </div>
 
-          color:
-            #6f8498;
+      </div>
 
-          font-size:
-            12px;
-        }
+    </div>
 
 
-        .tagline {
+    <div class="industry-card">
 
-          color:
-            #00c8ff;
-        }
+      <img
+        src="${SENIOR_LIVING_IMAGE}"
+        alt="Senior Living"
+      >
 
+      <div class="industry-content">
 
-        .tagline span {
+        <h3>
+          Senior Living
+        </h3>
 
-          color:
-            #ff9a27;
-        }
+        <p>
 
+          Develop communication
+          rooted in dignity,
+          empathy, trust,
+          connection, and respect.
 
+        </p>
 
-        /* =================================================
-           RESPONSIVE
-        ================================================= */
+        <div class="round-arrow">
+          \u2192
+        </div>
 
-        @media (
-          max-width:
-          1100px
-        ) {
+      </div>
 
-          nav {
-            gap:
-              16px;
-          }
+    </div>
 
 
-          .feature-grid,
-          .platform-grid {
+    <div class="industry-card">
 
-            grid-template-columns:
-              repeat(
-                2,
-                1fr
-              );
-          }
+      <img
+        src="${CONNECTED_TEAMS_IMAGE}"
+        alt="Multi-Location Organizations"
+      >
 
+      <div class="industry-content">
 
-          .industry-grid {
+        <h3>
+          Multi-Location Organizations
+        </h3>
 
-            grid-template-columns:
-              repeat(
-                2,
-                1fr
-              );
-          }
+        <p>
 
-        }
+          Create consistent capability
+          across people, locations,
+          teams, leaders, and roles.
 
+        </p>
 
-        @media (
-          max-width:
-          850px
-        ) {
+        <div class="round-arrow">
+          \u2192
+        </div>
 
-          header {
+      </div>
 
-            min-height:
-              auto;
+    </div>
 
-            padding:
-              18px;
-          }
+  </div>
 
+</section>
 
-          .logo {
 
-            width:
-              190px;
+<!-- =====================================================
+     PLATFORM
+===================================================== -->
 
-            max-width:
-              48vw;
-          }
+<section
+  id="platform"
+  class="section"
+>
 
+  <div class="left-heading">
 
-          nav a {
+    <div class="eyebrow">
+      ONE INTELLIGENT PLATFORM
+    </div>
 
-            display:
-              none;
-          }
 
+    <h2>
 
-          .demo-button {
+      CONVERSATION.
+      <br>
+      PRACTICE.
+      <br>
+      PERFORMANCE.
 
-            display:
-              none;
-          }
+    </h2>
 
 
-          .hero {
+    <p>
 
-            grid-template-columns:
-              1fr;
+      NEXIVRA combines adaptive AI,
+      real-time conversation,
+      behavioral observation,
+      realistic practice,
+      evaluation,
+      coaching,
+      and learner memory into
+      one connected development experience.
 
-            min-height:
-              auto;
+    </p>
 
-            padding:
-              70px 20px;
-          }
+  </div>
 
 
-          h1 {
+  <div class="platform-grid">
 
-            letter-spacing:
-              -2px;
-          }
 
+    <div class="platform-card">
 
-          section {
+      <h3>
+        Learn the Learner
+      </h3>
 
-            padding:
-              80px 20px;
-          }
+      <p>
 
+        NEXIVRA builds an understanding
+        of the individual and uses that
+        understanding to shape
+        the learning experience.
 
-          .feature-grid,
-          .platform-grid,
-          .industry-grid,
-          .access-wrapper {
+      </p>
 
-            grid-template-columns:
-              1fr;
-          }
+    </div>
 
 
-          .industry-card p {
+    <div class="platform-card">
 
-            min-height:
-              auto;
-          }
+      <h3>
+        Teach Adaptively
+      </h3>
 
+      <p>
 
-          .cta-box {
+        The platform adjusts explanations,
+        questions, pacing, practice,
+        and coaching based on the learner.
 
-            padding:
-              42px 25px;
-          }
+      </p>
 
+    </div>
 
-          .footer-top {
 
-            grid-template-columns:
-              1fr;
-          }
+    <div class="platform-card">
 
+      <h3>
+        Practice Real Work
+      </h3>
 
-          .footer-bottom {
+      <p>
 
-            flex-direction:
-              column;
-          }
+        Learners interact with realistic
+        situations, conversations,
+        role-play, and scenarios
+        drawn from the subject.
 
-        }
+      </p>
 
-      </style>
+    </div>
 
 
-      <div class="page">
+    <div class="platform-card">
 
-        <div class="container">
+      <h3>
+        Demonstrate Capability
+      </h3>
 
+      <p>
 
-          <!-- =========================================
-               HEADER
-          ========================================== -->
+        NEXIVRA evaluates demonstrated
+        performance and helps determine
+        what the learner should practice next.
 
-          <header>
+      </p>
 
-            <img
-              class="logo"
-              src="${LOGO_URL}"
-              alt="NEXIVRA"
-            >
+    </div>
 
+  </div>
 
-            <nav>
+</section>
 
-              <a
-                href="#"
-                data-scroll="platform"
-              >
-                Platform
-              </a>
 
+<!-- =====================================================
+     SINGLE LOGIN
+===================================================== -->
 
-              <a
-                href="#"
-                data-scroll="industries"
-              >
-                Industries
-              </a>
+<section class="section">
 
+  <div class="access-heading">
 
-              <a
-                href="#"
-                data-scroll="about"
-              >
-                About
-              </a>
+    <div class="eyebrow">
+      YOUR NEXIVRA ENVIRONMENT
+    </div>
 
 
-              <a
-                href="#"
-                data-scroll="contact"
-              >
-                Contact
-              </a>
+    <h2>
 
+      ONE LOGIN.
+      <br>
+      THE RIGHT EXPERIENCE.
 
-              <button
-                class="login-button"
-                data-login
-              >
-                Login
-              </button>
+    </h2>
 
 
-              <button
-                class="demo-button"
-                data-demo
-              >
-                Request a Demo
-              </button>
+    <p>
 
-            </nav>
+      Every authorized user enters
+      NEXIVRA through one secure login.
 
-          </header>
+      Your account identifies your role,
+      organization, permissions,
+      and the experience built for you.
 
+    </p>
 
+  </div>
 
-          <!-- =========================================
-               HERO
-          ========================================== -->
 
-          <section class="hero">
+  <div class="access-grid">
 
-            <div>
 
-              <div class="eyebrow">
-                AI TRAINING. REAL PERFORMANCE.
-              </div>
+    <div class="login-card">
 
+      <div class="eyebrow">
+        SECURE ACCESS
+      </div>
 
-              <h1>
 
-                HUMAN-CENTERED
-                AI TRAINING
+      <h3>
+        Sign in to NEXIVRA
+      </h3>
 
-                <span class="cyan">
-                  FOR A
-                </span>
 
-                <span class="cyan-soft">
-                  SMARTER
-                </span>
+      <p>
 
-                <span class="orange-soft">
-                  TOMORROW
-                </span>
+        Whether you manage the platform,
+        lead an organization,
+        or are completing training,
+        NEXIVRA automatically connects
+        you to the correct environment
+        after authentication.
 
-              </h1>
+      </p>
 
 
-              <p class="hero-copy">
+      <button
+        class="primary"
+        data-login
+      >
+        Sign In to NEXIVRA \u2192
+      </button>
 
-                NEXIVRA is an adaptive AI training
-                platform that learns the learner,
-                teaches through conversation,
-                creates realistic practice,
-                observes performance,
-                and helps organizations turn
-                knowledge into demonstrated skill.
+    </div>
 
-              </p>
 
+    <div class="role-stack">
 
-              <div class="hero-actions">
 
-                <button
-                  class="primary-button"
-                  data-demo
-                >
-                  Request a Demo \u2192
-                </button>
+      <div class="role">
 
+        <div class="role-code">
+          NX
+        </div>
 
-                <button
-                  class="secondary-button"
-                  data-scroll="platform"
-                >
-                  Explore the Platform
-                </button>
+        <div>
 
-              </div>
+          <strong>
+            NEXIVRA Management
+          </strong>
 
-            </div>
-
-
-            <div class="hero-visual">
-
-              <img
-                src="${HERO_IMAGE}"
-                alt="NEXIVRA connected human future"
-              >
-
-            </div>
-
-          </section>
-
-
-
-          <!-- =========================================
-               DIFFERENCE
-          ========================================== -->
-
-          <section id="about">
-
-            <div class="section-heading">
-
-              <div class="eyebrow">
-                THE NEXIVRA DIFFERENCE
-              </div>
-
-
-              <h2>
-
-                LEARN THE LEARNER.
-                <br>
-                THEN TEACH.
-
-              </h2>
-
-
-              <p>
-
-                Traditional training delivers
-                the same content to everyone.
-
-                NEXIVRA learns how each person
-                communicates, responds,
-                processes information,
-                practices, and performs \u2014
-                then adapts the experience
-                around them.
-
-              </p>
-
-            </div>
-
-
-            <div class="feature-grid">
-
-
-              <div class="feature-card">
-
-                <div class="feature-icon">
-                  \u25CE
-                </div>
-
-                <h3>
-                  Conversational AI
-                </h3>
-
-                <p>
-
-                  Natural training through real
-                  interaction instead of passive
-                  content.
-
-                </p>
-
-              </div>
-
-
-              <div class="feature-card">
-
-                <div class="feature-icon">
-                  \u21BB
-                </div>
-
-                <h3>
-                  Adaptive Teaching
-                </h3>
-
-                <p>
-
-                  NEXIVRA changes how it teaches
-                  based on how the learner responds.
-
-                </p>
-
-              </div>
-
-
-              <div class="feature-card">
-
-                <div class="feature-icon">
-                  \u25C9
-                </div>
-
-                <h3>
-                  Realistic Practice
-                </h3>
-
-                <p>
-
-                  Role-play, scenarios,
-                  feedback, coaching,
-                  and repeated practice
-                  build capability.
-
-                </p>
-
-              </div>
-
-
-              <div class="feature-card">
-
-                <div class="feature-icon">
-                  \u2197
-                </div>
-
-                <h3>
-                  Performance Intelligence
-                </h3>
-
-                <p>
-
-                  Measure what learners can
-                  demonstrate, where they improve,
-                  and what they need next.
-
-                </p>
-
-              </div>
-
-
-            </div>
-
-          </section>
-
-
-
-          <!-- =========================================
-               INDUSTRIES
-          ========================================== -->
-
-          <section id="industries">
-
-            <div class="industry-intro">
-
-              <div class="eyebrow">
-                DESIGNED AROUND YOUR ORGANIZATION
-              </div>
-
-
-              <h2>
-
-                TRAINING THAT SPEAKS
-                <br>
-                YOUR LANGUAGE
-
-              </h2>
-
-
-              <p>
-
-                NEXIVRA Core provides the intelligence.
-
-                Your organization's knowledge,
-                standards, behaviors, scenarios,
-                goals, and culture shape the
-                learning experience.
-
-              </p>
-
-            </div>
-
-
-            <div class="industry-grid">
-
-
-              <div class="industry-card">
-
-                <img
-                  src="${HOSPITALITY_IMAGE}"
-                  alt="Hospitality"
-                >
-
-                <div class="industry-body">
-
-                  <h3>
-                    Hospitality
-                  </h3>
-
-                  <p>
-
-                    Create stronger service,
-                    communication,
-                    emotional awareness,
-                    and memorable guest experiences.
-
-                  </p>
-
-                  <div class="arrow">
-                    \u2192
-                  </div>
-
-                </div>
-
-              </div>
-
-
-
-              <div class="industry-card">
-
-                <img
-                  src="${HEALTHCARE_IMAGE}"
-                  alt="Healthcare"
-                >
-
-                <div class="industry-body">
-
-                  <h3>
-                    Healthcare
-                  </h3>
-
-                  <p>
-
-                    Strengthen trust,
-                    communication,
-                    compassion,
-                    service recovery,
-                    and patient experience.
-
-                  </p>
-
-                  <div class="arrow">
-                    \u2192
-                  </div>
-
-                </div>
-
-              </div>
-
-
-
-              <div class="industry-card">
-
-                <img
-                  src="${FINANCIAL_IMAGE}"
-                  alt="Financial Services"
-                >
-
-                <div class="industry-body">
-
-                  <h3>
-                    Financial Services
-                  </h3>
-
-                  <p>
-
-                    Build confidence,
-                    stronger conversations,
-                    deeper relationships,
-                    and client trust.
-
-                  </p>
-
-                  <div class="arrow">
-                    \u2192
-                  </div>
-
-                </div>
-
-              </div>
-
-
-
-              <div class="industry-card">
-
-                <img
-                  src="${SENIOR_LIVING_IMAGE}"
-                  alt="Senior Living"
-                >
-
-                <div class="industry-body">
-
-                  <h3>
-                    Senior Living
-                  </h3>
-
-                  <p>
-
-                    Develop communication
-                    rooted in dignity,
-                    empathy, trust,
-                    connection, and respect.
-
-                  </p>
-
-                  <div class="arrow">
-                    \u2192
-                  </div>
-
-                </div>
-
-              </div>
-
-
-
-              <div class="industry-card">
-
-                <img
-                  src="${CONNECTED_TEAMS_IMAGE}"
-                  alt="Multi-Location Organizations"
-                >
-
-                <div class="industry-body">
-
-                  <h3>
-                    Multi-Location Organizations
-                  </h3>
-
-                  <p>
-
-                    Create consistent capability
-                    across people, locations,
-                    teams, leaders, and roles.
-
-                  </p>
-
-                  <div class="arrow">
-                    \u2192
-                  </div>
-
-                </div>
-
-              </div>
-
-
-            </div>
-
-          </section>
-
-
-
-          <!-- =========================================
-               PLATFORM
-          ========================================== -->
-
-          <section id="platform">
-
-            <div class="platform-heading">
-
-              <div class="eyebrow">
-                ONE INTELLIGENT PLATFORM
-              </div>
-
-
-              <h2>
-
-                CONVERSATION.
-                <br>
-                PRACTICE.
-                <br>
-                PERFORMANCE.
-
-              </h2>
-
-
-              <p>
-
-                NEXIVRA combines adaptive AI,
-                real-time conversation,
-                behavioral observation,
-                realistic practice,
-                evaluation,
-                coaching,
-                and learner memory into one
-                connected development experience.
-
-              </p>
-
-            </div>
-
-
-            <div class="platform-grid">
-
-
-              <div class="platform-card">
-
-                <h3>
-                  Learn the Learner
-                </h3>
-
-                <p>
-
-                  NEXIVRA builds an understanding
-                  of the individual and uses that
-                  understanding to shape the
-                  learning experience.
-
-                </p>
-
-              </div>
-
-
-
-              <div class="platform-card">
-
-                <h3>
-                  Teach Adaptively
-                </h3>
-
-                <p>
-
-                  The platform adjusts explanations,
-                  questions, pacing, practice,
-                  and coaching based on the learner.
-
-                </p>
-
-              </div>
-
-
-
-              <div class="platform-card">
-
-                <h3>
-                  Practice Real Work
-                </h3>
-
-                <p>
-
-                  Learners interact with realistic
-                  situations, conversations,
-                  role-play, and scenarios drawn
-                  from the subject.
-
-                </p>
-
-              </div>
-
-
-
-              <div class="platform-card">
-
-                <h3>
-                  Demonstrate Capability
-                </h3>
-
-                <p>
-
-                  NEXIVRA evaluates demonstrated
-                  performance and helps determine
-                  what the learner should practice
-                  next.
-
-                </p>
-
-              </div>
-
-
-            </div>
-
-          </section>
-
-
-
-          <!-- =========================================
-               LOGIN / ENVIRONMENTS
-          ========================================== -->
-
-          <section>
-
-            <div class="access-intro">
-
-              <div class="eyebrow">
-                ONE SECURE ENTRANCE
-              </div>
-
-
-              <h2>
-
-                ONE LOGIN.
-                <br>
-                THE RIGHT EXPERIENCE.
-
-              </h2>
-
-
-              <p>
-
-                Every authorized NEXIVRA user enters
-                through the same secure login.
-
-                Your account automatically determines
-                which environment you can access.
-
-              </p>
-
-            </div>
-
-
-            <div class="access-wrapper">
-
-
-              <div class="login-access">
-
-                <div class="eyebrow">
-                  SECURE NEXIVRA ACCESS
-                </div>
-
-
-                <h3>
-                  Welcome Back
-                </h3>
-
-
-                <p>
-
-                  Sign in once.
-
-                  NEXIVRA will identify your role
-                  and organization and connect you
-                  directly to the correct experience.
-
-                </p>
-
-
-                <button
-                  class="primary-button"
-                  data-login
-                >
-                  Sign In to NEXIVRA \u2192
-                </button>
-
-              </div>
-
-
-
-              <div class="role-list">
-
-
-                <div class="role-card">
-
-                  <div class="role-icon">
-                    NX
-                  </div>
-
-                  <div>
-
-                    <strong>
-                      NEXIVRA Management
-                    </strong>
-
-                    <span>
-
-                      Platform administration,
-                      client environments,
-                      authoring and intelligence.
-
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-
-                <div class="role-card">
-
-                  <div class="role-icon">
-                    CO
-                  </div>
-
-                  <div>
-
-                    <strong>
-                      Company Dashboard
-                    </strong>
-
-                    <span>
-
-                      Organization administration,
-                      learner management,
-                      assignments and reporting.
-
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-
-                <div class="role-card">
-
-                  <div class="role-icon">
-                    LR
-                  </div>
-
-                  <div>
-
-                    <strong>
-                      Learner Dashboard
-                    </strong>
-
-                    <span>
-
-                      Courses, training sessions,
-                      realistic practice,
-                      coaching and development.
-
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-              </div>
-
-
-            </div>
-
-          </section>
-
-
-
-          <!-- =========================================
-               CTA
-          ========================================== -->
-
-          <section id="contact">
-
-            <div class="cta-box">
-
-              <div class="eyebrow">
-                THE FUTURE OF LEARNING IS PERSONAL
-              </div>
-
-
-              <h2>
-
-                BUILD STRONGER PEOPLE.
-                <br>
-
-                <span class="cyan">
-                  BUILD A STRONGER
-                </span>
-
-                <span class="orange-soft">
-                  ORGANIZATION.
-                </span>
-
-              </h2>
-
-
-              <p>
-
-                Turn your organization's knowledge,
-                standards, scenarios, goals,
-                and culture into an adaptive
-                AI training experience built around
-                the people you are developing.
-
-              </p>
-
-
-              <div class="hero-actions">
-
-                <button
-                  class="primary-button"
-                  data-demo
-                >
-                  Request a Demo \u2192
-                </button>
-
-              </div>
-
-            </div>
-
-          </section>
-
-
-
-          <!-- =========================================
-               FOOTER
-          ========================================== -->
-
-          <footer>
-
-
-            <div class="footer-top">
-
-
-              <div>
-
-                <img
-                  class="footer-logo"
-                  src="${LOGO_URL}"
-                  alt="NEXIVRA"
-                >
-
-              </div>
-
-
-
-              <div class="footer-links">
-
-                <button
-                  data-scroll="platform"
-                >
-                  Platform
-                </button>
-
-                <button
-                  data-scroll="industries"
-                >
-                  Industries
-                </button>
-
-                <button
-                  data-scroll="about"
-                >
-                  About
-                </button>
-
-              </div>
-
-
-
-              <div class="footer-links">
-
-                <button
-                  data-login
-                >
-                  Login
-                </button>
-
-                <button
-                  data-scroll="contact"
-                >
-                  Contact
-                </button>
-
-                <span>
-                  Privacy
-                </span>
-
-              </div>
-
-
-            </div>
-
-
-            <div class="footer-bottom">
-
-              <div>
-                \xA9 2026 NEXIVRA.
-                All rights reserved.
-              </div>
-
-
-              <div class="tagline">
-
-                The Next Generation of
-
-                <span>
-                  Connected Intelligence
-                </span>
-
-              </div>
-
-
-            </div>
-
-
-          </footer>
-
+          <span>
+            Platform administration and authoring
+          </span>
 
         </div>
 
       </div>
+
+
+      <div class="role">
+
+        <div class="role-code">
+          CO
+        </div>
+
+        <div>
+
+          <strong>
+            Company Dashboard
+          </strong>
+
+          <span>
+            Organization management and reporting
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="role">
+
+        <div class="role-code">
+          LR
+        </div>
+
+        <div>
+
+          <strong>
+            Learner Dashboard
+          </strong>
+
+          <span>
+            Training, practice, progress and development
+          </span>
+
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     CTA
+===================================================== -->
+
+<section
+  id="contact"
+  class="section"
+>
+
+  <div class="cta">
+
+    <div class="eyebrow">
+      THE FUTURE OF LEARNING IS PERSONAL
+    </div>
+
+
+    <h2>
+
+      BUILD STRONGER
+      <br>
+      PEOPLE.
+
+      <span class="blue">
+        BUILD A STRONGER
+      </span>
+
+      <span class="orange">
+        ORGANIZATION.
+      </span>
+
+    </h2>
+
+
+    <p>
+
+      Turn your organization's knowledge,
+      standards, scenarios, goals,
+      and culture into an adaptive
+      AI training experience built
+      around the people you are developing.
+
+    </p>
+
+
+    <div class="hero-actions">
+
+      <button
+        class="primary"
+        data-demo
+      >
+        Request a Demo \u2192
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     FOOTER
+===================================================== -->
+
+<footer class="footer">
+
+  <div class="footer-grid">
+
+
+    <div>
+
+      <img
+        class="footer-logo"
+        src="${LOGO_URL}"
+        alt="NEXIVRA"
+      >
+
+    </div>
+
+
+    <div class="footer-links">
+
+      <button data-scroll="platform">
+        Platform
+      </button>
+
+      <button data-scroll="industries">
+        Industries
+      </button>
+
+      <button data-scroll="about">
+        About
+      </button>
+
+    </div>
+
+
+    <div class="footer-links">
+
+      <button data-login>
+        Login
+      </button>
+
+      <button data-scroll="contact">
+        Contact
+      </button>
+
+      <span>
+        Privacy
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div class="footer-bottom">
+
+    <div>
+      \xA9 2026 NEXIVRA. All rights reserved.
+    </div>
+
+
+    <div class="footer-tagline">
+
+      The Next Generation of
+
+      <span>
+        Connected Intelligence
+      </span>
+
+    </div>
+
+  </div>
+
+</footer>
+
+
+</div>
 
     `;
   }
