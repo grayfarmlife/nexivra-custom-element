@@ -3388,7 +3388,40 @@ function openOrganizationDetail(
         item.id ===
         organizationId
     );
+const organizationCode =
+  organization?.organizationCode || '';
 
+
+const organizationUsers =
+  state.users.filter(
+    user =>
+      user.organizationId === organizationCode ||
+      user.organizationId === organizationId
+  );
+
+
+const organizationCourses =
+  state.courses.filter(
+    course =>
+      course.organizationId === organizationCode ||
+      course.organizationId === organizationId
+  );
+
+
+const organizationUploads =
+  state.uploads.filter(
+    upload =>
+      upload.organizationId === organizationCode ||
+      upload.organizationId === organizationId
+  );
+
+
+const organizationAssignments =
+  state.assignments.filter(
+    assignment =>
+      assignment.organizationId === organizationCode ||
+      assignment.organizationId === organizationId
+  );
 
   if (!organization) {
 
@@ -3462,25 +3495,25 @@ function openOrganizationDetail(
 
         ${organizationMetricCard(
           'Users',
-          '0',
+          String(organizationUsers.length),
           'Organization members'
         )}
 
         ${organizationMetricCard(
           'Courses',
-          '0',
+          String(organizationCourses.length),
           'Training environments'
         )}
 
         ${organizationMetricCard(
           'Knowledge Sources',
-          '0',
+          String(organizationUploads.length),
           'Approved content'
         )}
 
         ${organizationMetricCard(
           'Assignments',
-          '0',
+          String(organizationAssignments.length),
           'Active learner assignments'
         )}
 
