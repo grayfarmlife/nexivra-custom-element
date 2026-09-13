@@ -4241,10 +4241,6 @@ function renderModules() {
         No modules yet.
       </div>`;
 
-    renderModuleWorkspace(
-      null
-    );
-
     return;
 
   }
@@ -4321,42 +4317,6 @@ function renderModules() {
       );
 
     });
-
-
-  if (!state.selectedModuleId) {
-
-    const firstModule =
-      state.modules[0];
-
-
-    if (firstModule) {
-
-      state.selectedModuleId =
-        firstModule.id;
-
-      renderModuleWorkspace(
-        firstModule
-      );
-
-    }
-
-  } else {
-
-    const selectedModule =
-      state.modules.find(
-        module =>
-          module.id ===
-          state.selectedModuleId
-      );
-
-
-    renderModuleWorkspace(
-      selectedModule ||
-      state.modules[0] ||
-      null
-    );
-
-  }
 
 }
 
