@@ -27,10 +27,10 @@ jobs:
       - name: Build NEXIVRA bundle
         run: npm run build
 
-      - name: Commit built file
+      - name: Commit built files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dist/nexivra-live-avatar.js dist/nexivra-home.js dist/nexivra-management-dashboard.html
+          git add dist/nexivra-live-avatar.js dist/nexivra-home.js dist/nexivra-management-dashboard.html dist/nexivra-login.html
           git diff --cached --quiet || git commit -m "Build NEXIVRA custom element"
           git push
