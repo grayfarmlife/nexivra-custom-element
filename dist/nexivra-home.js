@@ -6,7 +6,7 @@ var SENIOR_LIVING_IMAGE = "https://static.wixstatic.com/media/433270_eed61d022cf
 var HEALTHCARE_IMAGE = "https://static.wixstatic.com/media/433270_224fec054635445987e2b072424d5f49~mv2.png";
 var CONNECTED_TEAMS_IMAGE = "https://static.wixstatic.com/media/433270_082c2ff6123241e18afb516df3af9b6b~mv2.png";
 var FINANCIAL_IMAGE = "https://static.wixstatic.com/media/433270_28132edbcc3945718e98edbcc864a722~mv2.png";
-var LOGIN_URL = "https://createdbyken.wixstudio.com/my-site-5/login";
+var LOGIN_URL = "https://nexivratech.com/login";
 var NexivraHome = class extends HTMLElement {
   constructor() {
     super();
