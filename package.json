@@ -1,10 +1,10 @@
 {
   "name": "nexivra-custom-element",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "mkdir -p dist && esbuild src/nexivra-live-avatar.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-live-avatar.js && esbuild src/nexivra-home.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-home.js && cp src/nexivra-management-dashboard.html dist/nexivra-management-dashboard.html"
+    "build": "mkdir -p dist && esbuild src/nexivra-live-avatar.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-live-avatar.js && esbuild src/nexivra-home.js --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/nexivra-home.js && cp src/nexivra-management-dashboard.html dist/nexivra-management-dashboard.html && cp src/nexivra-login.html dist/nexivra-login.html"
   },
   "dependencies": {
     "@heygen/liveavatar-web-sdk": "0.0.18",
