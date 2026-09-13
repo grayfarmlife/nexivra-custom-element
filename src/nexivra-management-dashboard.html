@@ -3086,16 +3086,25 @@ function renderOrganizations() {
           <th>Code</th>
           <th>Status</th>
           <th>Updated</th>
+          <th></th>
         </tr>
       </thead>
 
       <tbody>
         ${state.organizations.map(org => `
-          <tr>
+          <tr
+            class="organization-row"
+            data-organization-id="${escapeHTML(org.id)}"
+          >
+
             <td>
-              <strong>
+              <button
+                type="button"
+                class="organization-link"
+                data-organization-id="${escapeHTML(org.id)}"
+              >
                 ${escapeHTML(org.title)}
-              </strong>
+              </button>
             </td>
 
             <td>
@@ -3116,11 +3125,50 @@ function renderOrganizations() {
                 org.updatedDate
               )}
             </td>
+
+            <td class="organization-open-cell">
+              <button
+                type="button"
+                class="organization-open-button"
+                data-organization-id="${escapeHTML(org.id)}"
+                aria-label="Open ${escapeHTML(org.title)}"
+              >
+                →
+              </button>
+            </td>
+
           </tr>
         `).join('')}
       </tbody>
     </table>
   `;
+
+
+  container
+    .querySelectorAll(
+      '[data-organization-id]'
+    )
+    .forEach(element => {
+
+      element.addEventListener(
+        'click',
+        event => {
+
+          event.preventDefault();
+
+          const organizationId =
+            element.getAttribute(
+              'data-organization-id'
+            );
+
+          openOrganizationDetail(
+            organizationId
+          );
+
+        }
+      );
+
+    });
 
 }
 
