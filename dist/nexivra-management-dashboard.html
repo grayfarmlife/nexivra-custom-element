@@ -4499,18 +4499,26 @@ function populateCourseSelects() {
     'uploadCourse'
   ];
 
+
   selects.forEach(id => {
 
     const select =
       document.getElementById(id);
 
+
     if (!select) {
       return;
     }
 
+
+    const currentValue =
+      select.value;
+
+
     const original =
       select.options[0]?.outerHTML ||
-      '<option value="">Select</option>';
+      '<option value="">Select course</option>';
+
 
     select.innerHTML =
       original +
@@ -4526,50 +4534,68 @@ function populateCourseSelects() {
         `)
         .join('');
 
-  });
-if (id === 'moduleCourse') {
 
-  select.onchange = () => {
+    if (
+      currentValue &&
+      state.courses.some(
+        course =>
+          course.id === currentValue
+      )
+    ) {
 
-    const courseId =
-      select.value;
-
-    state.selectedCourseId =
-      courseId || null;
-
-
-    if (!courseId) {
-
-      state.modules = [];
-
-      renderModules();
-
-      return;
+      select.value =
+        currentValue;
 
     }
 
 
-    window.parent.postMessage(
-      {
-        source:
-          'NEXIVRA_MANAGEMENT',
+    if (id === 'moduleCourse') {
 
-        type:
-          'LIST_MODULES',
+      select.onchange = () => {
 
-        payload: {
-          courseId
+        const courseId =
+          select.value;
+
+
+        state.selectedCourseId =
+          courseId || null;
+
+
+        if (!courseId) {
+
+          state.modules = [];
+
+          renderModules();
+
+          return;
+
         }
-      },
-      '*'
-    );
 
 
-    renderModules();
+        window.parent.postMessage(
+          {
+            source:
+              'NEXIVRA_MANAGEMENT',
 
-  };
+            type:
+              'LIST_MODULES',
 
-}
+            payload: {
+              courseId
+            }
+          },
+          '*'
+        );
+
+
+        renderModules();
+
+      };
+
+    }
+
+  });
+
 }
 
 /* ======================================================
