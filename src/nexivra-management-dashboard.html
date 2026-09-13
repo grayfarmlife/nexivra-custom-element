@@ -4611,10 +4611,6 @@ function populateCourseSelects() {
     }
 
 
-    const currentValue =
-      select.value;
-
-
     const original =
       select.options[0]?.outerHTML ||
       '<option value="">Select course</option>';
@@ -4635,33 +4631,62 @@ function populateCourseSelects() {
         .join('');
 
 
-    if (
-      currentValue &&
-      state.courses.some(
-        course =>
-          course.id === currentValue
-      )
-    ) {
-
-      select.value =
-        currentValue;
-
-    }
-
-
     if (id === 'moduleCourse') {
+
+      let courseId =
+        state.selectedCourseId;
+
+
+      if (
+        !courseId &&
+        state.courses.length
+      ) {
+
+        courseId =
+          state.courses[0].id;
+
+        state.selectedCourseId =
+          courseId;
+
+      }
+
+
+      if (courseId) {
+
+        select.value =
+          courseId;
+
+
+        window.parent.postMessage(
+          {
+            source:
+              'NEXIVRA_MANAGEMENT',
+
+            type:
+              'LIST_MODULES',
+
+            payload: {
+              courseId
+            }
+          },
+          '*'
+        );
+
+      }
+
 
       select.onchange = () => {
 
-        const courseId =
+        const selectedCourseId =
           select.value;
 
 
         state.selectedCourseId =
-          courseId || null;
+          selectedCourseId ||
+          null;
 
 
-        if (!courseId) {
+        if (!selectedCourseId) {
 
           state.modules = [];
 
@@ -4681,14 +4706,12 @@ function populateCourseSelects() {
               'LIST_MODULES',
 
             payload: {
-              courseId
+              courseId:
+                selectedCourseId
             }
           },
           '*'
         );
-
-
-        renderModules();
 
       };
 
