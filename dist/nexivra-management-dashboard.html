@@ -3318,6 +3318,16 @@ function openModuleArea(
     areaTitles[area] ||
     area;
 
+  if (area === 'TEACHING') {
+
+  renderTeachingWorkspace(
+    workspace,
+    module
+  );
+
+  return;
+
+}
 
   workspace.innerHTML = `
 
@@ -3386,6 +3396,267 @@ function openModuleArea(
             ${escapeHTML(title)}
           </strong>
           will be built here.
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+  function renderTeachingWorkspace(
+  workspace,
+  module
+) {
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <button
+        type="button"
+        onclick="renderModuleWorkspaceById('${escapeAttribute(
+          module.id
+        )}')"
+        style="
+          margin-bottom:20px;
+          border:none;
+          background:transparent;
+          color:var(--cyan);
+          cursor:pointer;
+          font-weight:700;
+        "
+      >
+        ← Back to Module
+      </button>
+
+
+      <div class="eyebrow">
+        ${escapeHTML(
+          module.title
+        )}
+      </div>
+
+
+      <h2>
+        Teaching
+      </h2>
+
+
+      <p>
+        Define what NEXIVRA teaches,
+        how the AI instructor delivers it,
+        and how teaching adapts to the learner.
+      </p>
+
+
+      <div
+        style="
+          display:grid;
+          gap:18px;
+          margin-top:28px;
+        "
+      >
+
+        <div class="card">
+
+          <div class="card-title">
+            Learning Objective
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            What should the learner understand
+            or be able to demonstrate?
+          </div>
+
+          <textarea
+            id="teachingObjective"
+            placeholder="Example: The learner consistently recognizes guests, communicates with warmth, takes ownership, and understands how hospitality affects the guest experience."
+            style="
+              width:100%;
+              min-height:110px;
+              resize:vertical;
+            "
+          ></textarea>
+
+        </div>
+
+
+        <div class="card">
+
+          <div class="card-title">
+            Core Teaching Content
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Concepts NEXIVRA must teach
+            during this module.
+          </div>
+
+          <textarea
+            id="teachingContent"
+            placeholder="Enter the core concepts, principles, behaviors, and standards that must be taught."
+            style="
+              width:100%;
+              min-height:180px;
+              resize:vertical;
+            "
+          ></textarea>
+
+        </div>
+
+
+        <div class="card">
+
+          <div class="card-title">
+            AI Teaching Instructions
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Guidance for how the NEXIVRA instructor
+            should teach this material.
+          </div>
+
+          <textarea
+            id="teachingInstructions"
+            placeholder="Example: Teach conversationally. Ask questions before giving answers. Use realistic examples. Adapt explanations when the learner shows confusion."
+            style="
+              width:100%;
+              min-height:150px;
+              resize:vertical;
+            "
+          ></textarea>
+
+        </div>
+
+
+        <div class="card">
+
+          <div class="card-title">
+            Adaptive Teaching
+          </div>
+
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              gap:20px;
+            "
+          >
+
+            <div>
+
+              <div style="font-weight:700;">
+                Adapt explanations to the learner
+              </div>
+
+              <div
+                style="
+                  color:var(--muted);
+                  font-size:12px;
+                  margin-top:4px;
+                "
+              >
+                NEXIVRA changes examples,
+                pacing, and explanation style
+                based on demonstrated understanding.
+              </div>
+
+            </div>
+
+            <input
+              id="adaptiveTeachingEnabled"
+              type="checkbox"
+              checked
+            >
+
+          </div>
+
+        </div>
+
+
+        <div class="card">
+
+          <div class="card-title">
+            Hospitality CONNECT™ Integration
+          </div>
+
+          <div
+            style="
+              display:flex;
+              justify-content:space-between;
+              align-items:center;
+              gap:20px;
+            "
+          >
+
+            <div>
+
+              <div style="font-weight:700;">
+                Adapt teaching to CONNECT style
+              </div>
+
+              <div
+                style="
+                  color:var(--muted);
+                  font-size:12px;
+                  margin-top:4px;
+                "
+              >
+                Use the learner's inferred
+                Hospitality CONNECT™ style
+                to support communication and learning.
+              </div>
+
+            </div>
+
+            <input
+              id="connectTeachingEnabled"
+              type="checkbox"
+              checked
+            >
+
+          </div>
+
+        </div>
+
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+            margin-top:4px;
+          "
+        >
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="saveTeachingConfiguration()"
+          >
+            Save Teaching Configuration
+          </button>
+
         </div>
 
       </div>
