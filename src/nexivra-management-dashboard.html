@@ -3379,7 +3379,7 @@ textarea {
         class="modal-title"
         id="userModalTitle"
       >
-        Add NEXIVRA User
+        Add User
       </div>
 
       <button
@@ -3402,12 +3402,13 @@ textarea {
 
         <div>
           <label>
-            Wix Member ID
+            Email
           </label>
 
           <input
-            id="userMemberId"
-            placeholder="Paste the Wix member ID"
+            id="userEmail"
+            type="email"
+            placeholder="name@company.com"
           >
 
           <div
@@ -3418,20 +3419,9 @@ textarea {
               line-height:1.5;
             "
           >
-            This connects the NEXIVRA user record to the person's actual Wix login.
+            For a new user, NEXIVRA creates the Wix membership automatically
+            and sends the person a password-setup email.
           </div>
-        </div>
-
-        <div>
-          <label>
-            Email
-          </label>
-
-          <input
-            id="userEmail"
-            type="email"
-            placeholder="name@company.com"
-          >
         </div>
 
         <div class="form-row">
@@ -8877,19 +8867,13 @@ function openUserModal(
   setText(
     'userModalTitle',
     user
-      ? 'Edit NEXIVRA User'
-      : 'Add NEXIVRA User'
+      ? 'Edit User'
+      : 'Add User'
   );
 
   setFieldValue(
     'userRecordId',
     user?.id ||
-    ''
-  );
-
-  setFieldValue(
-    'userMemberId',
-    user?.memberId ||
     ''
   );
 
@@ -8933,16 +8917,6 @@ function openUserModal(
     user?.status ||
     'active'
   );
-
-  const memberIdInput =
-    document.getElementById(
-      'userMemberId'
-    );
-
-  if (memberIdInput) {
-    memberIdInput.disabled =
-      Boolean(user);
-  }
 
   const roleSelect =
     document.getElementById(
@@ -9024,12 +8998,6 @@ function saveNexivraUser() {
     )?.value ||
     '';
 
-  const memberId =
-    document.getElementById(
-      'userMemberId'
-    )?.value.trim() ||
-    '';
-
   const email =
     document.getElementById(
       'userEmail'
@@ -9066,10 +9034,21 @@ function saveNexivraUser() {
     )?.value ||
     'active';
 
-  if (!userId && !memberId) {
+  if (!email) {
 
     showToast(
-      'Wix Member ID is required.',
+      'Email is required.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  if (!firstName || !lastName) {
+
+    showToast(
+      'First and last name are required.',
       'error'
     );
 
@@ -9097,7 +9076,6 @@ function saveNexivraUser() {
       : 'CREATE_USER',
     {
       userId,
-      memberId,
       email,
       firstName,
       lastName,
