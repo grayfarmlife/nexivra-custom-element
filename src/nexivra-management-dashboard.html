@@ -3744,9 +3744,25 @@ function openModuleArea(
           "
         >
 
-          <button
-            type="button"
-            class="btn btn-primary"
+<button
+  type="button"
+  class="btn btn-primary"
+  onclick="saveTeachingConfiguration()"
+>
+  Save Teaching Configuration
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+`;
+
+}
+
+
 function saveTeachingConfiguration() {
 
   const moduleId =
@@ -3821,15 +3837,10 @@ function saveTeachingConfiguration() {
 
       payload: {
         moduleId,
-
         teachingObjective,
-
         teachingContent,
-
         teachingInstructions,
-
         adaptiveTeachingEnabled,
-
         connectTeachingEnabled
       }
     },
@@ -3841,19 +3852,6 @@ function saveTeachingConfiguration() {
 
 window.saveTeachingConfiguration =
   saveTeachingConfiguration;
-          >
-            Save Teaching Configuration
-          </button>
-
-        </div>
-
-      </div>
-
-    </div>
-
-  `;
-
-}
   function renderModuleWorkspaceById(
   moduleId
 ) {
