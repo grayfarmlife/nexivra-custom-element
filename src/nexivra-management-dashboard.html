@@ -2254,6 +2254,13 @@ textarea {
 
           </div>
 
+          <button
+            class="btn btn-primary"
+            onclick="openUserModal()"
+          >
+            + Add User
+          </button>
+
         </div>
 
         <div class="card">
@@ -3347,6 +3354,183 @@ textarea {
         </div>
 
       </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- ======================================================
+     USER MANAGEMENT MODAL
+====================================================== -->
+
+<div
+  class="modal-overlay"
+  id="userModal"
+>
+
+  <div class="modal">
+
+    <div class="modal-header">
+
+      <div
+        class="modal-title"
+        id="userModalTitle"
+      >
+        Add NEXIVRA User
+      </div>
+
+      <button
+        class="modal-close"
+        onclick="closeModal('userModal')"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div class="modal-body">
+
+      <div class="form-grid">
+
+        <input
+          id="userRecordId"
+          type="hidden"
+        >
+
+        <div>
+          <label>
+            Wix Member ID
+          </label>
+
+          <input
+            id="userMemberId"
+            placeholder="Paste the Wix member ID"
+          >
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:11px;
+              margin-top:6px;
+              line-height:1.5;
+            "
+          >
+            This connects the NEXIVRA user record to the person's actual Wix login.
+          </div>
+        </div>
+
+        <div>
+          <label>
+            Email
+          </label>
+
+          <input
+            id="userEmail"
+            type="email"
+            placeholder="name@company.com"
+          >
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              First Name
+            </label>
+
+            <input
+              id="userFirstName"
+              placeholder="First name"
+            >
+          </div>
+
+          <div>
+            <label>
+              Last Name
+            </label>
+
+            <input
+              id="userLastName"
+              placeholder="Last name"
+            >
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              Organization
+            </label>
+
+            <select id="userOrganization">
+              <option value="">
+                Select organization
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label>
+              Role
+            </label>
+
+            <select id="userRole">
+              <option value="learner">
+                Learner
+              </option>
+
+              <option value="company_admin">
+                Company Admin
+              </option>
+
+              <option value="nexivra_admin">
+                NEXIVRA Admin
+              </option>
+            </select>
+          </div>
+
+        </div>
+
+        <div>
+          <label>
+            Status
+          </label>
+
+          <select id="userStatus">
+            <option value="active">
+              Active
+            </option>
+
+            <option value="inactive">
+              Inactive
+            </option>
+          </select>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+
+      <button
+        class="btn"
+        onclick="closeModal('userModal')"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="btn btn-primary"
+        onclick="saveNexivraUser()"
+      >
+        Save User
+      </button>
 
     </div>
 
@@ -8516,7 +8700,7 @@ function renderUsers() {
     container.innerHTML =
       emptyState(
         'No users',
-        'Users will appear once they are added.'
+        'Add the first NEXIVRA user.'
       );
 
     return;
@@ -8531,49 +8715,84 @@ function renderUsers() {
           <th>Organization</th>
           <th>Role</th>
           <th>Status</th>
+          <th></th>
         </tr>
       </thead>
 
       <tbody>
         ${state.users.map(user => `
           <tr>
+
+            <td>
+              <strong>
+                ${escapeHTML(
+                  [
+                    user.firstName,
+                    user.lastName
+                  ]
+                    .filter(Boolean)
+                    .join(' ') ||
+                  'Unnamed User'
+                )}
+              </strong>
+
+              <div
+                style="
+                  color:var(--muted);
+                  font-size:10px;
+                  margin-top:4px;
+                "
+              >
+                ${escapeHTML(
+                  user.memberId ||
+                  ''
+                )}
+              </div>
+            </td>
+
             <td>
               ${escapeHTML(
-                [
-                  user.firstName,
-                  user.lastName
-                ]
-                  .filter(Boolean)
-                  .join(' ')
+                user.email ||
+                '—'
               )}
             </td>
 
             <td>
               ${escapeHTML(
-                user.email
+                user.organizationId ||
+                '—'
               )}
             </td>
 
             <td>
               ${escapeHTML(
-                user.organizationId
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                readableRole(
-                  user.role
-                )
+                user.role === 'nexivra_admin'
+                  ? 'NEXIVRA Admin'
+                  : user.role === 'company_admin'
+                    ? 'Company Admin'
+                    : 'Learner'
               )}
             </td>
 
             <td>
               ${statusBadge(
                 user.status ||
-                'active'
+                'inactive'
               )}
             </td>
+
+            <td>
+              <button
+                type="button"
+                class="btn"
+                onclick="openUserModal('${escapeAttribute(
+                  user.id
+                )}')"
+              >
+                Edit
+              </button>
+            </td>
+
           </tr>
         `).join('')}
       </tbody>
@@ -8581,6 +8800,326 @@ function renderUsers() {
   `;
 
 }
+
+
+function populateUserOrganizationSelect() {
+
+  const select =
+    document.getElementById(
+      'userOrganization'
+    );
+
+  if (!select) {
+    return;
+  }
+
+  if (
+    state.access
+      ?.isCompanyAdmin ===
+    true
+  ) {
+
+    select.innerHTML = `
+      <option value="${escapeAttribute(
+        state.access.organizationId
+      )}">
+        ${escapeHTML(
+          state.access.organizationId
+        )}
+      </option>
+    `;
+
+    select.value =
+      state.access.organizationId;
+
+    select.disabled =
+      true;
+
+    return;
+  }
+
+  select.disabled =
+    false;
+
+  select.innerHTML =
+    '<option value="">Select organization</option>' +
+    state.organizations.map(
+      org => `
+        <option value="${escapeAttribute(
+          org.organizationCode
+        )}">
+          ${escapeHTML(
+            org.title ||
+            org.organizationCode
+          )}
+        </option>
+      `
+    ).join('') +
+    '<option value="NEXIVRA">NEXIVRA</option>';
+
+}
+
+
+function openUserModal(
+  userId = ''
+) {
+
+  populateUserOrganizationSelect();
+
+  const user =
+    userId
+      ? state.users.find(
+          item =>
+            item.id === userId
+        )
+      : null;
+
+  setText(
+    'userModalTitle',
+    user
+      ? 'Edit NEXIVRA User'
+      : 'Add NEXIVRA User'
+  );
+
+  setFieldValue(
+    'userRecordId',
+    user?.id ||
+    ''
+  );
+
+  setFieldValue(
+    'userMemberId',
+    user?.memberId ||
+    ''
+  );
+
+  setFieldValue(
+    'userEmail',
+    user?.email ||
+    ''
+  );
+
+  setFieldValue(
+    'userFirstName',
+    user?.firstName ||
+    ''
+  );
+
+  setFieldValue(
+    'userLastName',
+    user?.lastName ||
+    ''
+  );
+
+  setFieldValue(
+    'userOrganization',
+    user?.organizationId ||
+    (
+      state.access
+        ?.isCompanyAdmin
+        ? state.access.organizationId
+        : ''
+    )
+  );
+
+  setFieldValue(
+    'userRole',
+    user?.role ||
+    'learner'
+  );
+
+  setFieldValue(
+    'userStatus',
+    user?.status ||
+    'active'
+  );
+
+  const memberIdInput =
+    document.getElementById(
+      'userMemberId'
+    );
+
+  if (memberIdInput) {
+    memberIdInput.disabled =
+      Boolean(user);
+  }
+
+  const roleSelect =
+    document.getElementById(
+      'userRole'
+    );
+
+  const orgSelect =
+    document.getElementById(
+      'userOrganization'
+    );
+
+  if (
+    state.access
+      ?.isCompanyAdmin ===
+    true
+  ) {
+
+    if (roleSelect) {
+      roleSelect.innerHTML = `
+        <option value="learner">
+          Learner
+        </option>
+      `;
+
+      roleSelect.value =
+        'learner';
+
+      roleSelect.disabled =
+        true;
+    }
+
+    if (orgSelect) {
+      orgSelect.value =
+        state.access.organizationId;
+
+      orgSelect.disabled =
+        true;
+    }
+
+  } else {
+
+    if (roleSelect) {
+      roleSelect.innerHTML = `
+        <option value="learner">
+          Learner
+        </option>
+
+        <option value="company_admin">
+          Company Admin
+        </option>
+
+        <option value="nexivra_admin">
+          NEXIVRA Admin
+        </option>
+      `;
+
+      roleSelect.value =
+        user?.role ||
+        'learner';
+
+      roleSelect.disabled =
+        false;
+    }
+
+  }
+
+  openModal(
+    'userModal'
+  );
+
+}
+
+
+function saveNexivraUser() {
+
+  const userId =
+    document.getElementById(
+      'userRecordId'
+    )?.value ||
+    '';
+
+  const memberId =
+    document.getElementById(
+      'userMemberId'
+    )?.value.trim() ||
+    '';
+
+  const email =
+    document.getElementById(
+      'userEmail'
+    )?.value.trim() ||
+    '';
+
+  const firstName =
+    document.getElementById(
+      'userFirstName'
+    )?.value.trim() ||
+    '';
+
+  const lastName =
+    document.getElementById(
+      'userLastName'
+    )?.value.trim() ||
+    '';
+
+  const organizationId =
+    document.getElementById(
+      'userOrganization'
+    )?.value ||
+    '';
+
+  const role =
+    document.getElementById(
+      'userRole'
+    )?.value ||
+    'learner';
+
+  const status =
+    document.getElementById(
+      'userStatus'
+    )?.value ||
+    'active';
+
+  if (!userId && !memberId) {
+
+    showToast(
+      'Wix Member ID is required.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  if (
+    role !== 'nexivra_admin' &&
+    !organizationId
+  ) {
+
+    showToast(
+      'Select an organization.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  sendToWix(
+    userId
+      ? 'UPDATE_USER'
+      : 'CREATE_USER',
+    {
+      userId,
+      memberId,
+      email,
+      firstName,
+      lastName,
+      organizationId,
+      role,
+      status
+    }
+  );
+
+  closeModal(
+    'userModal'
+  );
+
+}
+
+
+window.openUserModal =
+  openUserModal;
+
+window.saveNexivraUser =
+  saveNexivraUser;
+
 
 /* ======================================================
    UPLOADS
