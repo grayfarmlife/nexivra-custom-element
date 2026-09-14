@@ -2152,14 +2152,13 @@ textarea {
             </div>
 
             <h1>
-              Knowledge Uploads
+              Knowledge Sources
             </h1>
 
             <p>
-              Connect approved policies, procedures,
-              standards, manuals, product knowledge,
-              scenarios, and organizational material
-              to NEXIVRA.
+              Register, approve, version, and connect organizational
+              knowledge to the courses and modules NEXIVRA is allowed
+              to use.
             </p>
 
           </div>
@@ -2168,12 +2167,32 @@ textarea {
             class="btn btn-primary"
             onclick="openUploadModal()"
           >
-            + Register Upload
+            + Register Knowledge Source
           </button>
 
         </div>
 
+        <div
+          id="knowledgeSourceMetrics"
+          class="metric-grid"
+        >
+        </div>
+
         <div class="card">
+
+          <div class="card-header">
+
+            <div>
+              <div class="card-title">
+                Knowledge Source Library
+              </div>
+
+              <div class="card-subtitle">
+                Approved sources become available to the NEXIVRA learning engine only through controlled module relationships.
+              </div>
+            </div>
+
+          </div>
 
           <div
             class="table-wrap"
@@ -2778,7 +2797,7 @@ textarea {
 </div>
 
 <!-- ======================================================
-     UPLOAD MODAL
+     KNOWLEDGE SOURCE REGISTRATION MODAL
 ====================================================== -->
 
 <div
@@ -2791,7 +2810,7 @@ textarea {
     <div class="modal-header">
 
       <div class="modal-title">
-        Register Knowledge Upload
+        Register Knowledge Source
       </div>
 
       <button
@@ -2833,12 +2852,23 @@ textarea {
 
         <div>
           <label>
+            Source Title
+          </label>
+
+          <input
+            id="uploadSourceTitle"
+            placeholder="Example: Centier Retail Service Standards"
+          >
+        </div>
+
+        <div>
+          <label>
             File Name
           </label>
 
           <input
             id="uploadFileName"
-            placeholder="Example: SOP Manual.pdf"
+            placeholder="Example: Retail Service Standards.pdf"
           >
         </div>
 
@@ -2851,6 +2881,122 @@ textarea {
             id="uploadFileUrl"
             placeholder="https://..."
           >
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              Source Type
+            </label>
+
+            <select id="uploadSourceType">
+              <option value="policy">Policy</option>
+              <option value="procedure">Procedure</option>
+              <option value="training_material">Training Material</option>
+              <option value="product_knowledge">Product Knowledge</option>
+              <option value="system_guide">System Guide</option>
+              <option value="compliance">Compliance / Regulatory</option>
+              <option value="service_standard">Service Standard</option>
+              <option value="scenario_material">Scenario Material</option>
+              <option value="lep_methodology">LEP / NEXIVRA Methodology</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label>
+              Version
+            </label>
+
+            <input
+              id="uploadVersion"
+              placeholder="Example: 1.0"
+              value="1.0"
+            >
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              Effective Date
+            </label>
+
+            <input
+              id="uploadEffectiveDate"
+              type="date"
+            >
+          </div>
+
+          <div>
+            <label>
+              Initial Approval Status
+            </label>
+
+            <select id="uploadApprovalStatus">
+              <option value="draft">Draft</option>
+              <option value="pending_review">Pending Review</option>
+              <option value="approved">Approved</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div>
+          <label>
+            Notes
+          </label>
+
+          <textarea
+            id="uploadNotes"
+            placeholder="Internal source notes, ownership, limitations, or review details..."
+          ></textarea>
+        </div>
+
+        <div
+          style="
+            padding:16px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.025);
+          "
+        >
+          <label
+            style="
+              display:flex;
+              align-items:center;
+              gap:10px;
+              margin:0;
+              cursor:pointer;
+            "
+          >
+            <input
+              id="uploadIsCurrent"
+              type="checkbox"
+              checked
+              style="
+                width:18px;
+                height:18px;
+              "
+            >
+            <span>
+              Current approved version
+            </span>
+          </label>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:11px;
+              margin-top:8px;
+              line-height:1.5;
+            "
+          >
+            NEXIVRA should prefer the current approved version when multiple versions of the same source exist.
+          </div>
         </div>
 
       </div>
@@ -2870,8 +3016,304 @@ textarea {
         class="btn btn-primary"
         onclick="registerUpload()"
       >
-        Register Upload
+        Register Knowledge Source
       </button>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- ======================================================
+     KNOWLEDGE SOURCE MANAGER MODAL
+====================================================== -->
+
+<div
+  class="modal-overlay"
+  id="knowledgeSourceManagerModal"
+>
+
+  <div
+    class="modal"
+    style="width:min(760px,100%);"
+  >
+
+    <div class="modal-header">
+
+      <div>
+
+        <div class="eyebrow">
+          KNOWLEDGE GOVERNANCE
+        </div>
+
+        <div
+          class="modal-title"
+          id="knowledgeManagerTitle"
+          style="margin-top:5px;"
+        >
+          Manage Knowledge Source
+        </div>
+
+      </div>
+
+      <button
+        class="modal-close"
+        onclick="closeKnowledgeSourceManager()"
+      >
+        ×
+      </button>
+
+    </div>
+
+    <div
+      class="modal-body"
+      style="
+        max-height:70vh;
+        overflow-y:auto;
+      "
+    >
+
+      <div class="form-grid">
+
+        <div
+          id="knowledgeManagerSourceSummary"
+          style="
+            padding:16px;
+            border-radius:14px;
+            border:1px solid rgba(0,200,255,.18);
+            background:rgba(0,200,255,.035);
+          "
+        >
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              Approval Status
+            </label>
+
+            <select id="knowledgeManagerApprovalStatus">
+              <option value="draft">Draft</option>
+              <option value="pending_review">Pending Review</option>
+              <option value="approved">Approved</option>
+              <option value="retired">Retired</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div>
+            <label>
+              Version
+            </label>
+
+            <input
+              id="knowledgeManagerVersion"
+              placeholder="1.0"
+            >
+          </div>
+
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              Effective Date
+            </label>
+
+            <input
+              id="knowledgeManagerEffectiveDate"
+              type="date"
+            >
+          </div>
+
+          <div>
+            <label>
+              Source Type
+            </label>
+
+            <select id="knowledgeManagerSourceType">
+              <option value="policy">Policy</option>
+              <option value="procedure">Procedure</option>
+              <option value="training_material">Training Material</option>
+              <option value="product_knowledge">Product Knowledge</option>
+              <option value="system_guide">System Guide</option>
+              <option value="compliance">Compliance / Regulatory</option>
+              <option value="service_standard">Service Standard</option>
+              <option value="scenario_material">Scenario Material</option>
+              <option value="lep_methodology">LEP / NEXIVRA Methodology</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div>
+          <label>
+            Source Title
+          </label>
+
+          <input
+            id="knowledgeManagerSourceTitle"
+            placeholder="Knowledge source title"
+          >
+        </div>
+
+        <div>
+          <label>
+            Governance Notes
+          </label>
+
+          <textarea
+            id="knowledgeManagerNotes"
+            placeholder="Review notes, limitations, ownership, replacement source, or approval details..."
+          ></textarea>
+        </div>
+
+        <div
+          style="
+            padding:16px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.025);
+          "
+        >
+
+          <label
+            style="
+              display:flex;
+              align-items:center;
+              gap:10px;
+              margin:0;
+              cursor:pointer;
+            "
+          >
+            <input
+              id="knowledgeManagerIsCurrent"
+              type="checkbox"
+              style="
+                width:18px;
+                height:18px;
+              "
+            >
+
+            <span>
+              Current version
+            </span>
+          </label>
+
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+          "
+        >
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="saveKnowledgeSourceManagement()"
+          >
+            Save Source Governance
+          </button>
+
+        </div>
+
+
+        <div
+          style="
+            margin-top:8px;
+            padding-top:20px;
+            border-top:1px solid rgba(255,255,255,.08);
+          "
+        >
+
+          <div class="eyebrow">
+            MODULE RELATIONSHIPS
+          </div>
+
+          <div
+            style="
+              color:#fff;
+              font-size:16px;
+              font-weight:800;
+              margin-top:6px;
+            "
+          >
+            Approved Module Access
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              line-height:1.6;
+              margin-top:7px;
+            "
+          >
+            Connect this source only to modules that are authorized to use it. The module relationship controls the approvedKnowledgeSourceIds used by NEXIVRA.
+          </div>
+
+        </div>
+
+        <div
+          id="knowledgeManagerConnectedModules"
+          style="
+            display:grid;
+            gap:8px;
+          "
+        >
+        </div>
+
+        <div class="form-row">
+
+          <div>
+            <label>
+              Add Module Relationship
+            </label>
+
+            <select id="knowledgeManagerModuleSelect">
+              <option value="">
+                Select module
+              </option>
+            </select>
+          </div>
+
+          <div
+            style="
+              display:flex;
+              align-items:flex-end;
+            "
+          >
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="connectKnowledgeSourceToModule()"
+              style="width:100%;"
+            >
+              Connect Source to Module
+            </button>
+          </div>
+
+        </div>
+
+        <div
+          id="knowledgeManagerRelationshipNotice"
+          style="
+            color:var(--muted);
+            font-size:11px;
+            line-height:1.55;
+          "
+        >
+          Only approved, current sources should normally be connected to production learning modules.
+        </div>
+
+      </div>
 
     </div>
 
@@ -2899,7 +3341,9 @@ const state = {
   uploads: [],
   users: [],
   assignments: [],
-  selectedModuleArea: null
+  selectedModuleArea: null,
+  knowledgeModules: [],
+  selectedKnowledgeSourceId: null
 };
 
 /* ======================================================
@@ -3068,6 +3512,22 @@ function handleWixMessage(
         [];
 
       renderUploads();
+
+      if (
+        state.selectedKnowledgeSourceId
+      ) {
+        populateKnowledgeSourceManager();
+      }
+
+      break;
+
+    case 'KNOWLEDGE_MODULES_DATA':
+
+      state.knowledgeModules =
+        payload?.modules ||
+        [];
+
+      renderKnowledgeModuleRelationships();
 
       break;
 
@@ -7805,12 +8265,128 @@ function renderUploads() {
       'uploadsContainer'
     );
 
-  if (!state.uploads.length) {
+  const metrics =
+    document.getElementById(
+      'knowledgeSourceMetrics'
+    );
+
+  const uploads =
+    state.uploads ||
+    [];
+
+  const approvedCount =
+    uploads.filter(
+      upload =>
+        getKnowledgeApprovalStatus(
+          upload
+        ) === 'approved'
+    ).length;
+
+  const pendingCount =
+    uploads.filter(
+      upload =>
+        getKnowledgeApprovalStatus(
+          upload
+        ) === 'pending_review'
+    ).length;
+
+  const currentCount =
+    uploads.filter(
+      upload =>
+        getKnowledgeMetadata(
+          upload
+        ).isCurrent !== false
+    ).length;
+
+  const relationshipCount =
+    uploads.reduce(
+      (
+        total,
+        upload
+      ) => {
+
+        const moduleIds =
+          getKnowledgeMetadata(
+            upload
+          ).moduleIds;
+
+        return (
+          total +
+          (
+            Array.isArray(
+              moduleIds
+            )
+              ? moduleIds.length
+              : 0
+          )
+        );
+
+      },
+      0
+    );
+
+  if (metrics) {
+
+    metrics.innerHTML = `
+
+      <div class="metric-card">
+        <div class="metric-label">
+          Sources
+        </div>
+        <div class="metric-value">
+          ${uploads.length}
+        </div>
+        <div class="metric-sub">
+          Registered knowledge sources
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">
+          Approved
+        </div>
+        <div class="metric-value">
+          ${approvedCount}
+        </div>
+        <div class="metric-sub">
+          Cleared for controlled use
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">
+          Pending Review
+        </div>
+        <div class="metric-value">
+          ${pendingCount}
+        </div>
+        <div class="metric-sub">
+          Awaiting governance decision
+        </div>
+      </div>
+
+      <div class="metric-card">
+        <div class="metric-label">
+          Module Links
+        </div>
+        <div class="metric-value">
+          ${relationshipCount}
+        </div>
+        <div class="metric-sub">
+          Approved source relationships
+        </div>
+      </div>
+
+    `;
+
+  }
+
+  if (!uploads.length) {
 
     container.innerHTML =
       emptyState(
-        'No knowledge uploaded',
-        'Connect organizational knowledge to NEXIVRA.'
+        'No knowledge sources',
+        'Register the first approved source for NEXIVRA.'
       );
 
     return;
@@ -7820,55 +8396,851 @@ function renderUploads() {
     <table>
       <thead>
         <tr>
-          <th>File</th>
+          <th>Source</th>
           <th>Organization</th>
+          <th>Course</th>
           <th>Type</th>
-          <th>Status</th>
-          <th>Date</th>
+          <th>Version</th>
+          <th>Approval</th>
+          <th>Current</th>
+          <th>Modules</th>
+          <th></th>
         </tr>
       </thead>
 
       <tbody>
-        ${state.uploads.map(upload => `
-          <tr>
-            <td>
-              ${escapeHTML(
-                upload.fileName
-              )}
-            </td>
+        ${uploads.map(
+          upload => {
 
-            <td>
-              ${escapeHTML(
-                upload.organizationId
-              )}
-            </td>
+            const metadata =
+              getKnowledgeMetadata(
+                upload
+              );
 
-            <td>
-              ${escapeHTML(
-                upload.fileType ||
-                upload.sourceType
-              )}
-            </td>
+            const approvalStatus =
+              getKnowledgeApprovalStatus(
+                upload
+              );
 
-            <td>
-              ${statusBadge(
-                upload.status ||
-                'uploaded'
-              )}
-            </td>
+            const moduleIds =
+              Array.isArray(
+                metadata.moduleIds
+              )
+                ? metadata.moduleIds
+                : [];
 
-            <td>
-              ${formatDate(
-                upload.createdDate
-              )}
-            </td>
-          </tr>
-        `).join('')}
+            return `
+              <tr>
+
+                <td>
+                  <strong>
+                    ${escapeHTML(
+                      metadata.sourceTitle ||
+                      upload.fileName ||
+                      'Knowledge Source'
+                    )}
+                  </strong>
+
+                  <div
+                    style="
+                      color:var(--muted);
+                      font-size:10px;
+                      margin-top:4px;
+                    "
+                  >
+                    ${escapeHTML(
+                      upload.fileName ||
+                      ''
+                    )}
+                  </div>
+                </td>
+
+                <td>
+                  ${escapeHTML(
+                    upload.organizationId ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${escapeHTML(
+                    knowledgeCourseName(
+                      upload.courseId
+                    )
+                  )}
+                </td>
+
+                <td>
+                  ${escapeHTML(
+                    readableKnowledgeSourceType(
+                      metadata.sourceType ||
+                      upload.sourceType ||
+                      upload.fileType
+                    )
+                  )}
+                </td>
+
+                <td>
+                  ${escapeHTML(
+                    metadata.version ||
+                    '—'
+                  )}
+                </td>
+
+                <td>
+                  ${knowledgeApprovalBadge(
+                    approvalStatus
+                  )}
+                </td>
+
+                <td>
+                  ${
+                    metadata.isCurrent !== false
+                      ? '<span class="status active">Current</span>'
+                      : '<span class="status inactive">Superseded</span>'
+                  }
+                </td>
+
+                <td>
+                  ${moduleIds.length}
+                </td>
+
+                <td>
+                  <button
+                    type="button"
+                    class="btn"
+                    onclick="openKnowledgeSourceManager('${escapeAttribute(
+                      upload.id
+                    )}')"
+                  >
+                    Manage
+                  </button>
+                </td>
+
+              </tr>
+            `;
+
+          }
+        ).join('')}
       </tbody>
     </table>
   `;
 
 }
+
+
+function getKnowledgeMetadata(
+  upload
+) {
+
+  const metadata =
+    upload?.metadata;
+
+  if (
+    metadata &&
+    typeof metadata ===
+      'object'
+  ) {
+    return metadata;
+  }
+
+  return {};
+
+}
+
+
+function getKnowledgeApprovalStatus(
+  upload
+) {
+
+  const metadata =
+    getKnowledgeMetadata(
+      upload
+    );
+
+  return (
+    metadata.approvalStatus ||
+    (
+      upload?.status ===
+      'approved'
+        ? 'approved'
+        : upload?.status ===
+          'retired'
+          ? 'retired'
+          : upload?.status ===
+            'rejected'
+            ? 'rejected'
+            : 'draft'
+    )
+  );
+
+}
+
+
+function readableKnowledgeSourceType(
+  value
+) {
+
+  const types = {
+    policy:
+      'Policy',
+
+    procedure:
+      'Procedure',
+
+    training_material:
+      'Training Material',
+
+    product_knowledge:
+      'Product Knowledge',
+
+    system_guide:
+      'System Guide',
+
+    compliance:
+      'Compliance / Regulatory',
+
+    service_standard:
+      'Service Standard',
+
+    scenario_material:
+      'Scenario Material',
+
+    lep_methodology:
+      'LEP / NEXIVRA Methodology',
+
+    organizational_knowledge:
+      'Organizational Knowledge',
+
+    course_source:
+      'Course Source',
+
+    other:
+      'Other'
+  };
+
+  return (
+    types[value] ||
+    value ||
+    'Other'
+  );
+
+}
+
+
+function knowledgeApprovalBadge(
+  status
+) {
+
+  const labels = {
+    draft:
+      'Draft',
+
+    pending_review:
+      'Pending Review',
+
+    approved:
+      'Approved',
+
+    retired:
+      'Retired',
+
+    rejected:
+      'Rejected'
+  };
+
+  const className =
+    status === 'approved'
+      ? 'active'
+      : status === 'pending_review'
+        ? 'processing'
+        : status === 'retired' ||
+          status === 'rejected'
+          ? 'inactive'
+          : 'draft';
+
+  return `
+    <span class="status ${className}">
+      ${escapeHTML(
+        labels[status] ||
+        status ||
+        'Draft'
+      )}
+    </span>
+  `;
+
+}
+
+
+function knowledgeCourseName(
+  courseId
+) {
+
+  if (!courseId) {
+    return 'Organization-Wide';
+  }
+
+  const course =
+    state.courses.find(
+      item =>
+        item.id === courseId
+    );
+
+  return (
+    course?.title ||
+    courseId
+  );
+
+}
+
+
+function openKnowledgeSourceManager(
+  uploadId
+) {
+
+  state.selectedKnowledgeSourceId =
+    uploadId;
+
+  state.knowledgeModules =
+    [];
+
+  populateKnowledgeSourceManager();
+
+  openModal(
+    'knowledgeSourceManagerModal'
+  );
+
+  const upload =
+    state.uploads.find(
+      item =>
+        item.id === uploadId
+    );
+
+  if (
+    upload?.courseId
+  ) {
+
+    sendToWix(
+      'LIST_KNOWLEDGE_MODULES',
+      {
+        courseId:
+          upload.courseId
+      }
+    );
+
+  } else {
+
+    renderKnowledgeModuleRelationships();
+
+  }
+
+}
+
+
+function closeKnowledgeSourceManager() {
+
+  state.selectedKnowledgeSourceId =
+    null;
+
+  state.knowledgeModules =
+    [];
+
+  closeModal(
+    'knowledgeSourceManagerModal'
+  );
+
+}
+
+
+function populateKnowledgeSourceManager() {
+
+  const upload =
+    state.uploads.find(
+      item =>
+        item.id ===
+        state.selectedKnowledgeSourceId
+    );
+
+  if (!upload) {
+    return;
+  }
+
+  const metadata =
+    getKnowledgeMetadata(
+      upload
+    );
+
+  setText(
+    'knowledgeManagerTitle',
+    metadata.sourceTitle ||
+    upload.fileName ||
+    'Manage Knowledge Source'
+  );
+
+  const summary =
+    document.getElementById(
+      'knowledgeManagerSourceSummary'
+    );
+
+  if (summary) {
+
+    summary.innerHTML = `
+
+      <div
+        style="
+          font-weight:800;
+          color:#fff;
+          font-size:14px;
+        "
+      >
+        ${escapeHTML(
+          upload.fileName ||
+          ''
+        )}
+      </div>
+
+      <div
+        style="
+          color:var(--muted);
+          font-size:11px;
+          line-height:1.6;
+          margin-top:6px;
+        "
+      >
+        Organization:
+        <strong style="color:#fff;">
+          ${escapeHTML(
+            upload.organizationId ||
+            '—'
+          )}
+        </strong>
+        &nbsp; • &nbsp;
+        Course:
+        <strong style="color:#fff;">
+          ${escapeHTML(
+            knowledgeCourseName(
+              upload.courseId
+            )
+          )}
+        </strong>
+      </div>
+
+      ${
+        upload.fileUrl
+          ? `
+            <div
+              style="
+                margin-top:8px;
+                color:var(--cyan);
+                font-size:10px;
+                word-break:break-all;
+              "
+            >
+              ${escapeHTML(
+                upload.fileUrl
+              )}
+            </div>
+          `
+          : ''
+      }
+
+    `;
+
+  }
+
+  setFieldValue(
+    'knowledgeManagerApprovalStatus',
+    getKnowledgeApprovalStatus(
+      upload
+    )
+  );
+
+  setFieldValue(
+    'knowledgeManagerVersion',
+    metadata.version ||
+    '1.0'
+  );
+
+  setFieldValue(
+    'knowledgeManagerEffectiveDate',
+    metadata.effectiveDate ||
+    ''
+  );
+
+  setFieldValue(
+    'knowledgeManagerSourceType',
+    metadata.sourceType ||
+    upload.sourceType ||
+    'other'
+  );
+
+  setFieldValue(
+    'knowledgeManagerSourceTitle',
+    metadata.sourceTitle ||
+    upload.fileName ||
+    ''
+  );
+
+  setFieldValue(
+    'knowledgeManagerNotes',
+    metadata.notes ||
+    ''
+  );
+
+  const currentCheckbox =
+    document.getElementById(
+      'knowledgeManagerIsCurrent'
+    );
+
+  if (currentCheckbox) {
+
+    currentCheckbox.checked =
+      metadata.isCurrent !==
+      false;
+
+  }
+
+  renderKnowledgeModuleRelationships();
+
+}
+
+
+function renderKnowledgeModuleRelationships() {
+
+  const upload =
+    state.uploads.find(
+      item =>
+        item.id ===
+        state.selectedKnowledgeSourceId
+    );
+
+  const connectedContainer =
+    document.getElementById(
+      'knowledgeManagerConnectedModules'
+    );
+
+  const moduleSelect =
+    document.getElementById(
+      'knowledgeManagerModuleSelect'
+    );
+
+  if (!upload) {
+
+    if (connectedContainer) {
+      connectedContainer.innerHTML = '';
+    }
+
+    return;
+  }
+
+  const metadata =
+    getKnowledgeMetadata(
+      upload
+    );
+
+  const moduleIds =
+    Array.isArray(
+      metadata.moduleIds
+    )
+      ? metadata.moduleIds
+      : [];
+
+  if (moduleSelect) {
+
+    if (!upload.courseId) {
+
+      moduleSelect.innerHTML =
+        '<option value="">Assign a course to this source first</option>';
+
+      moduleSelect.disabled =
+        true;
+
+    } else {
+
+      moduleSelect.disabled =
+        false;
+
+      const availableModules =
+        state.knowledgeModules.filter(
+          module =>
+            !moduleIds.includes(
+              module.id
+            )
+        );
+
+      moduleSelect.innerHTML =
+        '<option value="">Select module</option>' +
+        availableModules.map(
+          module => `
+            <option value="${escapeAttribute(
+              module.id
+            )}">
+              ${escapeHTML(
+                module.title
+              )}
+            </option>
+          `
+        ).join('');
+
+    }
+
+  }
+
+  if (!connectedContainer) {
+    return;
+  }
+
+  if (!moduleIds.length) {
+
+    connectedContainer.innerHTML = `
+
+      <div
+        style="
+          padding:14px;
+          border-radius:12px;
+          border:1px dashed rgba(255,255,255,.12);
+          color:var(--muted);
+          font-size:12px;
+        "
+      >
+        This source is not connected to any modules yet.
+      </div>
+
+    `;
+
+    return;
+  }
+
+  connectedContainer.innerHTML =
+    moduleIds.map(
+      moduleId => {
+
+        const module =
+          state.knowledgeModules.find(
+            item =>
+              item.id === moduleId
+          );
+
+        return `
+
+          <div
+            style="
+              display:flex;
+              align-items:center;
+              justify-content:space-between;
+              gap:16px;
+              padding:12px 14px;
+              border-radius:12px;
+              border:1px solid rgba(0,200,255,.16);
+              background:rgba(0,200,255,.035);
+            "
+          >
+
+            <div>
+
+              <div
+                style="
+                  color:#fff;
+                  font-weight:800;
+                  font-size:12px;
+                "
+              >
+                ${escapeHTML(
+                  module?.title ||
+                  moduleId
+                )}
+              </div>
+
+              <div
+                style="
+                  color:var(--muted);
+                  font-size:10px;
+                  margin-top:4px;
+                "
+              >
+                Approved source relationship
+              </div>
+
+            </div>
+
+            <button
+              type="button"
+              class="btn"
+              onclick="disconnectKnowledgeSourceFromModule('${escapeAttribute(
+                moduleId
+              )}')"
+            >
+              Disconnect
+            </button>
+
+          </div>
+
+        `;
+
+      }
+    ).join('');
+
+}
+
+
+function saveKnowledgeSourceManagement() {
+
+  const uploadId =
+    state.selectedKnowledgeSourceId;
+
+  if (!uploadId) {
+
+    showToast(
+      'Select a knowledge source first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  sendToWix(
+    'UPDATE_KNOWLEDGE_SOURCE',
+    {
+      uploadId,
+
+      approvalStatus:
+        document.getElementById(
+          'knowledgeManagerApprovalStatus'
+        )?.value ||
+        'draft',
+
+      version:
+        document.getElementById(
+          'knowledgeManagerVersion'
+        )?.value.trim() ||
+        '1.0',
+
+      effectiveDate:
+        document.getElementById(
+          'knowledgeManagerEffectiveDate'
+        )?.value ||
+        '',
+
+      sourceType:
+        document.getElementById(
+          'knowledgeManagerSourceType'
+        )?.value ||
+        'other',
+
+      sourceTitle:
+        document.getElementById(
+          'knowledgeManagerSourceTitle'
+        )?.value.trim() ||
+        '',
+
+      notes:
+        document.getElementById(
+          'knowledgeManagerNotes'
+        )?.value.trim() ||
+        '',
+
+      isCurrent:
+        document.getElementById(
+          'knowledgeManagerIsCurrent'
+        )?.checked !==
+        false
+    }
+  );
+
+}
+
+
+function connectKnowledgeSourceToModule() {
+
+  const uploadId =
+    state.selectedKnowledgeSourceId;
+
+  const moduleId =
+    document.getElementById(
+      'knowledgeManagerModuleSelect'
+    )?.value;
+
+  if (!uploadId || !moduleId) {
+
+    showToast(
+      'Select a module first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  const upload =
+    state.uploads.find(
+      item =>
+        item.id === uploadId
+    );
+
+  if (
+    getKnowledgeApprovalStatus(
+      upload
+    ) !== 'approved'
+  ) {
+
+    showToast(
+      'Approve the knowledge source before connecting it to a module.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  sendToWix(
+    'CONNECT_KNOWLEDGE_SOURCE',
+    {
+      uploadId,
+      moduleId
+    }
+  );
+
+}
+
+
+function disconnectKnowledgeSourceFromModule(
+  moduleId
+) {
+
+  const uploadId =
+    state.selectedKnowledgeSourceId;
+
+  if (!uploadId || !moduleId) {
+    return;
+  }
+
+  sendToWix(
+    'DISCONNECT_KNOWLEDGE_SOURCE',
+    {
+      uploadId,
+      moduleId
+    }
+  );
+
+}
+
+
+window.openKnowledgeSourceManager =
+  openKnowledgeSourceManager;
+
+window.closeKnowledgeSourceManager =
+  closeKnowledgeSourceManager;
+
+window.saveKnowledgeSourceManagement =
+  saveKnowledgeSourceManagement;
+
+window.connectKnowledgeSourceToModule =
+  connectKnowledgeSourceToModule;
+
+window.disconnectKnowledgeSourceFromModule =
+  disconnectKnowledgeSourceFromModule;
+
 
 /* ======================================================
    ASSIGNMENTS
@@ -8233,6 +9605,14 @@ function registerUpload() {
       )
       .value;
 
+  const sourceTitle =
+    document
+      .getElementById(
+        'uploadSourceTitle'
+      )
+      .value
+      .trim();
+
   const fileName =
     document
       .getElementById(
@@ -8249,18 +9629,67 @@ function registerUpload() {
       .value
       .trim();
 
+  const sourceType =
+    document
+      .getElementById(
+        'uploadSourceType'
+      )
+      .value;
+
+  const version =
+    document
+      .getElementById(
+        'uploadVersion'
+      )
+      .value
+      .trim() ||
+    '1.0';
+
+  const effectiveDate =
+    document
+      .getElementById(
+        'uploadEffectiveDate'
+      )
+      .value;
+
+  const approvalStatus =
+    document
+      .getElementById(
+        'uploadApprovalStatus'
+      )
+      .value ||
+    'draft';
+
+  const notes =
+    document
+      .getElementById(
+        'uploadNotes'
+      )
+      .value
+      .trim();
+
+  const isCurrent =
+    document
+      .getElementById(
+        'uploadIsCurrent'
+      )
+      .checked !==
+    false;
+
   if (
     !organizationId ||
+    !sourceTitle ||
     !fileName ||
     !fileUrl
   ) {
 
     showToast(
-      'Organization, file name, and URL are required.',
+      'Organization, source title, file name, and URL are required.',
       'error'
     );
 
     return;
+
   }
 
   sendToWix(
@@ -8270,8 +9699,20 @@ function registerUpload() {
       courseId,
       fileName,
       fileUrl,
-      sourceType:
-        'organizational_knowledge'
+      fileType:
+        sourceType,
+      sourceType,
+
+      metadata: {
+        sourceTitle,
+        sourceType,
+        version,
+        effectiveDate,
+        approvalStatus,
+        isCurrent,
+        notes,
+        moduleIds: []
+      }
     }
   );
 
@@ -8280,6 +9721,7 @@ function registerUpload() {
   );
 
 }
+
 
 /* ======================================================
    DEMO
@@ -8593,6 +10035,56 @@ function openUploadModal() {
   populateOrganizationSelects();
   populateCourseSelects();
 
+  setFieldValue(
+    'uploadSourceTitle',
+    ''
+  );
+
+  setFieldValue(
+    'uploadFileName',
+    ''
+  );
+
+  setFieldValue(
+    'uploadFileUrl',
+    ''
+  );
+
+  setFieldValue(
+    'uploadVersion',
+    '1.0'
+  );
+
+  setFieldValue(
+    'uploadEffectiveDate',
+    ''
+  );
+
+  setFieldValue(
+    'uploadNotes',
+    ''
+  );
+
+  setFieldValue(
+    'uploadApprovalStatus',
+    'draft'
+  );
+
+  setFieldValue(
+    'uploadSourceType',
+    'policy'
+  );
+
+  const currentCheckbox =
+    document.getElementById(
+      'uploadIsCurrent'
+    );
+
+  if (currentCheckbox) {
+    currentCheckbox.checked =
+      true;
+  }
+
   openModal(
     'uploadModal'
   );
@@ -8655,6 +10147,24 @@ function setText(
   }
 
 }
+
+function setFieldValue(
+  id,
+  value
+) {
+
+  const element =
+    document.getElementById(
+      id
+    );
+
+  if (element) {
+    element.value =
+      value ?? '';
+  }
+
+}
+
 
 function hideLoading() {
 
