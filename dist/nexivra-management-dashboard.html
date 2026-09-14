@@ -3139,6 +3139,16 @@ function handleWixMessage(
               updatedModule
             );
 
+          } else if (
+            state.selectedModuleArea ===
+            'ROLE_PLAY'
+          ) {
+
+            renderRolePlayWorkspace(
+              workspace,
+              updatedModule
+            );
+
           } else {
 
             renderTeachingWorkspace(
@@ -3378,6 +3388,20 @@ function openModuleArea(
       'PRACTICE';
 
     renderPracticeWorkspace(
+      workspace,
+      module
+    );
+
+    return;
+
+  }
+
+  if (area === 'ROLE_PLAY') {
+
+    state.selectedModuleArea =
+      'ROLE_PLAY';
+
+    renderRolePlayWorkspace(
       workspace,
       module
     );
@@ -5017,6 +5041,916 @@ function savePracticeConfiguration() {
 
 window.savePracticeConfiguration =
   savePracticeConfiguration;
+
+/* ======================================================
+   ROLE-PLAY WORKSPACE
+====================================================== */
+
+function renderRolePlayWorkspace(
+  workspace,
+  module
+) {
+
+  if (!workspace || !module) {
+    return;
+  }
+
+  const config =
+    module?.moduleConfig ||
+    {};
+
+  const difficulty =
+    config.rolePlayDifficulty ||
+    'adaptive';
+
+  const emotionalIntensity =
+    config.rolePlayEmotionalIntensity ||
+    'adaptive';
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <button
+        type="button"
+        onclick="renderModuleWorkspaceById('${escapeAttribute(
+          module.id
+        )}')"
+        style="
+          margin-bottom:20px;
+          border:none;
+          background:transparent;
+          color:var(--cyan);
+          cursor:pointer;
+          font-weight:700;
+        "
+      >
+        ← Back to Module
+      </button>
+
+      <div class="eyebrow">
+        ${escapeHTML(
+          module.title
+        )}
+      </div>
+
+      <h2>
+        Role-Play
+      </h2>
+
+      <p>
+        Configure realistic AI interactions that allow the learner
+        to demonstrate hospitality behavior under changing conditions.
+      </p>
+
+      <div
+        style="
+          display:grid;
+          gap:18px;
+          margin-top:28px;
+        "
+      >
+
+        <div class="card">
+
+          <div class="card-title">
+            Role-Play Objective
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define what capability the learner should demonstrate
+            during realistic role-play.
+          </div>
+
+          <textarea
+            id="rolePlayObjective"
+            placeholder="Example: The learner demonstrates consistent hospitality while responding naturally to realistic guest needs, emotions, and changing circumstances."
+            style="
+              width:100%;
+              min-height:120px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.rolePlayObjective ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Guest / Person Personas
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define the kinds of people NEXIVRA may portray
+            during role-play.
+          </div>
+
+          <textarea
+            id="rolePlayPersonas"
+            placeholder="Example: Repeat guests, first-time guests, rushed guests, confused guests, frustrated guests, quiet guests, highly social guests, coworkers, family members, patients, residents, customers, or other role-appropriate personas."
+            style="
+              width:100%;
+              min-height:170px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.rolePlayPersonas ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Scenario Types
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Identify the types of interactions and situations
+            NEXIVRA should create.
+          </div>
+
+          <textarea
+            id="rolePlayScenarioTypes"
+            placeholder="Example: Greeting, routine service, ownership, wait-time frustration, service recovery, unclear requests, competing priorities, policy limitations, emotional conversations, and relationship-building moments."
+            style="
+              width:100%;
+              min-height:160px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.rolePlayScenarioTypes ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Scenario Generation Guidance
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Tell NEXIVRA how to generate realistic,
+            varied, and role-appropriate scenarios.
+          </div>
+
+          <textarea
+            id="rolePlayScenarioGuidance"
+            placeholder="Example: Generate realistic workplace situations using approved organizational context. Vary needs, personalities, emotional states, ambiguity, and pressure. Do not reveal the ideal response in advance."
+            style="
+              width:100%;
+              min-height:180px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.rolePlayScenarioGuidance ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Starting Difficulty
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Set the initial complexity of role-play interactions.
+          </div>
+
+          <select
+            id="rolePlayDifficulty"
+            style="width:100%;"
+          >
+            <option
+              value="foundational"
+              ${difficulty === 'foundational' ? 'selected' : ''}
+            >
+              Foundational
+            </option>
+
+            <option
+              value="developing"
+              ${difficulty === 'developing' ? 'selected' : ''}
+            >
+              Developing
+            </option>
+
+            <option
+              value="challenging"
+              ${difficulty === 'challenging' ? 'selected' : ''}
+            >
+              Challenging
+            </option>
+
+            <option
+              value="adaptive"
+              ${difficulty === 'adaptive' ? 'selected' : ''}
+            >
+              Adaptive
+            </option>
+          </select>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Emotional Intensity
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Control how emotionally demanding the interaction
+            may become.
+          </div>
+
+          <select
+            id="rolePlayEmotionalIntensity"
+            style="width:100%;"
+          >
+            <option
+              value="low"
+              ${emotionalIntensity === 'low' ? 'selected' : ''}
+            >
+              Low
+            </option>
+
+            <option
+              value="moderate"
+              ${emotionalIntensity === 'moderate' ? 'selected' : ''}
+            >
+              Moderate
+            </option>
+
+            <option
+              value="high"
+              ${emotionalIntensity === 'high' ? 'selected' : ''}
+            >
+              High
+            </option>
+
+            <option
+              value="adaptive"
+              ${emotionalIntensity === 'adaptive' ? 'selected' : ''}
+            >
+              Adaptive
+            </option>
+          </select>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            AI Role-Play Instructions
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define how the AI person should behave,
+            respond, and adapt during the interaction.
+          </div>
+
+          <textarea
+            id="rolePlayInstructions"
+            placeholder="Example: Stay in character. React naturally to the learner's behavior. Do not coach while the role-play is active unless pause-and-coach is triggered. Let the interaction improve or deteriorate based on what the learner actually does."
+            style="
+              width:100%;
+              min-height:200px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.rolePlayInstructions ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Role-Play Completion Criteria
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define what must happen before NEXIVRA considers
+            the role-play ready to end.
+          </div>
+
+          <textarea
+            id="rolePlayCompletionCriteria"
+            placeholder="Example: End when the learner has addressed the person's need, demonstrated the target hospitality behaviors, and brought the interaction to a natural conclusion."
+            style="
+              width:100%;
+              min-height:150px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.rolePlayCompletionCriteria ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Repeat Guests
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Allow people from earlier training to return
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                NEXIVRA may reuse established people so learners
+                can demonstrate recognition, memory, relationship
+                building, and continuity across interactions.
+              </div>
+
+            </div>
+
+            <input
+              id="repeatGuestsEnabled"
+              type="checkbox"
+              ${config.repeatGuestsEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Hospitality CONNECT™ Guest Styles
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Give AI personas distinct CONNECT styles
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                NEXIVRA can portray different communication and
+                interaction preferences so the learner practices
+                recognizing and adapting to others.
+              </div>
+
+            </div>
+
+            <input
+              id="connectGuestStylesEnabled"
+              type="checkbox"
+              ${config.connectGuestStylesEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Dynamic Scenario Adaptation
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Let the interaction change as it unfolds
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                NEXIVRA changes the scenario naturally based on
+                learner decisions rather than following a fixed script.
+              </div>
+
+            </div>
+
+            <input
+              id="dynamicRolePlayEnabled"
+              type="checkbox"
+              ${config.dynamicRolePlayEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Real-Time Behavior Adaptation
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                React to what the learner actually does
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                The AI person's cooperation, emotion, trust, tone,
+                and direction can change based on the learner's
+                words, decisions, and demonstrated hospitality.
+              </div>
+
+            </div>
+
+            <input
+              id="realTimeBehaviorAdaptationEnabled"
+              type="checkbox"
+              ${config.realTimeBehaviorAdaptationEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Pause & Coach
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Pause the simulation when coaching is needed
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                NEXIVRA may temporarily step out of character to
+                coach the learner when they become overwhelmed,
+                upset, stuck, or need targeted reinforcement.
+              </div>
+
+            </div>
+
+            <input
+              id="pauseAndCoachEnabled"
+              type="checkbox"
+              ${config.pauseAndCoachEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+            margin-top:4px;
+          "
+        >
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="saveRolePlayConfiguration()"
+          >
+            Save Role-Play Configuration
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+function saveRolePlayConfiguration() {
+
+  const moduleId =
+    state.selectedModuleId;
+
+  if (!moduleId) {
+
+    showToast(
+      'Select a module first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  const rolePlayObjective =
+    document
+      .getElementById(
+        'rolePlayObjective'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const rolePlayPersonas =
+    document
+      .getElementById(
+        'rolePlayPersonas'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const rolePlayScenarioTypes =
+    document
+      .getElementById(
+        'rolePlayScenarioTypes'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const rolePlayScenarioGuidance =
+    document
+      .getElementById(
+        'rolePlayScenarioGuidance'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const rolePlayDifficulty =
+    document
+      .getElementById(
+        'rolePlayDifficulty'
+      )
+      ?.value ||
+    'adaptive';
+
+  const rolePlayEmotionalIntensity =
+    document
+      .getElementById(
+        'rolePlayEmotionalIntensity'
+      )
+      ?.value ||
+    'adaptive';
+
+  const rolePlayInstructions =
+    document
+      .getElementById(
+        'rolePlayInstructions'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const rolePlayCompletionCriteria =
+    document
+      .getElementById(
+        'rolePlayCompletionCriteria'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const repeatGuestsEnabled =
+    document
+      .getElementById(
+        'repeatGuestsEnabled'
+      )
+      ?.checked !== false;
+
+  const connectGuestStylesEnabled =
+    document
+      .getElementById(
+        'connectGuestStylesEnabled'
+      )
+      ?.checked !== false;
+
+  const dynamicRolePlayEnabled =
+    document
+      .getElementById(
+        'dynamicRolePlayEnabled'
+      )
+      ?.checked !== false;
+
+  const realTimeBehaviorAdaptationEnabled =
+    document
+      .getElementById(
+        'realTimeBehaviorAdaptationEnabled'
+      )
+      ?.checked !== false;
+
+  const pauseAndCoachEnabled =
+    document
+      .getElementById(
+        'pauseAndCoachEnabled'
+      )
+      ?.checked !== false;
+
+  sendToWix(
+    'UPDATE_ROLE_PLAY_CONFIGURATION',
+    {
+      moduleId,
+      rolePlayObjective,
+      rolePlayPersonas,
+      rolePlayScenarioTypes,
+      rolePlayScenarioGuidance,
+      rolePlayDifficulty,
+      rolePlayEmotionalIntensity,
+      rolePlayInstructions,
+      rolePlayCompletionCriteria,
+      repeatGuestsEnabled,
+      connectGuestStylesEnabled,
+      dynamicRolePlayEnabled,
+      realTimeBehaviorAdaptationEnabled,
+      pauseAndCoachEnabled
+    }
+  );
+
+}
+
+window.saveRolePlayConfiguration =
+  saveRolePlayConfiguration;
 
 /* ======================================================
    MODULE HELPERS
