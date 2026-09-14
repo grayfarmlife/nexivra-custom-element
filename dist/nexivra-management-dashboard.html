@@ -3129,6 +3129,16 @@ function handleWixMessage(
               updatedModule
             );
 
+          } else if (
+            state.selectedModuleArea ===
+            'PRACTICE'
+          ) {
+
+            renderPracticeWorkspace(
+              workspace,
+              updatedModule
+            );
+
           } else {
 
             renderTeachingWorkspace(
@@ -3354,6 +3364,20 @@ function openModuleArea(
       'KNOWLEDGE';
 
     renderKnowledgeWorkspace(
+      workspace,
+      module
+    );
+
+    return;
+
+  }
+
+  if (area === 'PRACTICE') {
+
+    state.selectedModuleArea =
+      'PRACTICE';
+
+    renderPracticeWorkspace(
       workspace,
       module
     );
@@ -4356,6 +4380,643 @@ function saveKnowledgeConfiguration() {
 
 window.saveKnowledgeConfiguration =
   saveKnowledgeConfiguration;
+
+/* ======================================================
+   PRACTICE WORKSPACE
+====================================================== */
+
+function renderPracticeWorkspace(
+  workspace,
+  module
+) {
+
+  if (!workspace || !module) {
+    return;
+  }
+
+  const config =
+    module?.moduleConfig ||
+    {};
+
+  const difficulty =
+    config.practiceDifficulty ||
+    'adaptive';
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <button
+        type="button"
+        onclick="renderModuleWorkspaceById('${escapeAttribute(
+          module.id
+        )}')"
+        style="
+          margin-bottom:20px;
+          border:none;
+          background:transparent;
+          color:var(--cyan);
+          cursor:pointer;
+          font-weight:700;
+        "
+      >
+        ← Back to Module
+      </button>
+
+      <div class="eyebrow">
+        ${escapeHTML(
+          module.title
+        )}
+      </div>
+
+      <h2>
+        Practice
+      </h2>
+
+      <p>
+        Configure how NEXIVRA helps the learner apply
+        the module through guided, conversational practice.
+      </p>
+
+      <div
+        style="
+          display:grid;
+          gap:18px;
+          margin-top:28px;
+        "
+      >
+
+        <div class="card">
+
+          <div class="card-title">
+            Practice Objective
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            What should the learner be able to apply or
+            demonstrate during practice?
+          </div>
+
+          <textarea
+            id="practiceObjective"
+            placeholder="Example: The learner applies hospitality principles in realistic situations before advancing to role-play."
+            style="
+              width:100%;
+              min-height:120px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.practiceObjective ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Skills & Behaviors to Practice
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Identify the specific behaviors NEXIVRA should
+            reinforce through practice.
+          </div>
+
+          <textarea
+            id="practiceSkills"
+            placeholder="Example: Recognition, warmth, ownership, listening, emotional awareness, proactive help, and personal responsibility."
+            style="
+              width:100%;
+              min-height:150px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.practiceSkills ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Practice Instructions
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Tell NEXIVRA how to conduct guided practice with
+            the learner.
+          </div>
+
+          <textarea
+            id="practiceInstructions"
+            placeholder="Example: Present one realistic situation at a time. Ask the learner what they would do, coach their reasoning, and reinforce demonstrated strengths."
+            style="
+              width:100%;
+              min-height:180px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.practiceInstructions ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Scenario Guidance
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define the types of workplace situations and
+            conditions NEXIVRA should use for practice.
+          </div>
+
+          <textarea
+            id="practiceScenarioGuidance"
+            placeholder="Example: Use realistic customer, guest, teammate, workload, interruption, and service-recovery situations appropriate to the learner's organization."
+            style="
+              width:100%;
+              min-height:160px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.practiceScenarioGuidance ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Difficulty Level
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Set the starting difficulty for practice.
+          </div>
+
+          <select
+            id="practiceDifficulty"
+            style="width:100%;"
+          >
+            <option
+              value="foundational"
+              ${difficulty === 'foundational' ? 'selected' : ''}
+            >
+              Foundational
+            </option>
+
+            <option
+              value="developing"
+              ${difficulty === 'developing' ? 'selected' : ''}
+            >
+              Developing
+            </option>
+
+            <option
+              value="challenging"
+              ${difficulty === 'challenging' ? 'selected' : ''}
+            >
+              Challenging
+            </option>
+
+            <option
+              value="adaptive"
+              ${difficulty === 'adaptive' ? 'selected' : ''}
+            >
+              Adaptive
+            </option>
+          </select>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Coaching & Hint Guidance
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define how NEXIVRA should help when the learner
+            struggles without simply giving away the answer.
+          </div>
+
+          <textarea
+            id="practiceCoachingGuidance"
+            placeholder="Example: Use questions, reframing, and short hints before explaining the answer. Coach the learner toward the behavior rather than immediately correcting them."
+            style="
+              width:100%;
+              min-height:160px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.practiceCoachingGuidance ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Repeat Until Demonstrated
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Continue practice until capability is demonstrated
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                NEXIVRA provides additional practice when the
+                learner has not yet demonstrated the target skill.
+              </div>
+
+            </div>
+
+            <input
+              id="practiceRepeatUntilDemonstrated"
+              type="checkbox"
+              ${config.practiceRepeatUntilDemonstrated !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Hospitality CONNECT™ Practice Adaptation
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Adapt practice to CONNECT style
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                Use the learner's inferred Hospitality CONNECT™
+                style when choosing examples, coaching language,
+                and practice approach.
+              </div>
+
+            </div>
+
+            <input
+              id="connectPracticeEnabled"
+              type="checkbox"
+              ${config.connectPracticeEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Adaptive Difficulty
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Increase or reduce challenge based on performance
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                NEXIVRA adjusts complexity as the learner
+                demonstrates stronger understanding or needs
+                additional support.
+              </div>
+
+            </div>
+
+            <input
+              id="adaptivePracticeDifficultyEnabled"
+              type="checkbox"
+              ${config.adaptivePracticeDifficultyEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+            margin-top:4px;
+          "
+        >
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="savePracticeConfiguration()"
+          >
+            Save Practice Configuration
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+function savePracticeConfiguration() {
+
+  const moduleId =
+    state.selectedModuleId;
+
+  if (!moduleId) {
+
+    showToast(
+      'Select a module first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  const practiceObjective =
+    document
+      .getElementById(
+        'practiceObjective'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const practiceSkills =
+    document
+      .getElementById(
+        'practiceSkills'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const practiceInstructions =
+    document
+      .getElementById(
+        'practiceInstructions'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const practiceScenarioGuidance =
+    document
+      .getElementById(
+        'practiceScenarioGuidance'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const practiceDifficulty =
+    document
+      .getElementById(
+        'practiceDifficulty'
+      )
+      ?.value ||
+    'adaptive';
+
+  const practiceCoachingGuidance =
+    document
+      .getElementById(
+        'practiceCoachingGuidance'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const practiceRepeatUntilDemonstrated =
+    document
+      .getElementById(
+        'practiceRepeatUntilDemonstrated'
+      )
+      ?.checked !== false;
+
+  const connectPracticeEnabled =
+    document
+      .getElementById(
+        'connectPracticeEnabled'
+      )
+      ?.checked !== false;
+
+  const adaptivePracticeDifficultyEnabled =
+    document
+      .getElementById(
+        'adaptivePracticeDifficultyEnabled'
+      )
+      ?.checked !== false;
+
+  sendToWix(
+    'UPDATE_PRACTICE_CONFIGURATION',
+    {
+      moduleId,
+      practiceObjective,
+      practiceSkills,
+      practiceInstructions,
+      practiceScenarioGuidance,
+      practiceDifficulty,
+      practiceCoachingGuidance,
+      practiceRepeatUntilDemonstrated,
+      connectPracticeEnabled,
+      adaptivePracticeDifficultyEnabled
+    }
+  );
+
+}
+
+window.savePracticeConfiguration =
+  savePracticeConfiguration;
 
 /* ======================================================
    MODULE HELPERS
