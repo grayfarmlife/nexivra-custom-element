@@ -3517,15 +3517,18 @@ function openModuleArea(
             or be able to demonstrate?
           </div>
 
-          <textarea
-            id="teachingObjective"
-            placeholder="Example: The learner consistently recognizes guests, communicates with warmth, takes ownership, and understands how hospitality affects the guest experience."
-            style="
-              width:100%;
-              min-height:110px;
-              resize:vertical;
-            "
-          ></textarea>
+         <textarea
+  id="teachingObjective"
+  placeholder="Example: The learner consistently recognizes guests, communicates with warmth, takes ownership, and understands how hospitality affects the guest experience."
+  style="
+    width:100%;
+    min-height:110px;
+    resize:vertical;
+  "
+>${escapeHTML(
+  module?.moduleConfig?.teachingObjective ||
+  ''
+)}</textarea>
 
         </div>
 
@@ -3548,14 +3551,17 @@ function openModuleArea(
           </div>
 
           <textarea
-            id="teachingContent"
-            placeholder="Enter the core concepts, principles, behaviors, and standards that must be taught."
-            style="
-              width:100%;
-              min-height:180px;
-              resize:vertical;
-            "
-          ></textarea>
+  id="teachingContent"
+  placeholder="Enter the core concepts, principles, behaviors, and standards that must be taught."
+  style="
+    width:100%;
+    min-height:180px;
+    resize:vertical;
+  "
+>${escapeHTML(
+  module?.moduleConfig?.teachingContent ||
+  ''
+)}</textarea>
 
         </div>
 
@@ -3578,14 +3584,18 @@ function openModuleArea(
           </div>
 
           <textarea
-            id="teachingInstructions"
-            placeholder="Example: Teach conversationally. Ask questions before giving answers. Use realistic examples. Adapt explanations when the learner shows confusion."
-            style="
-              width:100%;
-              min-height:150px;
-              resize:vertical;
-            "
-          ></textarea>
+  id="teachingInstructions"
+  placeholder="Example: Teach conversationally. Ask questions before giving answers. Use realistic examples. Adapt explanations when the learner shows confusion."
+  style="
+    width:100%;
+    min-height:150px;
+    resize:vertical;
+  "
+>${escapeHTML(
+  module?.moduleConfig?.teachingInstructions ||
+  module?.instructions ||
+  ''
+)}</textarea>
 
         </div>
 
@@ -3649,7 +3659,9 @@ function openModuleArea(
     <input
       id="adaptiveTeachingEnabled"
       type="checkbox"
-      checked
+      ${module?.moduleConfig?.adaptiveTeachingEnabled !== false
+  ? 'checked'
+  : ''}
       style="
         width:20px;
         height:20px;
@@ -3722,7 +3734,9 @@ function openModuleArea(
     <input
       id="connectTeachingEnabled"
       type="checkbox"
-      checked
+      ${module?.moduleConfig?.connectTeachingEnabled !== false
+  ? 'checked'
+  : ''}
       style="
         width:20px;
         height:20px;
