@@ -898,7 +898,6 @@ tr:last-child td {
     transform .2s ease;
 }
 
-
 .module-item:hover {
   border-color:
     rgba(0,200,255,.45);
@@ -909,7 +908,6 @@ tr:last-child td {
   transform:
     translateY(-1px);
 }
-
 
 .module-item.active {
   border-color:
@@ -926,7 +924,6 @@ tr:last-child td {
     inset 3px 0 0
     var(--cyan);
 }
-
 
 .module-number {
   color:
@@ -947,7 +944,6 @@ tr:last-child td {
   opacity:
     .95;
 }
-
 
 .module-title {
   margin-top:
@@ -1377,7 +1373,8 @@ textarea {
     display: none;
   }
 }
-  .organization-link {
+
+.organization-link {
   border: 0;
   background: transparent;
   color: #ffffff;
@@ -1600,10 +1597,6 @@ textarea {
 
 <div class="app">
 
-  <!-- ================================================
-       SIDEBAR
-  ================================================= -->
-
   <aside class="sidebar">
 
     <div class="brand">
@@ -1694,10 +1687,6 @@ textarea {
 
   </aside>
 
-  <!-- ================================================
-       MAIN
-  ================================================= -->
-
   <main class="main">
 
     <header class="topbar">
@@ -1751,10 +1740,6 @@ textarea {
     </header>
 
     <div class="content">
-
-      <!-- ==========================================
-           OVERVIEW
-      =========================================== -->
 
       <section
         class="section active"
@@ -1966,10 +1951,6 @@ textarea {
 
       </section>
 
-      <!-- ==========================================
-           ORGANIZATIONS
-      =========================================== -->
-
       <section
         class="section"
         id="section-organizations"
@@ -2015,10 +1996,6 @@ textarea {
 
       </section>
 
-      <!-- ==========================================
-           COURSES
-      =========================================== -->
-
       <section
         class="section"
         id="section-courses"
@@ -2063,10 +2040,6 @@ textarea {
         </div>
 
       </section>
-
-      <!-- ==========================================
-           COURSE BUILDER
-      =========================================== -->
 
       <section
         class="section"
@@ -2165,10 +2138,6 @@ textarea {
 
       </section>
 
-      <!-- ==========================================
-           UPLOADS
-      =========================================== -->
-
       <section
         class="section"
         id="section-uploads"
@@ -2216,10 +2185,6 @@ textarea {
 
       </section>
 
-      <!-- ==========================================
-           USERS
-      =========================================== -->
-
       <section
         class="section"
         id="section-users"
@@ -2258,10 +2223,6 @@ textarea {
 
       </section>
 
-      <!-- ==========================================
-           ASSIGNMENTS
-      =========================================== -->
-
       <section
         class="section"
         id="section-assignments"
@@ -2299,10 +2260,6 @@ textarea {
         </div>
 
       </section>
-
-      <!-- ==========================================
-           REPORTING
-      =========================================== -->
 
       <section
         class="section"
@@ -2385,10 +2342,6 @@ textarea {
 
       </section>
 
-      <!-- ==========================================
-           DEMO MODE
-      =========================================== -->
-
       <section
         class="section"
         id="section-demo"
@@ -2456,10 +2409,6 @@ textarea {
         </div>
 
       </section>
-
-      <!-- ==========================================
-           SETTINGS
-      =========================================== -->
 
       <section
         class="section"
@@ -2949,7 +2898,8 @@ const state = {
   modules: [],
   uploads: [],
   users: [],
-  assignments: []
+  assignments: [],
+  selectedModuleArea: null
 };
 
 /* ======================================================
@@ -3131,56 +3081,69 @@ function handleWixMessage(
 
       break;
 
-      case 'MODULES_DATA':
-
-  state.modules =
-    payload?.modules ||
-    [];
-
-  renderModules();
-
-  break;
-
-
-case 'MODULE_UPDATED':
-
-  {
-
-    const updatedModule =
-      payload?.module;
-
-
-    if (updatedModule) {
+    case 'MODULES_DATA':
 
       state.modules =
-        state.modules.map(
-          module =>
-            module.id ===
-            updatedModule.id
-              ? updatedModule
-              : module
-        );
-
-
-      state.selectedModuleId =
-        updatedModule.id;
-
+        payload?.modules ||
+        [];
 
       renderModules();
 
+      break;
 
-      renderTeachingWorkspace(
-        document.querySelector(
-          '.builder-main'
-        ),
-        updatedModule
-      );
+    case 'MODULE_UPDATED': {
 
+      const updatedModule =
+        payload?.module;
+
+      if (updatedModule) {
+
+        state.modules =
+          state.modules.map(
+            module =>
+              module.id ===
+              updatedModule.id
+                ? updatedModule
+                : module
+          );
+
+        state.selectedModuleId =
+          updatedModule.id;
+
+        renderModules();
+
+        const workspace =
+          document.querySelector(
+            '.builder-main'
+          );
+
+        if (workspace) {
+
+          if (
+            state.selectedModuleArea ===
+            'KNOWLEDGE'
+          ) {
+
+            renderKnowledgeWorkspace(
+              workspace,
+              updatedModule
+            );
+
+          } else {
+
+            renderTeachingWorkspace(
+              workspace,
+              updatedModule
+            );
+
+          }
+
+        }
+
+      }
+
+      break;
     }
-
-  }
-
-  break;
 
     case 'ACTION_SUCCESS':
 
@@ -3208,7 +3171,11 @@ case 'MODULE_UPDATED':
 
 }
 
-  function renderModuleWorkspace(
+/* ======================================================
+   MODULE WORKSPACE
+====================================================== */
+
+function renderModuleWorkspace(
   module
 ) {
 
@@ -3223,8 +3190,6 @@ case 'MODULE_UPDATED':
 
   if (!module) {
     return;
-
- 
   }
 
   workspace.innerHTML = `
@@ -3299,31 +3264,38 @@ case 'MODULE_UPDATED':
     </div>
 
   `;
-workspace
-  .querySelectorAll(
-    '[data-module-area]'
-  )
-  .forEach(button => {
 
-    button.addEventListener(
-      'click',
-      () => {
+  workspace
+    .querySelectorAll(
+      '[data-module-area]'
+    )
+    .forEach(button => {
 
-        const area =
-          button.getAttribute(
-            'data-module-area'
+      button.addEventListener(
+        'click',
+        () => {
+
+          const area =
+            button.getAttribute(
+              'data-module-area'
+            );
+
+          openModuleArea(
+            module,
+            area
           );
 
-        openModuleArea(
-          module,
-          area
-        );
+        }
+      );
 
-      }
-    );
+    });
 
-  });
 }
+
+/* ======================================================
+   MODULE AREA ROUTER
+====================================================== */
+
 function openModuleArea(
   module,
   area
@@ -3338,22 +3310,25 @@ function openModuleArea(
     return;
   }
 
-
   const areaTitles = {
     TEACHING:
       'Teaching',
+
     KNOWLEDGE:
       'Knowledge',
+
     PRACTICE:
       'Practice',
+
     ROLE_PLAY:
       'Role-Play',
+
     EVALUATION:
       'Evaluation',
+
     REMEDIATION:
       'Remediation'
   };
-
 
   const title =
     areaTitles[area] ||
@@ -3361,14 +3336,31 @@ function openModuleArea(
 
   if (area === 'TEACHING') {
 
-  renderTeachingWorkspace(
-    workspace,
-    module
-  );
+    state.selectedModuleArea =
+      'TEACHING';
 
-  return;
+    renderTeachingWorkspace(
+      workspace,
+      module
+    );
 
-}
+    return;
+
+  }
+
+  if (area === 'KNOWLEDGE') {
+
+    state.selectedModuleArea =
+      'KNOWLEDGE';
+
+    renderKnowledgeWorkspace(
+      workspace,
+      module
+    );
+
+    return;
+
+  }
 
   workspace.innerHTML = `
 
@@ -3391,13 +3383,11 @@ function openModuleArea(
         ← Back to Module
       </button>
 
-
       <div class="eyebrow">
         ${escapeHTML(
           module.title
         )}
       </div>
-
 
       <h2>
         ${escapeHTML(
@@ -3405,13 +3395,11 @@ function openModuleArea(
         )}
       </h2>
 
-
       <p>
         Configure the ${escapeHTML(
           title
         ).toLowerCase()} experience for this module.
       </p>
-
 
       <div
         style="
@@ -3446,7 +3434,12 @@ function openModuleArea(
   `;
 
 }
-  function renderTeachingWorkspace(
+
+/* ======================================================
+   TEACHING WORKSPACE
+====================================================== */
+
+function renderTeachingWorkspace(
   workspace,
   module
 ) {
@@ -3472,25 +3465,21 @@ function openModuleArea(
         ← Back to Module
       </button>
 
-
       <div class="eyebrow">
         ${escapeHTML(
           module.title
         )}
       </div>
 
-
       <h2>
         Teaching
       </h2>
-
 
       <p>
         Define what NEXIVRA teaches,
         how the AI instructor delivers it,
         and how teaching adapts to the learner.
       </p>
-
 
       <div
         style="
@@ -3517,21 +3506,20 @@ function openModuleArea(
             or be able to demonstrate?
           </div>
 
-         <textarea
-  id="teachingObjective"
-  placeholder="Example: The learner consistently recognizes guests, communicates with warmth, takes ownership, and understands how hospitality affects the guest experience."
-  style="
-    width:100%;
-    min-height:110px;
-    resize:vertical;
-  "
->${escapeHTML(
-  module?.moduleConfig?.teachingObjective ||
-  ''
-)}</textarea>
+          <textarea
+            id="teachingObjective"
+            placeholder="Example: The learner consistently recognizes guests, communicates with warmth, takes ownership, and understands how hospitality affects the guest experience."
+            style="
+              width:100%;
+              min-height:110px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            module?.moduleConfig?.teachingObjective ||
+            ''
+          )}</textarea>
 
         </div>
-
 
         <div class="card">
 
@@ -3551,20 +3539,19 @@ function openModuleArea(
           </div>
 
           <textarea
-  id="teachingContent"
-  placeholder="Enter the core concepts, principles, behaviors, and standards that must be taught."
-  style="
-    width:100%;
-    min-height:180px;
-    resize:vertical;
-  "
->${escapeHTML(
-  module?.moduleConfig?.teachingContent ||
-  ''
-)}</textarea>
+            id="teachingContent"
+            placeholder="Enter the core concepts, principles, behaviors, and standards that must be taught."
+            style="
+              width:100%;
+              min-height:180px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            module?.moduleConfig?.teachingContent ||
+            ''
+          )}</textarea>
 
         </div>
-
 
         <div class="card">
 
@@ -3584,171 +3571,168 @@ function openModuleArea(
           </div>
 
           <textarea
-  id="teachingInstructions"
-  placeholder="Example: Teach conversationally. Ask questions before giving answers. Use realistic examples. Adapt explanations when the learner shows confusion."
-  style="
-    width:100%;
-    min-height:150px;
-    resize:vertical;
-  "
->${escapeHTML(
-  module?.moduleConfig?.teachingInstructions ||
-  module?.instructions ||
-  ''
-)}</textarea>
+            id="teachingInstructions"
+            placeholder="Example: Teach conversationally. Ask questions before giving answers. Use realistic examples. Adapt explanations when the learner shows confusion."
+            style="
+              width:100%;
+              min-height:150px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            module?.moduleConfig?.teachingInstructions ||
+            module?.instructions ||
+            ''
+          )}</textarea>
 
         </div>
 
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
 
-<div
-  style="
-    padding:20px;
-    border-radius:16px;
-    border:1px solid rgba(255,255,255,.08);
-    background:rgba(255,255,255,.03);
-  "
->
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
 
-  <div
-    style="
-      display:grid;
-      grid-template-columns:minmax(0,1fr) auto;
-      gap:24px;
-      align-items:center;
-    "
-  >
+            <div style="min-width:0;">
 
-    <div style="min-width:0;">
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Adaptive Teaching
+              </div>
 
-      <div
-        style="
-          font-size:15px;
-          font-weight:800;
-          color:#fff;
-        "
-      >
-        Adaptive Teaching
-      </div>
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Adapt explanations to the learner
+              </div>
 
-      <div
-        style="
-          margin-top:8px;
-          font-size:14px;
-          font-weight:700;
-          color:#fff;
-        "
-      >
-        Adapt explanations to the learner
-      </div>
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                NEXIVRA changes examples, pacing, and explanation style
+                based on demonstrated understanding.
+              </div>
 
-      <div
-        style="
-          margin-top:5px;
-          color:var(--muted);
-          font-size:12px;
-          line-height:1.55;
-          max-width:620px;
-        "
-      >
-        NEXIVRA changes examples, pacing, and explanation style
-        based on demonstrated understanding.
-      </div>
+            </div>
 
-    </div>
+            <input
+              id="adaptiveTeachingEnabled"
+              type="checkbox"
+              ${module?.moduleConfig?.adaptiveTeachingEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
 
-    <input
-      id="adaptiveTeachingEnabled"
-      type="checkbox"
-      ${module?.moduleConfig?.adaptiveTeachingEnabled !== false
-  ? 'checked'
-  : ''}
-      style="
-        width:20px;
-        height:20px;
-        flex-shrink:0;
-        cursor:pointer;
-      "
-    >
+          </div>
 
-  </div>
+        </div>
 
-</div>
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
 
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
 
-<div
-  style="
-    padding:20px;
-    border-radius:16px;
-    border:1px solid rgba(255,255,255,.08);
-    background:rgba(255,255,255,.03);
-  "
->
+            <div style="min-width:0;">
 
-  <div
-    style="
-      display:grid;
-      grid-template-columns:minmax(0,1fr) auto;
-      gap:24px;
-      align-items:center;
-    "
-  >
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Hospitality CONNECT™ Integration
+              </div>
 
-    <div style="min-width:0;">
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Adapt teaching to CONNECT style
+              </div>
 
-      <div
-        style="
-          font-size:15px;
-          font-weight:800;
-          color:#fff;
-        "
-      >
-        Hospitality CONNECT™ Integration
-      </div>
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                Use the learner's inferred Hospitality CONNECT™ style
+                to support communication, explanation style, and learning.
+              </div>
 
-      <div
-        style="
-          margin-top:8px;
-          font-size:14px;
-          font-weight:700;
-          color:#fff;
-        "
-      >
-        Adapt teaching to CONNECT style
-      </div>
+            </div>
 
-      <div
-        style="
-          margin-top:5px;
-          color:var(--muted);
-          font-size:12px;
-          line-height:1.55;
-          max-width:620px;
-        "
-      >
-        Use the learner's inferred Hospitality CONNECT™ style
-        to support communication, explanation style, and learning.
-      </div>
+            <input
+              id="connectTeachingEnabled"
+              type="checkbox"
+              ${module?.moduleConfig?.connectTeachingEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
 
-    </div>
+          </div>
 
-    <input
-      id="connectTeachingEnabled"
-      type="checkbox"
-      ${module?.moduleConfig?.connectTeachingEnabled !== false
-  ? 'checked'
-  : ''}
-      style="
-        width:20px;
-        height:20px;
-        flex-shrink:0;
-        cursor:pointer;
-      "
-    >
-
-  </div>
-
-</div>
-
+        </div>
 
         <div
           style="
@@ -3758,30 +3742,28 @@ function openModuleArea(
           "
         >
 
-<button
-  type="button"
-  class="btn btn-primary"
-  onclick="saveTeachingConfiguration()"
->
-  Save Teaching Configuration
-</button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="saveTeachingConfiguration()"
+          >
+            Save Teaching Configuration
+          </button>
 
-</div>
+        </div>
 
-</div>
+      </div>
 
-</div>
+    </div>
 
-`;
+  `;
 
 }
-
 
 function saveTeachingConfiguration() {
 
   const moduleId =
     state.selectedModuleId;
-
 
   if (!moduleId) {
 
@@ -3794,7 +3776,6 @@ function saveTeachingConfiguration() {
 
   }
 
-
   const teachingObjective =
     document
       .getElementById(
@@ -3803,7 +3784,6 @@ function saveTeachingConfiguration() {
       ?.value
       .trim() ||
     '';
-
 
   const teachingContent =
     document
@@ -3814,7 +3794,6 @@ function saveTeachingConfiguration() {
       .trim() ||
     '';
 
-
   const teachingInstructions =
     document
       .getElementById(
@@ -3824,7 +3803,6 @@ function saveTeachingConfiguration() {
       .trim() ||
     '';
 
-
   const adaptiveTeachingEnabled =
     document
       .getElementById(
@@ -3832,14 +3810,12 @@ function saveTeachingConfiguration() {
       )
       ?.checked !== false;
 
-
   const connectTeachingEnabled =
     document
       .getElementById(
         'connectTeachingEnabled'
       )
       ?.checked !== false;
-
 
   window.parent.postMessage(
     {
@@ -3863,12 +3839,534 @@ function saveTeachingConfiguration() {
 
 }
 
-
 window.saveTeachingConfiguration =
   saveTeachingConfiguration;
-  function renderModuleWorkspaceById(
+
+/* ======================================================
+   KNOWLEDGE WORKSPACE
+====================================================== */
+
+function renderKnowledgeWorkspace(
+  workspace,
+  module
+) {
+
+  if (!workspace || !module) {
+    return;
+  }
+
+  const config =
+    module?.moduleConfig ||
+    {};
+
+  const approvedSourceIds =
+    Array.isArray(
+      config.approvedKnowledgeSourceIds
+    )
+      ? config.approvedKnowledgeSourceIds
+      : [];
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <button
+        type="button"
+        onclick="renderModuleWorkspaceById('${escapeAttribute(
+          module.id
+        )}')"
+        style="
+          margin-bottom:20px;
+          border:none;
+          background:transparent;
+          color:var(--cyan);
+          cursor:pointer;
+          font-weight:700;
+        "
+      >
+        ← Back to Module
+      </button>
+
+      <div class="eyebrow">
+        ${escapeHTML(
+          module.title
+        )}
+      </div>
+
+      <h2>
+        Knowledge
+      </h2>
+
+      <p>
+        Control the approved information NEXIVRA may use
+        when teaching, practicing, role-playing,
+        evaluating, and coaching this module.
+      </p>
+
+      <div
+        style="
+          display:grid;
+          gap:18px;
+          margin-top:28px;
+        "
+      >
+
+        <div class="card">
+
+          <div class="card-title">
+            Knowledge Purpose
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define what the approved knowledge should support
+            inside this module.
+          </div>
+
+          <textarea
+            id="knowledgePurpose"
+            placeholder="Example: Provide NEXIVRA with the approved organizational knowledge needed to teach and reinforce this module."
+            style="
+              width:100%;
+              min-height:120px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.knowledgePurpose ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Approved Knowledge Sources
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:14px;
+              line-height:1.6;
+            "
+          >
+            Approved organizational sources connected to this
+            module will appear here. Actual document connections
+            will be managed through Knowledge Uploads.
+          </div>
+
+          <div
+            style="
+              padding:16px;
+              border-radius:12px;
+              border:1px solid rgba(255,255,255,.08);
+              background:rgba(255,255,255,.025);
+            "
+          >
+
+            ${
+              approvedSourceIds.length
+                ? `
+
+                  <div
+                    style="
+                      color:#fff;
+                      font-size:13px;
+                      font-weight:800;
+                      margin-bottom:12px;
+                    "
+                  >
+                    ${approvedSourceIds.length}
+                    approved source${approvedSourceIds.length === 1 ? '' : 's'}
+                    connected
+                  </div>
+
+                  <div
+                    style="
+                      display:grid;
+                      gap:8px;
+                    "
+                  >
+
+                    ${approvedSourceIds
+                      .map(
+                        sourceId => `
+
+                          <div
+                            style="
+                              padding:10px 12px;
+                              border-radius:10px;
+                              border:1px solid rgba(0,200,255,.15);
+                              background:rgba(0,200,255,.035);
+                              color:var(--muted);
+                              font-size:11px;
+                              word-break:break-all;
+                            "
+                          >
+                            ${escapeHTML(
+                              sourceId
+                            )}
+                          </div>
+
+                        `
+                      )
+                      .join('')}
+
+                  </div>
+
+                `
+                : `
+
+                  <div
+                    style="
+                      color:var(--muted);
+                      font-size:12px;
+                      line-height:1.6;
+                    "
+                  >
+                    No approved knowledge sources are connected yet.
+                    The Knowledge Uploads system will connect approved
+                    source records to this module.
+                  </div>
+
+                `
+            }
+
+          </div>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Source Instructions
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Tell NEXIVRA how approved information should be used
+            and what it must not infer or invent.
+          </div>
+
+          <textarea
+            id="knowledgeSourceInstructions"
+            placeholder="Example: Use approved sources to support teaching and coaching. Do not invent organizational policies, procedures, requirements, products, or compliance rules that are not contained in approved material."
+            style="
+              width:100%;
+              min-height:170px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.knowledgeSourceInstructions ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Authority / Priority Rules
+          </div>
+
+          <div
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-bottom:10px;
+            "
+          >
+            Define which approved information takes priority
+            when sources appear to conflict.
+          </div>
+
+          <textarea
+            id="knowledgeAuthorityPriority"
+            placeholder="Example: Current legal and compliance requirements take priority, followed by current approved client policy, approved procedure, and then general training guidance."
+            style="
+              width:100%;
+              min-height:150px;
+              resize:vertical;
+            "
+          >${escapeHTML(
+            config.knowledgeAuthorityPriority ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Client-Specific Knowledge
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Use approved organization knowledge
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                Allow this module to use approved knowledge
+                belonging to the organization or client using
+                the course.
+              </div>
+
+            </div>
+
+            <input
+              id="clientSpecificKnowledgeEnabled"
+              type="checkbox"
+              ${config.clientSpecificKnowledgeEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div
+            style="
+              display:grid;
+              grid-template-columns:minmax(0,1fr) auto;
+              gap:24px;
+              align-items:center;
+            "
+          >
+
+            <div style="min-width:0;">
+
+              <div
+                style="
+                  font-size:15px;
+                  font-weight:800;
+                  color:#fff;
+                "
+              >
+                Use Only Approved Sources
+              </div>
+
+              <div
+                style="
+                  margin-top:8px;
+                  font-size:14px;
+                  font-weight:700;
+                  color:#fff;
+                "
+              >
+                Restrict organizational facts to approved material
+              </div>
+
+              <div
+                style="
+                  margin-top:5px;
+                  color:var(--muted);
+                  font-size:12px;
+                  line-height:1.55;
+                  max-width:620px;
+                "
+              >
+                Organizational facts, policies, procedures,
+                products, systems, requirements, and standards
+                should come only from approved connected knowledge.
+              </div>
+
+            </div>
+
+            <input
+              id="approvedSourcesOnlyEnabled"
+              type="checkbox"
+              ${config.approvedSourcesOnlyEnabled !== false
+                ? 'checked'
+                : ''}
+              style="
+                width:20px;
+                height:20px;
+                flex-shrink:0;
+                cursor:pointer;
+              "
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+            margin-top:4px;
+          "
+        >
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="saveKnowledgeConfiguration()"
+          >
+            Save Knowledge Configuration
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+function saveKnowledgeConfiguration() {
+
+  const moduleId =
+    state.selectedModuleId;
+
+  if (!moduleId) {
+
+    showToast(
+      'Select a module first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  const knowledgePurpose =
+    document
+      .getElementById(
+        'knowledgePurpose'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const knowledgeSourceInstructions =
+    document
+      .getElementById(
+        'knowledgeSourceInstructions'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const knowledgeAuthorityPriority =
+    document
+      .getElementById(
+        'knowledgeAuthorityPriority'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+  const clientSpecificKnowledgeEnabled =
+    document
+      .getElementById(
+        'clientSpecificKnowledgeEnabled'
+      )
+      ?.checked !== false;
+
+  const approvedSourcesOnlyEnabled =
+    document
+      .getElementById(
+        'approvedSourcesOnlyEnabled'
+      )
+      ?.checked !== false;
+
+  sendToWix(
+    'UPDATE_KNOWLEDGE_CONFIGURATION',
+    {
+      moduleId,
+      knowledgePurpose,
+      knowledgeSourceInstructions,
+      knowledgeAuthorityPriority,
+      clientSpecificKnowledgeEnabled,
+      approvedSourcesOnlyEnabled
+    }
+  );
+
+}
+
+window.saveKnowledgeConfiguration =
+  saveKnowledgeConfiguration;
+
+/* ======================================================
+   MODULE HELPERS
+====================================================== */
+
+function renderModuleWorkspaceById(
   moduleId
 ) {
+
+  state.selectedModuleArea =
+    null;
 
   const module =
     state.modules.find(
@@ -3885,6 +4383,7 @@ window.saveTeachingConfiguration =
 
 window.renderModuleWorkspaceById =
   renderModuleWorkspaceById;
+
 function moduleWorkspaceCard(
   title,
   description,
@@ -3936,6 +4435,7 @@ function moduleWorkspaceCard(
   `;
 
 }
+
 /* ======================================================
    DASHBOARD
 ====================================================== */
@@ -4184,7 +4684,6 @@ function renderOrganizations() {
     </table>
   `;
 
-
   container
     .querySelectorAll(
       '[data-organization-id]'
@@ -4212,6 +4711,7 @@ function renderOrganizations() {
     });
 
 }
+
 function openOrganizationDetail(
   organizationId
 ) {
@@ -4222,40 +4722,6 @@ function openOrganizationDetail(
         item.id ===
         organizationId
     );
-const organizationCode =
-  organization?.organizationCode || '';
-
-
-const organizationUsers =
-  state.users.filter(
-    user =>
-      user.organizationId === organizationCode ||
-      user.organizationId === organizationId
-  );
-
-
-const organizationCourses =
-  state.courses.filter(
-    course =>
-      course.organizationId === organizationCode ||
-      course.organizationId === organizationId
-  );
-
-
-const organizationUploads =
-  state.uploads.filter(
-    upload =>
-      upload.organizationId === organizationCode ||
-      upload.organizationId === organizationId
-  );
-
-
-const organizationAssignments =
-  state.assignments.filter(
-    assignment =>
-      assignment.organizationId === organizationCode ||
-      assignment.organizationId === organizationId
-  );
 
   if (!organization) {
 
@@ -4268,16 +4734,44 @@ const organizationAssignments =
 
   }
 
+  const organizationCode =
+    organization?.organizationCode || '';
+
+  const organizationUsers =
+    state.users.filter(
+      user =>
+        user.organizationId === organizationCode ||
+        user.organizationId === organizationId
+    );
+
+  const organizationCourses =
+    state.courses.filter(
+      course =>
+        course.organizationId === organizationCode ||
+        course.organizationId === organizationId
+    );
+
+  const organizationUploads =
+    state.uploads.filter(
+      upload =>
+        upload.organizationId === organizationCode ||
+        upload.organizationId === organizationId
+    );
+
+  const organizationAssignments =
+    state.assignments.filter(
+      assignment =>
+        assignment.organizationId === organizationCode ||
+        assignment.organizationId === organizationId
+    );
 
   state.selectedOrganization =
     organization;
-
 
   const container =
     document.getElementById(
       'organizationsContainer'
     );
-
 
   container.innerHTML = `
 
@@ -4324,7 +4818,6 @@ const organizationAssignments =
 
       </div>
 
-
       <div class="organization-metrics-grid">
 
         ${organizationMetricCard(
@@ -4365,7 +4858,6 @@ const organizationAssignments =
 
       </div>
 
-
       <div class="organization-detail-grid">
 
         <div class="organization-panel">
@@ -4385,7 +4877,6 @@ const organizationAssignments =
             </div>
 
           </div>
-
 
           <div class="organization-info-list">
 
@@ -4430,7 +4921,6 @@ const organizationAssignments =
 
         </div>
 
-
         <div class="organization-panel">
 
           <div class="organization-panel-header">
@@ -4448,7 +4938,6 @@ const organizationAssignments =
             </div>
 
           </div>
-
 
           <div class="organization-action-list">
 
@@ -4497,7 +4986,6 @@ const organizationAssignments =
     </div>
   `;
 
-
   document
     .getElementById(
       'organizationBackButton'
@@ -4513,7 +5001,6 @@ const organizationAssignments =
 
       }
     );
-
 
   container
     .querySelectorAll(
@@ -4542,7 +5029,6 @@ const organizationAssignments =
 
 }
 
-
 function organizationMetricCard(
   label,
   value,
@@ -4568,7 +5054,6 @@ function organizationMetricCard(
   `;
 
 }
-
 
 function organizationActionButton(
   label,
@@ -4604,7 +5089,6 @@ function organizationActionButton(
 
 }
 
-
 function openOrganizationArea(
   action,
   organization
@@ -4616,58 +5100,52 @@ function openOrganizationArea(
     organization
   );
 
-
   switch (action) {
 
     case 'courses':
 
-      showSection(
+      goToSection(
         'courses'
       );
 
       break;
 
-
     case 'knowledge':
 
-      showSection(
-        'knowledge'
+      goToSection(
+        'uploads'
       );
 
       break;
 
-
     case 'users':
 
-      showSection(
+      goToSection(
         'users'
       );
 
       break;
 
-
     case 'assignments':
 
-      showSection(
+      goToSection(
         'assignments'
       );
 
       break;
 
-
     case 'reporting':
 
-      showSection(
+      goToSection(
         'reporting'
       );
 
       break;
 
-
     case 'settings':
 
-      console.log(
-        'Organization settings coming next.'
+      goToSection(
+        'settings'
       );
 
       break;
@@ -4675,6 +5153,7 @@ function openOrganizationArea(
   }
 
 }
+
 /* ======================================================
    COURSES
 ====================================================== */
@@ -5002,7 +5481,6 @@ function renderModules() {
     return;
   }
 
-
   if (!state.modules.length) {
 
     list.innerHTML =
@@ -5013,7 +5491,6 @@ function renderModules() {
     return;
 
   }
-
 
   list.innerHTML =
     state.modules
@@ -5046,7 +5523,6 @@ function renderModules() {
       `)
       .join('');
 
-
   list
     .querySelectorAll(
       '[data-module-id]'
@@ -5062,10 +5538,11 @@ function renderModules() {
               'data-module-id'
             );
 
-
           state.selectedModuleId =
             moduleId;
 
+          state.selectedModuleArea =
+            null;
 
           const selectedModule =
             state.modules.find(
@@ -5073,7 +5550,6 @@ function renderModules() {
                 module.id ===
                 moduleId
             );
-
 
           renderModules();
 
@@ -5393,22 +5869,18 @@ function populateCourseSelects() {
     'uploadCourse'
   ];
 
-
   selects.forEach(id => {
 
     const select =
       document.getElementById(id);
 
-
     if (!select) {
       return;
     }
 
-
     const original =
       select.options[0]?.outerHTML ||
       '<option value="">Select course</option>';
-
 
     select.innerHTML =
       original +
@@ -5424,12 +5896,10 @@ function populateCourseSelects() {
         `)
         .join('');
 
-
     if (id === 'moduleCourse') {
 
       let courseId =
         state.selectedCourseId;
-
 
       if (
         !courseId &&
@@ -5444,41 +5914,34 @@ function populateCourseSelects() {
 
       }
 
-
       if (courseId) {
 
         select.value =
           courseId;
 
-
-        window.parent.postMessage(
+        sendToWix(
+          'LIST_MODULES',
           {
-            source:
-              'NEXIVRA_MANAGEMENT',
-
-            type:
-              'LIST_MODULES',
-
-            payload: {
-              courseId
-            }
-          },
-          '*'
+            courseId
+          }
         );
 
       }
-
 
       select.onchange = () => {
 
         const selectedCourseId =
           select.value;
 
-
         state.selectedCourseId =
           selectedCourseId ||
           null;
 
+        state.selectedModuleId =
+          null;
+
+        state.selectedModuleArea =
+          null;
 
         if (!selectedCourseId) {
 
@@ -5490,21 +5953,12 @@ function populateCourseSelects() {
 
         }
 
-
-        window.parent.postMessage(
+        sendToWix(
+          'LIST_MODULES',
           {
-            source:
-              'NEXIVRA_MANAGEMENT',
-
-            type:
-              'LIST_MODULES',
-
-            payload: {
-              courseId:
-                selectedCourseId
-            }
-          },
-          '*'
+            courseId:
+              selectedCourseId
+          }
         );
 
       };
@@ -5685,7 +6139,7 @@ function closeModal(id) {
 
 }
 
-  window.openOrganizationModal =
+window.openOrganizationModal =
   openOrganizationModal;
 
 window.openCourseModal =
