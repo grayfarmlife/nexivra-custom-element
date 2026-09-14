@@ -3159,6 +3159,16 @@ function handleWixMessage(
               updatedModule
             );
 
+          } else if (
+            state.selectedModuleArea ===
+            'REMEDIATION'
+          ) {
+
+            renderRemediationWorkspace(
+              workspace,
+              updatedModule
+            );
+
           } else {
 
             renderTeachingWorkspace(
@@ -3426,6 +3436,20 @@ function openModuleArea(
       'EVALUATION';
 
     renderEvaluationWorkspace(
+      workspace,
+      module
+    );
+
+    return;
+
+  }
+
+  if (area === 'REMEDIATION') {
+
+    state.selectedModuleArea =
+      'REMEDIATION';
+
+    renderRemediationWorkspace(
       workspace,
       module
     );
@@ -6483,6 +6507,335 @@ function saveEvaluationConfiguration() {
 
 window.saveEvaluationConfiguration =
   saveEvaluationConfiguration;
+
+/* ======================================================
+   REMEDIATION WORKSPACE
+====================================================== */
+
+function renderRemediationWorkspace(
+  workspace,
+  module
+) {
+
+  if (!workspace || !module) {
+    return;
+  }
+
+  const config =
+    module?.moduleConfig ||
+    {};
+
+  const retryMode =
+    config.remediationRetryMode ||
+    'targeted';
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <button
+        type="button"
+        onclick="renderModuleWorkspaceById('${escapeAttribute(
+          module.id
+        )}')"
+        style="
+          margin-bottom:20px;
+          border:none;
+          background:transparent;
+          color:var(--cyan);
+          cursor:pointer;
+          font-weight:700;
+        "
+      >
+        ← Back to Module
+      </button>
+
+      <div class="eyebrow">
+        ${escapeHTML(module.title)}
+      </div>
+
+      <h2>Remediation</h2>
+
+      <p>
+        Configure how NEXIVRA responds when capability is not yet
+        demonstrated and how targeted reinforcement leads to another attempt.
+      </p>
+
+      <div style="display:grid;gap:18px;margin-top:28px;">
+
+        <div class="card">
+          <div class="card-title">Remediation Objective</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define what targeted remediation should accomplish.
+          </div>
+          <textarea
+            id="remediationObjective"
+            placeholder="Example: Reinforce only the competency that is not yet demonstrated, then provide another realistic opportunity to demonstrate improvement."
+            style="width:100%;min-height:120px;resize:vertical;"
+          >${escapeHTML(config.remediationObjective || '')}</textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Remediation Trigger Guidance</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define when remediation should begin and what evidence should trigger it.
+          </div>
+          <textarea
+            id="remediationTriggerGuidance"
+            placeholder="Example: Trigger targeted remediation when evaluation identifies an important competency as Developing, Needs Reinforcement, Additional Practice Required, or Not Yet Demonstrated."
+            style="width:100%;min-height:170px;resize:vertical;"
+          >${escapeHTML(config.remediationTriggerGuidance || '')}</textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Coaching & Reinforcement Instructions</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Tell NEXIVRA how to coach the learner before the next attempt.
+          </div>
+          <textarea
+            id="remediationCoachingInstructions"
+            placeholder="Example: Explain the specific gap, use reflective questions, reteach only what is necessary, provide an example when needed, and confirm understanding before retrying."
+            style="width:100%;min-height:200px;resize:vertical;"
+          >${escapeHTML(config.remediationCoachingInstructions || '')}</textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Retry / Second-Attempt Guidance</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define how NEXIVRA should give the learner another opportunity.
+          </div>
+          <textarea
+            id="remediationRetryGuidance"
+            placeholder="Example: Use a new but equivalent scenario that tests the same competency. Do not repeat the exact question or reveal the preferred response."
+            style="width:100%;min-height:180px;resize:vertical;"
+          >${escapeHTML(config.remediationRetryGuidance || '')}</textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Escalation / Manager Guidance</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define what NEXIVRA should do when repeated attempts still do not demonstrate the competency.
+          </div>
+          <textarea
+            id="remediationEscalationGuidance"
+            placeholder="Example: Follow approved client rules for manager observation, additional coaching, compliance review, or other intervention. NEXIVRA should identify the evidence and recommendation without inventing disciplinary action."
+            style="width:100%;min-height:180px;resize:vertical;"
+          >${escapeHTML(config.remediationEscalationGuidance || '')}</textarea>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Retry Mode</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Choose how much of the learning experience should be repeated.
+          </div>
+          <select id="remediationRetryMode" style="width:100%;">
+            <option value="targeted" ${retryMode === 'targeted' ? 'selected' : ''}>
+              Targeted Competency Only
+            </option>
+            <option value="section" ${retryMode === 'section' ? 'selected' : ''}>
+              Relevant Section
+            </option>
+            <option value="module" ${retryMode === 'module' ? 'selected' : ''}>
+              Full Module
+            </option>
+            <option value="adaptive" ${retryMode === 'adaptive' ? 'selected' : ''}>
+              Adaptive
+            </option>
+          </select>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Improvement Evidence Guidance</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define what should count as improvement after remediation.
+          </div>
+          <textarea
+            id="remediationImprovementGuidance"
+            placeholder="Example: Compare the new attempt with prior evidence and recognize specific behavioral improvement. Update competency status when sufficient new evidence is demonstrated."
+            style="width:100%;min-height:170px;resize:vertical;"
+          >${escapeHTML(config.remediationImprovementGuidance || '')}</textarea>
+        </div>
+
+        <div style="padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+            <div style="min-width:0;">
+              <div style="font-size:15px;font-weight:800;color:#fff;">Targeted Remediation</div>
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">Reinforce the actual competency gap</div>
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                Avoid forcing the learner to repeat material they have already demonstrated successfully.
+              </div>
+            </div>
+            <input
+              id="targetedRemediationEnabled"
+              type="checkbox"
+              ${config.targetedRemediationEnabled !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+          </div>
+        </div>
+
+        <div style="padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+            <div style="min-width:0;">
+              <div style="font-size:15px;font-weight:800;color:#fff;">Require New Demonstration</div>
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">Confirm improvement through another attempt</div>
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                Coaching alone does not close the competency gap; the learner should demonstrate the behavior again when appropriate.
+              </div>
+            </div>
+            <input
+              id="remediationRequiresNewDemonstration"
+              type="checkbox"
+              ${config.remediationRequiresNewDemonstration !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+          </div>
+        </div>
+
+        <div style="padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+            <div style="min-width:0;">
+              <div style="font-size:15px;font-weight:800;color:#fff;">Preserve Prior Evidence</div>
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">Keep strengths already demonstrated</div>
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                Remediation should add new evidence to the learner record rather than erasing previously demonstrated capability.
+              </div>
+            </div>
+            <input
+              id="preservePriorEvidenceEnabled"
+              type="checkbox"
+              ${config.preservePriorEvidenceEnabled !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+          </div>
+        </div>
+
+        <div style="padding:20px;border-radius:16px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+            <div style="min-width:0;">
+              <div style="font-size:15px;font-weight:800;color:#fff;">Client Escalation Rules</div>
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">Allow approved organization-specific next steps</div>
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                Clients may define approved manager observation, additional practice, compliance review, or other escalation rules without replacing NEXIVRA's core remediation engine.
+              </div>
+            </div>
+            <input
+              id="clientRemediationRulesEnabled"
+              type="checkbox"
+              ${config.clientRemediationRulesEnabled !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="saveRemediationConfiguration()"
+          >
+            Save Remediation Configuration
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+function saveRemediationConfiguration() {
+
+  const moduleId =
+    state.selectedModuleId;
+
+  if (!moduleId) {
+    showToast(
+      'Select a module first.',
+      'error'
+    );
+    return;
+  }
+
+  const remediationObjective =
+    document.getElementById(
+      'remediationObjective'
+    )?.value.trim() || '';
+
+  const remediationTriggerGuidance =
+    document.getElementById(
+      'remediationTriggerGuidance'
+    )?.value.trim() || '';
+
+  const remediationCoachingInstructions =
+    document.getElementById(
+      'remediationCoachingInstructions'
+    )?.value.trim() || '';
+
+  const remediationRetryGuidance =
+    document.getElementById(
+      'remediationRetryGuidance'
+    )?.value.trim() || '';
+
+  const remediationEscalationGuidance =
+    document.getElementById(
+      'remediationEscalationGuidance'
+    )?.value.trim() || '';
+
+  const remediationRetryMode =
+    document.getElementById(
+      'remediationRetryMode'
+    )?.value || 'targeted';
+
+  const remediationImprovementGuidance =
+    document.getElementById(
+      'remediationImprovementGuidance'
+    )?.value.trim() || '';
+
+  const targetedRemediationEnabled =
+    document.getElementById(
+      'targetedRemediationEnabled'
+    )?.checked !== false;
+
+  const remediationRequiresNewDemonstration =
+    document.getElementById(
+      'remediationRequiresNewDemonstration'
+    )?.checked !== false;
+
+  const preservePriorEvidenceEnabled =
+    document.getElementById(
+      'preservePriorEvidenceEnabled'
+    )?.checked !== false;
+
+  const clientRemediationRulesEnabled =
+    document.getElementById(
+      'clientRemediationRulesEnabled'
+    )?.checked !== false;
+
+  sendToWix(
+    'UPDATE_REMEDIATION_CONFIGURATION',
+    {
+      moduleId,
+      remediationObjective,
+      remediationTriggerGuidance,
+      remediationCoachingInstructions,
+      remediationRetryGuidance,
+      remediationEscalationGuidance,
+      remediationRetryMode,
+      remediationImprovementGuidance,
+      targetedRemediationEnabled,
+      remediationRequiresNewDemonstration,
+      preservePriorEvidenceEnabled,
+      clientRemediationRulesEnabled
+    }
+  );
+
+}
+
+window.saveRemediationConfiguration =
+  saveRemediationConfiguration;
 
 /* ======================================================
    MODULE HELPERS
