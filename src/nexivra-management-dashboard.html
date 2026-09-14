@@ -3131,7 +3131,17 @@ function handleWixMessage(
 
       break;
 
-    case 'MODULES_DATA':
+      case 'MODULES_DATA':
+
+  state.modules =
+    payload?.modules ||
+    [];
+
+  renderModules();
+
+  break;
+
+
 case 'MODULE_UPDATED':
 
   {
@@ -3158,6 +3168,7 @@ case 'MODULE_UPDATED':
 
       renderModules();
 
+
       renderTeachingWorkspace(
         document.querySelector(
           '.builder-main'
@@ -3170,13 +3181,6 @@ case 'MODULE_UPDATED':
   }
 
   break;
-      state.modules =
-        payload?.modules ||
-        [];
-
-      renderModules();
-
-      break;
 
     case 'ACTION_SUCCESS':
 
