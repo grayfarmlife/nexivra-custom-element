@@ -1052,10 +1052,13 @@ tr:last-child td {
   backdrop-filter:
     blur(10px);
 
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 
   padding: 20px;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-overlay.open {
@@ -1064,6 +1067,14 @@ tr:last-child td {
 
 .modal {
   width: min(560px, 100%);
+
+  max-height:
+    calc(100vh - 40px);
+
+  display: flex;
+  flex-direction: column;
+
+  margin: auto 0;
 
   border:
     1px solid var(--border-strong);
@@ -1111,6 +1122,12 @@ tr:last-child td {
 
 .modal-body {
   padding: 20px;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .modal-footer {
@@ -1121,8 +1138,13 @@ tr:last-child td {
   justify-content: flex-end;
   gap: 10px;
 
+  flex: 0 0 auto;
+
   border-top:
     1px solid rgba(255,255,255,.06);
+
+  background:
+    rgba(2,8,16,.96);
 }
 
 /* ======================================================
