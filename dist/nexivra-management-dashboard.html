@@ -3132,7 +3132,44 @@ function handleWixMessage(
       break;
 
     case 'MODULES_DATA':
+case 'MODULE_UPDATED':
 
+  {
+
+    const updatedModule =
+      payload?.module;
+
+
+    if (updatedModule) {
+
+      state.modules =
+        state.modules.map(
+          module =>
+            module.id ===
+            updatedModule.id
+              ? updatedModule
+              : module
+        );
+
+
+      state.selectedModuleId =
+        updatedModule.id;
+
+
+      renderModules();
+
+      renderTeachingWorkspace(
+        document.querySelector(
+          '.builder-main'
+        ),
+        updatedModule
+      );
+
+    }
+
+  }
+
+  break;
       state.modules =
         payload?.modules ||
         [];
@@ -3706,7 +3743,100 @@ function openModuleArea(
           <button
             type="button"
             class="btn btn-primary"
-            onclick="saveTeachingConfiguration()"
+function saveTeachingConfiguration() {
+
+  const moduleId =
+    state.selectedModuleId;
+
+
+  if (!moduleId) {
+
+    showToast(
+      'Select a module first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+
+  const teachingObjective =
+    document
+      .getElementById(
+        'teachingObjective'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+
+  const teachingContent =
+    document
+      .getElementById(
+        'teachingContent'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+
+  const teachingInstructions =
+    document
+      .getElementById(
+        'teachingInstructions'
+      )
+      ?.value
+      .trim() ||
+    '';
+
+
+  const adaptiveTeachingEnabled =
+    document
+      .getElementById(
+        'adaptiveTeachingEnabled'
+      )
+      ?.checked !== false;
+
+
+  const connectTeachingEnabled =
+    document
+      .getElementById(
+        'connectTeachingEnabled'
+      )
+      ?.checked !== false;
+
+
+  window.parent.postMessage(
+    {
+      source:
+        'NEXIVRA_MANAGEMENT',
+
+      type:
+        'UPDATE_MODULE',
+
+      payload: {
+        moduleId,
+
+        teachingObjective,
+
+        teachingContent,
+
+        teachingInstructions,
+
+        adaptiveTeachingEnabled,
+
+        connectTeachingEnabled
+      }
+    },
+    '*'
+  );
+
+}
+
+
+window.saveTeachingConfiguration =
+  saveTeachingConfiguration;
           >
             Save Teaching Configuration
           </button>
