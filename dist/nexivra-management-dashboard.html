@@ -3149,6 +3149,16 @@ function handleWixMessage(
               updatedModule
             );
 
+          } else if (
+            state.selectedModuleArea ===
+            'EVALUATION'
+          ) {
+
+            renderEvaluationWorkspace(
+              workspace,
+              updatedModule
+            );
+
           } else {
 
             renderTeachingWorkspace(
@@ -3402,6 +3412,20 @@ function openModuleArea(
       'ROLE_PLAY';
 
     renderRolePlayWorkspace(
+      workspace,
+      module
+    );
+
+    return;
+
+  }
+
+  if (area === 'EVALUATION') {
+
+    state.selectedModuleArea =
+      'EVALUATION';
+
+    renderEvaluationWorkspace(
       workspace,
       module
     );
@@ -5951,6 +5975,514 @@ function saveRolePlayConfiguration() {
 
 window.saveRolePlayConfiguration =
   saveRolePlayConfiguration;
+
+/* ======================================================
+   EVALUATION WORKSPACE
+====================================================== */
+
+function renderEvaluationWorkspace(
+  workspace,
+  module
+) {
+
+  if (!workspace || !module) {
+    return;
+  }
+
+  const config =
+    module?.moduleConfig ||
+    {};
+
+  const evidenceStandard =
+    config.evaluationEvidenceStandard ||
+    'demonstrated';
+
+  workspace.innerHTML = `
+
+    <div class="module-workspace">
+
+      <button
+        type="button"
+        onclick="renderModuleWorkspaceById('${escapeAttribute(
+          module.id
+        )}')"
+        style="
+          margin-bottom:20px;
+          border:none;
+          background:transparent;
+          color:var(--cyan);
+          cursor:pointer;
+          font-weight:700;
+        "
+      >
+        ← Back to Module
+      </button>
+
+      <div class="eyebrow">
+        ${escapeHTML(
+          module.title
+        )}
+      </div>
+
+      <h2>
+        Evaluation
+      </h2>
+
+      <p>
+        Define what NEXIVRA evaluates, what evidence counts,
+        and how demonstrated capability is interpreted.
+      </p>
+
+      <div
+        style="
+          display:grid;
+          gap:18px;
+          margin-top:28px;
+        "
+      >
+
+        <div class="card">
+
+          <div class="card-title">
+            Evaluation Objective
+          </div>
+
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define what NEXIVRA must determine about the learner.
+          </div>
+
+          <textarea
+            id="evaluationObjective"
+            placeholder="Example: Determine whether the learner can consistently demonstrate the foundational hospitality behaviors in realistic interactions."
+            style="width:100%;min-height:120px;resize:vertical;"
+          >${escapeHTML(
+            config.evaluationObjective ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Competencies to Evaluate
+          </div>
+
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Identify the specific competencies NEXIVRA should observe.
+          </div>
+
+          <textarea
+            id="evaluationCompetencies"
+            placeholder="Example: Recognition, presence, listening, ownership, respect, emotional awareness, adaptability, communication, follow-through, and recovery."
+            style="width:100%;min-height:180px;resize:vertical;"
+          >${escapeHTML(
+            config.evaluationCompetencies ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Evidence & Behavioral Indicators
+          </div>
+
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Describe the observable evidence that supports a competency decision.
+          </div>
+
+          <textarea
+            id="evaluationEvidenceIndicators"
+            placeholder="Example: Evaluate what the learner actually says, decides, notices, adapts to, follows through on, and how the interaction changes as a result."
+            style="width:100%;min-height:190px;resize:vertical;"
+          >${escapeHTML(
+            config.evaluationEvidenceIndicators ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Evaluation Instructions
+          </div>
+
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Tell NEXIVRA how to evaluate fairly and consistently.
+          </div>
+
+          <textarea
+            id="evaluationInstructions"
+            placeholder="Example: Evaluate demonstrated behavior, not intent alone. Consider the full interaction and use multiple pieces of evidence when possible."
+            style="width:100%;min-height:200px;resize:vertical;"
+          >${escapeHTML(
+            config.evaluationInstructions ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Evidence Standard
+          </div>
+
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Set the default standard for competency evidence.
+          </div>
+
+          <select
+            id="evaluationEvidenceStandard"
+            style="width:100%;"
+          >
+            <option
+              value="developing"
+              ${evidenceStandard === 'developing' ? 'selected' : ''}
+            >
+              Developing Evidence
+            </option>
+
+            <option
+              value="demonstrated"
+              ${evidenceStandard === 'demonstrated' ? 'selected' : ''}
+            >
+              Demonstrated Capability
+            </option>
+
+            <option
+              value="consistent"
+              ${evidenceStandard === 'consistent' ? 'selected' : ''}
+            >
+              Consistently Demonstrated
+            </option>
+
+            <option
+              value="adaptive"
+              ${evidenceStandard === 'adaptive' ? 'selected' : ''}
+            >
+              Adaptive by Competency
+            </option>
+          </select>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Developmental Status Guidance
+          </div>
+
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define the developmental language NEXIVRA should use instead of pass/fail.
+          </div>
+
+          <textarea
+            id="evaluationStatusGuidance"
+            placeholder="Example: Use Developing, Needs Reinforcement, Additional Practice Required, Not Yet Demonstrated, Demonstrated, and Consistently Demonstrated."
+            style="width:100%;min-height:160px;resize:vertical;"
+          >${escapeHTML(
+            config.evaluationStatusGuidance ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div class="card">
+
+          <div class="card-title">
+            Feedback Guidance
+          </div>
+
+          <div style="color:var(--muted);font-size:12px;margin-bottom:10px;">
+            Define how evaluation feedback should be explained to the learner.
+          </div>
+
+          <textarea
+            id="evaluationFeedbackGuidance"
+            placeholder="Example: Identify demonstrated strengths, cite specific evidence, explain what needs reinforcement, and give the learner a clear path to improve."
+            style="width:100%;min-height:170px;resize:vertical;"
+          >${escapeHTML(
+            config.evaluationFeedbackGuidance ||
+            ''
+          )}</textarea>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+
+            <div style="min-width:0;">
+
+              <div style="font-size:15px;font-weight:800;color:#fff;">
+                Behavioral Evidence Required
+              </div>
+
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">
+                Require demonstrated behavior, not knowledge alone
+              </div>
+
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                NEXIVRA should not treat knowing the right answer as proof that the learner can perform the behavior.
+              </div>
+
+            </div>
+
+            <input
+              id="behavioralEvidenceRequired"
+              type="checkbox"
+              ${config.behavioralEvidenceRequired !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+
+            <div style="min-width:0;">
+
+              <div style="font-size:15px;font-weight:800;color:#fff;">
+                Separate Hospitality & Operational Accuracy
+              </div>
+
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">
+                Evaluate human behavior and procedural accuracy separately
+              </div>
+
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                A learner may demonstrate strong hospitality while still needing reinforcement on an approved policy, procedure, product, system, or operational requirement.
+              </div>
+
+            </div>
+
+            <input
+              id="separateOperationalEvaluationEnabled"
+              type="checkbox"
+              ${config.separateOperationalEvaluationEnabled !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+
+            <div style="min-width:0;">
+
+              <div style="font-size:15px;font-weight:800;color:#fff;">
+                Multi-Evidence Evaluation
+              </div>
+
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">
+                Use multiple moments before making strong conclusions
+              </div>
+
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                When practical, NEXIVRA should evaluate patterns across multiple responses or interactions rather than over-weighting a single moment.
+              </div>
+
+            </div>
+
+            <input
+              id="multiEvidenceEvaluationEnabled"
+              type="checkbox"
+              ${config.multiEvidenceEvaluationEnabled !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            padding:20px;
+            border-radius:16px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.03);
+          "
+        >
+
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;">
+
+            <div style="min-width:0;">
+
+              <div style="font-size:15px;font-weight:800;color:#fff;">
+                Trigger Remediation
+              </div>
+
+              <div style="margin-top:8px;font-size:14px;font-weight:700;color:#fff;">
+                Send unmet competencies into targeted reinforcement
+              </div>
+
+              <div style="margin-top:5px;color:var(--muted);font-size:12px;line-height:1.55;max-width:620px;">
+                When important capability is not yet demonstrated, NEXIVRA can identify the specific competency that needs additional practice or coaching.
+              </div>
+
+            </div>
+
+            <input
+              id="evaluationTriggersRemediation"
+              type="checkbox"
+              ${config.evaluationTriggersRemediation !== false ? 'checked' : ''}
+              style="width:20px;height:20px;flex-shrink:0;cursor:pointer;"
+            >
+
+          </div>
+
+        </div>
+
+        <div
+          style="
+            display:flex;
+            justify-content:flex-end;
+            margin-top:4px;
+          "
+        >
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            onclick="saveEvaluationConfiguration()"
+          >
+            Save Evaluation Configuration
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+function saveEvaluationConfiguration() {
+
+  const moduleId =
+    state.selectedModuleId;
+
+  if (!moduleId) {
+
+    showToast(
+      'Select a module first.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  const evaluationObjective =
+    document.getElementById(
+      'evaluationObjective'
+    )?.value.trim() || '';
+
+  const evaluationCompetencies =
+    document.getElementById(
+      'evaluationCompetencies'
+    )?.value.trim() || '';
+
+  const evaluationEvidenceIndicators =
+    document.getElementById(
+      'evaluationEvidenceIndicators'
+    )?.value.trim() || '';
+
+  const evaluationInstructions =
+    document.getElementById(
+      'evaluationInstructions'
+    )?.value.trim() || '';
+
+  const evaluationEvidenceStandard =
+    document.getElementById(
+      'evaluationEvidenceStandard'
+    )?.value || 'demonstrated';
+
+  const evaluationStatusGuidance =
+    document.getElementById(
+      'evaluationStatusGuidance'
+    )?.value.trim() || '';
+
+  const evaluationFeedbackGuidance =
+    document.getElementById(
+      'evaluationFeedbackGuidance'
+    )?.value.trim() || '';
+
+  const behavioralEvidenceRequired =
+    document.getElementById(
+      'behavioralEvidenceRequired'
+    )?.checked !== false;
+
+  const separateOperationalEvaluationEnabled =
+    document.getElementById(
+      'separateOperationalEvaluationEnabled'
+    )?.checked !== false;
+
+  const multiEvidenceEvaluationEnabled =
+    document.getElementById(
+      'multiEvidenceEvaluationEnabled'
+    )?.checked !== false;
+
+  const evaluationTriggersRemediation =
+    document.getElementById(
+      'evaluationTriggersRemediation'
+    )?.checked !== false;
+
+  sendToWix(
+    'UPDATE_EVALUATION_CONFIGURATION',
+    {
+      moduleId,
+      evaluationObjective,
+      evaluationCompetencies,
+      evaluationEvidenceIndicators,
+      evaluationInstructions,
+      evaluationEvidenceStandard,
+      evaluationStatusGuidance,
+      evaluationFeedbackGuidance,
+      behavioralEvidenceRequired,
+      separateOperationalEvaluationEnabled,
+      multiEvidenceEvaluationEnabled,
+      evaluationTriggersRemediation
+    }
+  );
+
+}
+
+window.saveEvaluationConfiguration =
+  saveEvaluationConfiguration;
 
 /* ======================================================
    MODULE HELPERS
