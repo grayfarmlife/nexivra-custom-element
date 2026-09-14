@@ -1668,7 +1668,7 @@ textarea {
 
       <button class="nav-button" data-section="uploads">
         <span class="nav-icon">⇧</span>
-        <span>Knowledge Uploads</span>
+        <span>Knowledge Sources</span>
       </button>
 
       <button class="nav-button" data-section="users">
@@ -1749,7 +1749,10 @@ textarea {
               NEXIVRA Admin
             </div>
 
-            <div class="admin-role">
+            <div
+              class="admin-role"
+              id="adminRoleLabel"
+            >
               Platform Administrator
             </div>
 
@@ -1791,6 +1794,7 @@ textarea {
 
           <button
             class="btn btn-primary"
+            id="newOrganizationButton"
             onclick="openOrganizationModal()"
           >
             + New Organization
@@ -2287,6 +2291,13 @@ textarea {
             </p>
 
           </div>
+
+          <button
+            class="btn btn-primary"
+            onclick="openAssignmentModal()"
+          >
+            + Assign Course
+          </button>
 
         </div>
 
@@ -3343,6 +3354,81 @@ textarea {
 
 </div>
 
+
+<!-- ======================================================
+     ASSIGNMENT MODAL
+====================================================== -->
+
+<div class="modal-overlay" id="assignmentModal">
+  <div class="modal">
+
+    <div class="modal-header">
+      <div class="modal-title">
+        Assign Course
+      </div>
+
+      <button
+        class="modal-close"
+        onclick="closeModal('assignmentModal')"
+      >
+        ×
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-grid">
+
+        <div>
+          <label>Learner</label>
+          <select id="assignmentLearner">
+            <option value="">Select learner</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Course</label>
+          <select id="assignmentCourse">
+            <option value="">Select course</option>
+          </select>
+        </div>
+
+        <div
+          style="
+            padding:16px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,.08);
+            background:rgba(255,255,255,.025);
+            color:var(--muted);
+            font-size:12px;
+            line-height:1.6;
+          "
+        >
+          Company Administrators may assign only learners and courses
+          inside their own organization.
+        </div>
+
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button
+        class="btn"
+        onclick="closeModal('assignmentModal')"
+      >
+        Cancel
+      </button>
+
+      <button
+        class="btn btn-primary"
+        onclick="createCourseAssignment()"
+      >
+        Assign Course
+      </button>
+    </div>
+
+  </div>
+</div>
+
 <div
   class="toast"
   id="toast"
@@ -3365,7 +3451,14 @@ const state = {
   assignments: [],
   selectedModuleArea: null,
   knowledgeModules: [],
-  selectedKnowledgeSourceId: null
+  selectedKnowledgeSourceId: null,
+  access: {
+    role: 'nexivra_admin',
+    organizationId: '',
+    isPlatformAdmin: true,
+    isCompanyAdmin: false,
+    permissions: {}
+  }
 };
 
 /* ======================================================
@@ -3735,6 +3828,30 @@ function renderModuleWorkspace(
         )}
       </p>
 
+      ${
+        module.canEdit === false
+          ? `
+            <div
+              style="
+                margin-top:18px;
+                padding:14px 16px;
+                border-radius:12px;
+                border:1px solid rgba(255,174,0,.25);
+                background:rgba(255,174,0,.06);
+                color:#ffd27a;
+                font-size:12px;
+                line-height:1.6;
+              "
+            >
+              Protected course methodology. Company Administrators may
+              view this course, assign it to learners, and connect approved
+              company-owned knowledge sources, but cannot modify protected
+              provider-owned authoring.
+            </div>
+          `
+          : ''
+      }
+
       <div
         style="
           display:grid;
@@ -4012,6 +4129,36 @@ function openModuleArea(
   `;
 
 }
+
+
+function selectedModuleIsEditable() {
+
+  const module =
+    state.modules.find(
+      item =>
+        item.id ===
+        state.selectedModuleId
+    );
+
+  if (
+    module &&
+    module.canEdit ===
+      false
+  ) {
+
+    showToast(
+      'This provider-owned course is protected from Company Admin authoring changes.',
+      'error'
+    );
+
+    return false;
+
+  }
+
+  return true;
+
+}
+
 
 /* ======================================================
    TEACHING WORKSPACE
@@ -4339,6 +4486,11 @@ function renderTeachingWorkspace(
 }
 
 function saveTeachingConfiguration() {
+
+  if (!selectedModuleIsEditable()) {
+    return;
+  }
+
 
   const moduleId =
     state.selectedModuleId;
@@ -4862,6 +5014,11 @@ function renderKnowledgeWorkspace(
 }
 
 function saveKnowledgeConfiguration() {
+
+  if (!selectedModuleIsEditable()) {
+    return;
+  }
+
 
   const moduleId =
     state.selectedModuleId;
@@ -5462,6 +5619,11 @@ function renderPracticeWorkspace(
 }
 
 function savePracticeConfiguration() {
+
+  if (!selectedModuleIsEditable()) {
+    return;
+  }
+
 
   const moduleId =
     state.selectedModuleId;
@@ -6338,6 +6500,11 @@ function renderRolePlayWorkspace(
 
 function saveRolePlayConfiguration() {
 
+  if (!selectedModuleIsEditable()) {
+    return;
+  }
+
+
   const moduleId =
     state.selectedModuleId;
 
@@ -6898,6 +7065,11 @@ function renderEvaluationWorkspace(
 
 function saveEvaluationConfiguration() {
 
+  if (!selectedModuleIsEditable()) {
+    return;
+  }
+
+
   const moduleId =
     state.selectedModuleId;
 
@@ -7230,6 +7402,11 @@ function renderRemediationWorkspace(
 
 function saveRemediationConfiguration() {
 
+  if (!selectedModuleIsEditable()) {
+    return;
+  }
+
+
   const moduleId =
     state.selectedModuleId;
 
@@ -7457,6 +7634,30 @@ function renderDashboard(
 
   if (data.admin) {
 
+    state.access = {
+      role:
+        data.admin.role ||
+        'nexivra_admin',
+
+      organizationId:
+        data.admin.organizationId ||
+        '',
+
+      isPlatformAdmin:
+        data.admin.isPlatformAdmin !==
+        false,
+
+      isCompanyAdmin:
+        data.admin.isCompanyAdmin ===
+        true,
+
+      permissions:
+        data.permissions ||
+        {}
+    };
+
+    applyAccessPolicy();
+
     const name =
       [
         data.admin.firstName,
@@ -7486,6 +7687,13 @@ function renderDashboard(
       'NX'
     );
 
+    setText(
+      'adminRoleLabel',
+      state.access.isCompanyAdmin
+        ? 'Company Administrator'
+        : 'Platform Administrator'
+    );
+
   }
 
   renderRecentCourses(
@@ -7493,6 +7701,80 @@ function renderDashboard(
   );
 
 }
+
+
+/* ======================================================
+   ACCESS / OWNERSHIP UI
+====================================================== */
+
+function applyAccessPolicy() {
+
+  const companyAdmin =
+    state.access?.isCompanyAdmin ===
+    true;
+
+  const hiddenSections =
+    companyAdmin
+      ? [
+          'organizations',
+          'demo',
+          'settings'
+        ]
+      : [];
+
+  hiddenSections.forEach(
+    section => {
+
+      const nav =
+        document.querySelector(
+          `[data-section="${section}"]`
+        );
+
+      if (nav) {
+        nav.style.display =
+          'none';
+      }
+
+    }
+  );
+
+  const newOrgButton =
+    document.getElementById(
+      'newOrganizationButton'
+    );
+
+  if (newOrgButton) {
+    newOrgButton.style.display =
+      companyAdmin
+        ? 'none'
+        : '';
+  }
+
+}
+
+
+function ownershipLabel(
+  type
+) {
+
+  const labels = {
+    platform_owned:
+      'NEXIVRA Managed',
+
+    provider_owned:
+      'Provider Owned',
+
+    company_owned:
+      'Company Owned'
+  };
+
+  return (
+    labels[type] ||
+    'Protected / Provider'
+  );
+
+}
+
 
 /* ======================================================
    RECENT COURSES
@@ -8145,6 +8427,7 @@ function renderCourses() {
           <th>Course</th>
           <th>Organization</th>
           <th>Subject</th>
+          <th>Ownership</th>
           <th>Version</th>
           <th>Status</th>
         </tr>
@@ -8157,6 +8440,20 @@ function renderCourses() {
               <strong>
                 ${escapeHTML(course.title)}
               </strong>
+
+              <div
+                style="
+                  color:var(--muted);
+                  font-size:10px;
+                  margin-top:4px;
+                "
+              >
+                ${
+                  course.canEdit
+                    ? 'Editable'
+                    : 'Protected / read-only methodology'
+                }
+              </div>
             </td>
 
             <td>
@@ -8168,6 +8465,14 @@ function renderCourses() {
             <td>
               ${escapeHTML(
                 course.subjectName
+              )}
+            </td>
+
+            <td>
+              ${escapeHTML(
+                ownershipLabel(
+                  course.ownershipType
+                )
               )}
             </td>
 
@@ -8193,6 +8498,7 @@ function renderCourses() {
   `;
 
 }
+
 
 /* ======================================================
    USERS
@@ -8426,7 +8732,6 @@ function renderUploads() {
           <th>Approval</th>
           <th>Current</th>
           <th>Modules</th>
-          <th></th>
         </tr>
       </thead>
 
@@ -8475,6 +8780,45 @@ function renderUploads() {
                       ''
                     )}
                   </div>
+
+                  <div
+                    style="
+                      color:var(--muted);
+                      font-size:10px;
+                      margin-top:7px;
+                    "
+                  >
+                    ${escapeHTML(
+                      ownershipLabel(
+                        upload.ownershipType
+                      )
+                    )}
+                    ${
+                      upload.contentOwner
+                        ? ` • ${escapeHTML(
+                            upload.contentOwner
+                          )}`
+                        : ''
+                    }
+                  </div>
+
+                  <button
+                    type="button"
+                    class="btn"
+                    onclick="openKnowledgeSourceManager('${escapeAttribute(
+                      upload.id
+                    )}')"
+                    style="
+                      margin-top:10px;
+                      padding:7px 11px;
+                    "
+                  >
+                    ${
+                      upload.canEdit === false
+                        ? 'View Source'
+                        : 'Manage Source'
+                    }
+                  </button>
                 </td>
 
                 <td>
@@ -8527,17 +8871,7 @@ function renderUploads() {
                   ${moduleIds.length}
                 </td>
 
-                <td>
-                  <button
-                    type="button"
-                    class="btn"
-                    onclick="openKnowledgeSourceManager('${escapeAttribute(
-                      upload.id
-                    )}')"
-                  >
-                    Manage
-                  </button>
-                </td>
+
 
               </tr>
             `;
@@ -8920,6 +9254,46 @@ function populateKnowledgeSourceManager() {
       metadata.isCurrent !==
       false;
 
+  }
+
+  const editable =
+    upload.canEdit !==
+    false;
+
+  [
+    'knowledgeManagerApprovalStatus',
+    'knowledgeManagerVersion',
+    'knowledgeManagerEffectiveDate',
+    'knowledgeManagerSourceType',
+    'knowledgeManagerSourceTitle',
+    'knowledgeManagerNotes',
+    'knowledgeManagerIsCurrent'
+  ].forEach(
+    id => {
+
+      const element =
+        document.getElementById(
+          id
+        );
+
+      if (element) {
+        element.disabled =
+          !editable;
+      }
+
+    }
+  );
+
+  const saveButton =
+    document.querySelector(
+      '#knowledgeSourceManagerModal .btn-primary[onclick="saveKnowledgeSourceManagement()"]'
+    );
+
+  if (saveButton) {
+    saveButton.style.display =
+      editable
+        ? ''
+        : 'none';
   }
 
   renderKnowledgeModuleRelationships();
@@ -9746,6 +10120,127 @@ function registerUpload() {
 
 
 /* ======================================================
+   ASSIGNMENT CREATION
+====================================================== */
+
+function openAssignmentModal() {
+
+  const learnerSelect =
+    document.getElementById(
+      'assignmentLearner'
+    );
+
+  const courseSelect =
+    document.getElementById(
+      'assignmentCourse'
+    );
+
+  const learners =
+    state.users.filter(
+      user =>
+        user.role ===
+          'learner' &&
+        user.status ===
+          'active'
+    );
+
+  if (learnerSelect) {
+    learnerSelect.innerHTML =
+      '<option value="">Select learner</option>' +
+      learners.map(
+        user => `
+          <option value="${escapeAttribute(
+            user.memberId
+          )}">
+            ${escapeHTML(
+              [
+                user.firstName,
+                user.lastName
+              ]
+                .filter(Boolean)
+                .join(' ') ||
+              user.email ||
+              user.memberId
+            )}
+          </option>
+        `
+      ).join('');
+  }
+
+  if (courseSelect) {
+    courseSelect.innerHTML =
+      '<option value="">Select course</option>' +
+      state.courses.map(
+        course => `
+          <option value="${escapeAttribute(
+            course.id
+          )}">
+            ${escapeHTML(
+              course.title
+            )}
+          </option>
+        `
+      ).join('');
+  }
+
+  openModal(
+    'assignmentModal'
+  );
+
+}
+
+
+function createCourseAssignment() {
+
+  const memberId =
+    document.getElementById(
+      'assignmentLearner'
+    )?.value ||
+    '';
+
+  const courseId =
+    document.getElementById(
+      'assignmentCourse'
+    )?.value ||
+    '';
+
+  if (
+    !memberId ||
+    !courseId
+  ) {
+
+    showToast(
+      'Select a learner and course.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  sendToWix(
+    'CREATE_ASSIGNMENT',
+    {
+      memberId,
+      courseId
+    }
+  );
+
+  closeModal(
+    'assignmentModal'
+  );
+
+}
+
+
+window.openAssignmentModal =
+  openAssignmentModal;
+
+window.createCourseAssignment =
+  createCourseAssignment;
+
+
+/* ======================================================
    DEMO
 ====================================================== */
 
@@ -9994,7 +10489,7 @@ function goToSection(
       'Course Builder',
 
     uploads:
-      'Knowledge Uploads',
+      'Knowledge Sources',
 
     users:
       'Users',
@@ -10043,6 +10538,28 @@ function openCourseModal() {
 }
 
 function openModuleModal() {
+
+  const selectedCourse =
+    state.courses.find(
+      course =>
+        course.id ===
+        state.selectedCourseId
+    );
+
+  if (
+    selectedCourse &&
+    selectedCourse.canEdit ===
+      false
+  ) {
+
+    showToast(
+      'This provider-owned course is protected. Create modules only in company-owned courses.',
+      'error'
+    );
+
+    return;
+
+  }
 
   populateCourseSelects();
 
