@@ -3760,6 +3760,40 @@ function requestDashboardData() {
 
 }
 
+
+function requestDashboardRefresh() {
+
+  sendToWix(
+    'GET_DASHBOARD'
+  );
+
+  sendToWix(
+    'LIST_ORGANIZATIONS'
+  );
+
+  sendToWix(
+    'LIST_COURSES',
+    {}
+  );
+
+  sendToWix(
+    'LIST_USERS',
+    {}
+  );
+
+  sendToWix(
+    'LIST_UPLOADS',
+    {}
+  );
+
+  sendToWix(
+    'LIST_ASSIGNMENTS',
+    {}
+  );
+
+}
+
+
 /* ======================================================
    MESSAGE HANDLING
 ====================================================== */
@@ -3820,7 +3854,71 @@ function handleWixMessage(
             'active'
           )
       ) {
-        renderBuilderCourseSelection();
+
+        if (
+          state.selectedCourseId
+        ) {
+
+          const selectedCourse =
+            state.courses.find(
+              course =>
+                course.id ===
+                state.selectedCourseId
+            );
+
+          if (selectedCourse) {
+
+            const selection =
+              document.getElementById(
+                'builderCourseSelection'
+              );
+
+            const shell =
+              document.getElementById(
+                'builderWorkspaceShell'
+              );
+
+            const addModuleButton =
+              document.getElementById(
+                'builderAddModuleButton'
+              );
+
+            if (selection) {
+              selection.style.display =
+                'none';
+            }
+
+            if (shell) {
+              shell.style.display =
+                '';
+            }
+
+            if (addModuleButton) {
+              addModuleButton.style.display =
+                selectedCourse.canEdit ===
+                false
+                  ? 'none'
+                  : '';
+            }
+
+            renderBuilderCourseHome();
+
+          } else {
+
+            renderBuilderCourseSelection(
+              true
+            );
+
+          }
+
+        } else {
+
+          renderBuilderCourseSelection(
+            true
+          );
+
+        }
+
       }
 
       break;
@@ -3880,10 +3978,54 @@ function handleWixMessage(
       renderModules();
 
       if (
-        state.selectedCourseId &&
-        !state.selectedModuleId
+        state.selectedCourseId
       ) {
-        renderBuilderCourseHome();
+
+        const selectedModuleStillExists =
+          state.modules.some(
+            module =>
+              module.id ===
+              state.selectedModuleId
+          );
+
+        if (
+          !selectedModuleStillExists
+        ) {
+
+          state.selectedModuleId =
+            state.modules.length
+              ? state.modules[
+                  state.modules.length - 1
+                ].id
+              : null;
+
+        }
+
+        if (
+          state.selectedModuleId
+        ) {
+
+          const selectedModule =
+            state.modules.find(
+              module =>
+                module.id ===
+                state.selectedModuleId
+            );
+
+          if (selectedModule) {
+            renderModuleWorkspace(
+              selectedModule
+            );
+          } else {
+            renderBuilderCourseHome();
+          }
+
+        } else {
+
+          renderBuilderCourseHome();
+
+        }
+
       }
 
       break;
@@ -3986,11 +4128,44 @@ function handleWixMessage(
 
       showToast(
         payload?.message ||
-        'Update completed.',
+        'Saved successfully.',
         'success'
       );
 
-      requestDashboardData();
+      /*
+        Preserve Course Builder state after saves/creates.
+        The backend/page bridge already sends targeted MODULES_DATA
+        after module creation. Reloading the full dashboard here
+        used to reset selectedCourseId and blank the workspace.
+      */
+
+      if (
+        document
+          .getElementById(
+            'section-builder'
+          )
+          ?.classList
+          .contains(
+            'active'
+          ) &&
+        state.selectedCourseId
+      ) {
+
+        renderBuilderCourseHome();
+
+        sendToWix(
+          'LIST_MODULES',
+          {
+            courseId:
+              state.selectedCourseId
+          }
+        );
+
+      } else {
+
+        requestDashboardRefresh();
+
+      }
 
       break;
 
@@ -10305,7 +10480,9 @@ function renderAssignments() {
 ====================================================== */
 
 
-function renderBuilderCourseSelection() {
+function renderBuilderCourseSelection(
+  resetSelection = true
+) {
 
   const selection =
     document.getElementById(
@@ -10336,17 +10513,21 @@ function renderBuilderCourseSelection() {
       'none';
   }
 
-  state.selectedCourseId =
-    null;
+  if (resetSelection) {
 
-  state.selectedModuleId =
-    null;
+    state.selectedCourseId =
+      null;
 
-  state.selectedModuleArea =
-    null;
+    state.selectedModuleId =
+      null;
 
-  state.modules =
-    [];
+    state.selectedModuleArea =
+      null;
+
+    state.modules =
+      [];
+
+  }
 
   const courses =
     state.courses ||
