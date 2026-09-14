@@ -1929,6 +1929,7 @@ textarea {
 
                 <button
                   class="quick-action"
+                  id="quickAddOrganization"
                   onclick="openOrganizationModal()"
                 >
                   <strong>
@@ -1959,6 +1960,7 @@ textarea {
 
                 <button
                   class="quick-action"
+                  id="quickLaunchDemo"
                   onclick="goToSection('demo')"
                 >
                   <strong>
@@ -2094,16 +2096,42 @@ textarea {
 
           <button
             class="btn btn-primary"
+            id="builderAddModuleButton"
             onclick="openModuleModal()"
+            style="display:none;"
           >
             + Add Module
           </button>
 
         </div>
 
-        <div class="builder-shell">
+        <div
+          id="builderCourseSelection"
+          style="
+            margin-top:18px;
+          "
+        >
+        </div>
+
+        <div
+          class="builder-shell"
+          id="builderWorkspaceShell"
+          style="display:none;"
+        >
 
           <div class="builder-sidebar">
+
+            <button
+              type="button"
+              class="btn"
+              onclick="returnToCourseSelection()"
+              style="
+                width:100%;
+                margin-bottom:16px;
+              "
+            >
+              ← Change Course
+            </button>
 
             <div class="card-title">
               Course Modules
@@ -3782,6 +3810,19 @@ function handleWixMessage(
 
       populateCourseSelects();
 
+      if (
+        document
+          .getElementById(
+            'section-builder'
+          )
+          ?.classList
+          .contains(
+            'active'
+          )
+      ) {
+        renderBuilderCourseSelection();
+      }
+
       break;
 
     case 'USERS_DATA':
@@ -3837,6 +3878,13 @@ function handleWixMessage(
         [];
 
       renderModules();
+
+      if (
+        state.selectedCourseId &&
+        !state.selectedModuleId
+      ) {
+        renderBuilderCourseHome();
+      }
 
       break;
 
@@ -7924,6 +7972,27 @@ function applyAccessPolicy() {
         : '';
   }
 
+  [
+    'quickAddOrganization',
+    'quickLaunchDemo'
+  ].forEach(
+    id => {
+
+      const element =
+        document.getElementById(
+          id
+        );
+
+      if (element) {
+        element.style.display =
+          companyAdmin
+            ? 'none'
+            : '';
+      }
+
+    }
+  );
+
 }
 
 
@@ -10235,6 +10304,566 @@ function renderAssignments() {
    MODULES
 ====================================================== */
 
+
+function renderBuilderCourseSelection() {
+
+  const selection =
+    document.getElementById(
+      'builderCourseSelection'
+    );
+
+  const shell =
+    document.getElementById(
+      'builderWorkspaceShell'
+    );
+
+  const addModuleButton =
+    document.getElementById(
+      'builderAddModuleButton'
+    );
+
+  if (!selection) {
+    return;
+  }
+
+  if (shell) {
+    shell.style.display =
+      'none';
+  }
+
+  if (addModuleButton) {
+    addModuleButton.style.display =
+      'none';
+  }
+
+  state.selectedCourseId =
+    null;
+
+  state.selectedModuleId =
+    null;
+
+  state.selectedModuleArea =
+    null;
+
+  state.modules =
+    [];
+
+  const courses =
+    state.courses ||
+    [];
+
+  if (!courses.length) {
+
+    selection.innerHTML = `
+      <div class="card">
+        <div class="card-body">
+          ${emptyState(
+            'No courses available',
+            'Create a course before opening Course Builder.'
+          )}
+        </div>
+      </div>
+    `;
+
+    return;
+
+  }
+
+  selection.innerHTML = `
+    <div
+      class="card"
+      style="
+        padding:22px;
+      "
+    >
+
+      <div
+        class="eyebrow"
+        style="
+          margin-bottom:8px;
+        "
+      >
+        SELECT A COURSE
+      </div>
+
+      <h2
+        style="
+          font-size:28px;
+          margin:0 0 8px;
+        "
+      >
+        Choose what you want to build
+      </h2>
+
+      <p
+        style="
+          color:var(--muted);
+          margin:0 0 22px;
+          line-height:1.6;
+        "
+      >
+        Open a course to view its modules and authoring configuration.
+      </p>
+
+      <div
+        style="
+          display:grid;
+          grid-template-columns:
+            repeat(auto-fit,minmax(300px,1fr));
+          gap:16px;
+        "
+      >
+
+        ${courses.map(course => {
+
+          const protectedCourse =
+            course.canEdit ===
+            false;
+
+          const ownership =
+            ownershipLabel(
+              course.ownershipType
+            );
+
+          return `
+            <button
+              type="button"
+              data-builder-course-id="${escapeAttribute(
+                course.id
+              )}"
+              style="
+                appearance:none;
+                text-align:left;
+                cursor:pointer;
+                padding:20px;
+                border-radius:16px;
+                border:1px solid ${
+                  protectedCourse
+                    ? 'rgba(255,174,0,.28)'
+                    : 'rgba(0,205,255,.28)'
+                };
+                background:rgba(255,255,255,.025);
+                color:var(--text);
+                transition:.2s ease;
+              "
+            >
+
+              <div
+                style="
+                  display:flex;
+                  justify-content:space-between;
+                  gap:14px;
+                  align-items:flex-start;
+                "
+              >
+
+                <div>
+                  <div
+                    style="
+                      font-size:17px;
+                      font-weight:800;
+                      line-height:1.3;
+                    "
+                  >
+                    ${escapeHTML(
+                      course.title
+                    )}
+                  </div>
+
+                  <div
+                    style="
+                      color:var(--muted);
+                      font-size:11px;
+                      margin-top:7px;
+                    "
+                  >
+                    ${escapeHTML(
+                      course.subjectName ||
+                      'Course'
+                    )}
+                  </div>
+                </div>
+
+                <span
+                  style="
+                    flex:0 0 auto;
+                    border-radius:999px;
+                    padding:6px 9px;
+                    font-size:9px;
+                    font-weight:800;
+                    border:1px solid ${
+                      protectedCourse
+                        ? 'rgba(255,174,0,.30)'
+                        : 'rgba(0,205,255,.30)'
+                    };
+                    color:${
+                      protectedCourse
+                        ? '#ffd27a'
+                        : '#50ddff'
+                    };
+                  "
+                >
+                  ${
+                    protectedCourse
+                      ? 'PROTECTED'
+                      : 'EDITABLE'
+                  }
+                </span>
+
+              </div>
+
+              <div
+                style="
+                  margin-top:18px;
+                  padding-top:14px;
+                  border-top:1px solid rgba(255,255,255,.06);
+                  display:flex;
+                  justify-content:space-between;
+                  align-items:center;
+                  gap:12px;
+                  color:var(--muted);
+                  font-size:11px;
+                "
+              >
+                <span>
+                  ${escapeHTML(
+                    ownership
+                  )}
+                </span>
+
+                <strong
+                  style="
+                    color:var(--accent);
+                    font-size:11px;
+                  "
+                >
+                  Open Course →
+                </strong>
+              </div>
+
+            </button>
+          `;
+        }).join('')}
+
+      </div>
+
+    </div>
+  `;
+
+  selection
+    .querySelectorAll(
+      '[data-builder-course-id]'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+
+            openBuilderCourse(
+              button.getAttribute(
+                'data-builder-course-id'
+              )
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function openBuilderCourse(
+  courseId
+) {
+
+  const course =
+    state.courses.find(
+      item =>
+        item.id ===
+        courseId
+    );
+
+  if (!course) {
+
+    showToast(
+      'That course could not be found.',
+      'error'
+    );
+
+    return;
+
+  }
+
+  state.selectedCourseId =
+    courseId;
+
+  state.selectedModuleId =
+    null;
+
+  state.selectedModuleArea =
+    null;
+
+  state.modules =
+    [];
+
+  const selection =
+    document.getElementById(
+      'builderCourseSelection'
+    );
+
+  const shell =
+    document.getElementById(
+      'builderWorkspaceShell'
+    );
+
+  const addModuleButton =
+    document.getElementById(
+      'builderAddModuleButton'
+    );
+
+  if (selection) {
+    selection.style.display =
+      'none';
+  }
+
+  if (shell) {
+    shell.style.display =
+      '';
+  }
+
+  if (addModuleButton) {
+
+    addModuleButton.style.display =
+      course.canEdit ===
+      false
+        ? 'none'
+        : '';
+
+  }
+
+  const list =
+    document.getElementById(
+      'moduleList'
+    );
+
+  if (list) {
+    list.innerHTML = `
+      <div class="empty">
+        Loading modules...
+      </div>
+    `;
+  }
+
+  renderBuilderCourseHome();
+
+  sendToWix(
+    'LIST_MODULES',
+    {
+      courseId
+    }
+  );
+
+}
+
+
+function returnToCourseSelection() {
+
+  const selection =
+    document.getElementById(
+      'builderCourseSelection'
+    );
+
+  if (selection) {
+    selection.style.display =
+      '';
+  }
+
+  renderBuilderCourseSelection();
+
+}
+
+
+function renderBuilderCourseHome() {
+
+  const workspace =
+    document.querySelector(
+      '#builderWorkspaceShell .builder-main'
+    );
+
+  const course =
+    state.courses.find(
+      item =>
+        item.id ===
+        state.selectedCourseId
+    );
+
+  if (
+    !workspace ||
+    !course
+  ) {
+    return;
+  }
+
+  const protectedCourse =
+    course.canEdit ===
+    false;
+
+  workspace.innerHTML = `
+
+    <div class="eyebrow">
+      COURSE WORKSPACE
+    </div>
+
+    <h2
+      style="
+        font-size:32px;
+        margin:10px 0;
+      "
+    >
+      ${escapeHTML(
+        course.title
+      )}
+    </h2>
+
+    <p
+      style="
+        max-width:740px;
+        color:var(--muted);
+        line-height:1.7;
+      "
+    >
+      ${escapeHTML(
+        course.description ||
+        'Select a module to configure the learning experience.'
+      )}
+    </p>
+
+    <div
+      style="
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-top:18px;
+      "
+    >
+      <span
+        style="
+          border-radius:999px;
+          padding:7px 10px;
+          font-size:10px;
+          font-weight:800;
+          border:1px solid rgba(255,255,255,.12);
+          color:var(--muted);
+        "
+      >
+        ${escapeHTML(
+          ownershipLabel(
+            course.ownershipType
+          )
+        )}
+      </span>
+
+      <span
+        style="
+          border-radius:999px;
+          padding:7px 10px;
+          font-size:10px;
+          font-weight:800;
+          border:1px solid ${
+            protectedCourse
+              ? 'rgba(255,174,0,.30)'
+              : 'rgba(0,205,255,.30)'
+          };
+          color:${
+            protectedCourse
+              ? '#ffd27a'
+              : '#50ddff'
+          };
+        "
+      >
+        ${
+          protectedCourse
+            ? 'PROTECTED / READ ONLY'
+            : 'EDITABLE'
+        }
+      </span>
+    </div>
+
+    ${
+      protectedCourse
+        ? `
+          <div
+            style="
+              margin-top:22px;
+              padding:16px;
+              border-radius:12px;
+              border:1px solid rgba(255,174,0,.25);
+              background:rgba(255,174,0,.06);
+              color:#ffd27a;
+              font-size:12px;
+              line-height:1.6;
+            "
+          >
+            Protected course methodology. Company Administrators may
+            view this course, assign it to learners, and connect approved
+            company-owned knowledge sources, but cannot modify protected
+            provider-owned authoring.
+          </div>
+        `
+        : `
+          <div
+            style="
+              margin-top:22px;
+              padding:16px;
+              border-radius:12px;
+              border:1px solid rgba(0,205,255,.20);
+              background:rgba(0,205,255,.04);
+              color:var(--muted);
+              font-size:12px;
+              line-height:1.6;
+            "
+          >
+            This is company-owned training. Company Administrators may
+            add modules and configure its Teaching, Knowledge, Practice,
+            Role-Play, Evaluation, and Remediation areas.
+          </div>
+        `
+    }
+
+    <div
+      style="
+        margin-top:24px;
+        color:var(--muted);
+        font-size:12px;
+      "
+    >
+      ${
+        state.modules.length
+          ? 'Select a module from the left to continue.'
+          : (
+              protectedCourse
+                ? 'No modules are currently available.'
+                : 'No modules yet. Use + Add Module to create the first one.'
+            )
+      }
+    </div>
+
+  `;
+
+}
+
+
+window.openBuilderCourse =
+  openBuilderCourse;
+
+window.returnToCourseSelection =
+  returnToCourseSelection;
+
+
 function renderModules() {
 
   const list =
@@ -10825,105 +11454,55 @@ function populateCourseSelects() {
     'uploadCourse'
   ];
 
-  selects.forEach(id => {
+  selects.forEach(
+    id => {
 
-    const select =
-      document.getElementById(id);
+      const select =
+        document.getElementById(
+          id
+        );
 
-    if (!select) {
-      return;
-    }
+      if (!select) {
+        return;
+      }
 
-    const original =
-      select.options[0]?.outerHTML ||
-      '<option value="">Select course</option>';
+      const original =
+        select.options[0]
+          ?.outerHTML ||
+        '<option value="">Select course</option>';
 
-    select.innerHTML =
-      original +
-      state.courses
-        .map(course => `
-          <option value="${escapeAttribute(
-            course.id
-          )}">
-            ${escapeHTML(
-              course.title
-            )}
-          </option>
-        `)
-        .join('');
-
-    if (id === 'moduleCourse') {
-
-      let courseId =
-        state.selectedCourseId;
+      select.innerHTML =
+        original +
+        state.courses
+          .map(
+            course => `
+              <option value="${escapeAttribute(
+                course.id
+              )}">
+                ${escapeHTML(
+                  course.title
+                )}
+              </option>
+            `
+          )
+          .join('');
 
       if (
-        !courseId &&
-        state.courses.length
+        id ===
+          'moduleCourse' &&
+        state.selectedCourseId
       ) {
 
-        courseId =
-          state.courses[0].id;
-
-        state.selectedCourseId =
-          courseId;
-
-      }
-
-      if (courseId) {
-
         select.value =
-          courseId;
-
-        sendToWix(
-          'LIST_MODULES',
-          {
-            courseId
-          }
-        );
+          state.selectedCourseId;
 
       }
-
-      select.onchange = () => {
-
-        const selectedCourseId =
-          select.value;
-
-        state.selectedCourseId =
-          selectedCourseId ||
-          null;
-
-        state.selectedModuleId =
-          null;
-
-        state.selectedModuleArea =
-          null;
-
-        if (!selectedCourseId) {
-
-          state.modules = [];
-
-          renderModules();
-
-          return;
-
-        }
-
-        sendToWix(
-          'LIST_MODULES',
-          {
-            courseId:
-              selectedCourseId
-          }
-        );
-
-      };
 
     }
-
-  });
+  );
 
 }
+
 
 /* ======================================================
    NAVIGATION
@@ -11030,6 +11609,13 @@ function goToSection(
     'NEXIVRA'
   );
 
+  if (
+    section ===
+    'builder'
+  ) {
+    renderBuilderCourseSelection();
+  }
+
 }
 
 /* ======================================================
@@ -11063,10 +11649,20 @@ function openModuleModal() {
         state.selectedCourseId
     );
 
+  if (!selectedCourse) {
+
+    showToast(
+      'Select a course before adding a module.',
+      'error'
+    );
+
+    return;
+
+  }
+
   if (
-    selectedCourse &&
     selectedCourse.canEdit ===
-      false
+    false
   ) {
 
     showToast(
@@ -11079,6 +11675,11 @@ function openModuleModal() {
   }
 
   populateCourseSelects();
+
+  setFieldValue(
+    'moduleCourse',
+    selectedCourse.id
+  );
 
   openModal(
     'moduleModal'
