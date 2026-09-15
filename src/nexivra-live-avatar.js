@@ -21,7 +21,13 @@ class NexivraLiveAvatar extends HTMLElement {
       "runtime-context",
       "dashboard-data",
       "app-command"
-    ];
+    ,
+      "client-name",
+      "client-logo-url",
+      "client-tagline",
+      "client-hero-image-url",
+      "client-course-image-url",
+      "client-journey-image-url"];
   }
 
 
@@ -1233,6 +1239,21 @@ NEXIVRA RUNTIME RULES
           );
         }
       );
+
+    this.applyClientBranding();
+
+    const learnerFirstName = String(this.dashboardData?.learner?.firstName || "").trim();
+    this.setUnifiedText("learnerHeroGreeting", learnerFirstName ? `Welcome back, ${learnerFirstName}.` : "Welcome back.");
+
+    const journeyAssignments = Array.isArray(this.dashboardData?.assignments) ? this.dashboardData.assignments : [];
+    this.setUnifiedText("journeyCourses", String(journeyAssignments.filter(a => a.status === "in_progress" || a.status === "completed").length));
+
+    const journeySeconds = Number(this.dashboardData?.journey?.trainingSeconds || this.dashboardData?.journey?.elapsedSeconds || 0);
+    this.setUnifiedText("journeyTime", journeySeconds > 0 ? `${Math.max(1, Math.round(journeySeconds / 60))}m` : "—");
+    this.setUnifiedText("journeyLastActivity", this.dashboardData?.journey?.lastActivityLabel || "—");
+
+    this.renderLearnerSkills();
+
   }
 
 
@@ -1648,6 +1669,49 @@ NEXIVRA RUNTIME RULES
     );
   }
 
+
+  /* CLIENT-BRANDED LEARNER EXPERIENCE */
+
+  getClientBranding() {
+    const a = name => String(this.getAttribute(name) || "").trim();
+    return {
+      name: a("client-name") || this.runtimeContext?.organization?.name || this.runtimeContext?.learner?.organizationId || "Client Organization",
+      logoUrl: a("client-logo-url"),
+      tagline: a("client-tagline"),
+      heroImageUrl: a("client-hero-image-url"),
+      courseImageUrl: a("client-course-image-url"),
+      journeyImageUrl: a("client-journey-image-url")
+    };
+  }
+
+  applyClientBranding() {
+    const b=this.getClientBranding();
+    this.shadowRoot?.querySelectorAll("[data-client-name]").forEach(el=>el.textContent=b.name);
+    this.shadowRoot?.querySelectorAll("[data-client-tagline]").forEach(el=>el.textContent=b.tagline);
+    const setImage=(id,url)=>{const el=this.shadowRoot?.getElementById(id);if(!el)return;el.hidden=!url;if(url)el.src=url;};
+    setImage("clientLogo",b.logoUrl);
+    setImage("journeyBrandImage",b.journeyImageUrl);
+    const hero=this.shadowRoot?.getElementById("learnerHero");
+    if(hero) hero.style.backgroundImage=b.heroImageUrl ? `linear-gradient(90deg,rgba(2,9,18,.95),rgba(2,9,18,.18)),url("${b.heroImageUrl}")` : "linear-gradient(90deg,#03101b,#082033)";
+  }
+
+  renderLearnerSkills() {
+    const list=this.shadowRoot?.getElementById("learnerSkillsList");
+    if(!list)return;
+    const skills=Array.isArray(this.dashboardData?.learnerSkills) ? this.dashboardData.learnerSkills.filter(x=>x?.learnerVisible===true) : [];
+    if(!skills.length){
+      list.innerHTML=`<div class="skill-empty"><strong>NEXIVRA is learning how you work.</strong><span>Skills will appear here once there is meaningful evidence to share.</span></div>`;
+      return;
+    }
+    list.innerHTML=skills.map(skill=>{
+      const raw=String(skill.status||"developing").toLowerCase().replaceAll("_","").replaceAll("-","").replaceAll(" ","");
+      const type=raw.includes("consistent")?"consistent":raw.includes("reevaluat")?"reevaluating":raw.includes("demonstrated")?"demonstrated":"developing";
+      const label=type==="consistent"?"Consistently Demonstrated":type==="reevaluating"?"Re-evaluating":type==="demonstrated"?"Demonstrated":"Developing";
+      const icon=type==="consistent"?"✓":type==="reevaluating"?"↻":"●";
+      const note=skill.learnerMessage||(type==="reevaluating"?"You've demonstrated this before, and NEXIVRA is providing additional practice.":"NEXIVRA is continuing to gather evidence as you learn.");
+      return `<div class="skill-row"><div class="skill-icon ${type}">${icon}</div><div><div class="skill-name">${this.escapeUnifiedHtml(skill.name||"Observed Skill")}</div><div class="skill-note">${this.escapeUnifiedHtml(note)}</div></div><div class="skill-status ${type}">${label}</div></div>`;
+    }).join("");
+  }
 
   /*
    * =========================================================
@@ -2593,6 +2657,10 @@ NEXIVRA RUNTIME RULES
           opacity:.72;
         }
 
+
+        /* Approved dynamic client dashboard */
+        .client-brand-block{display:grid;gap:7px;margin-bottom:18px;padding:4px 7px 18px;border-bottom:1px solid #10374a}.client-logo{max-width:125px;max-height:68px;object-fit:contain}.client-name-fallback{color:#fff;font-size:17px;font-weight:900}.client-tagline{color:#a9bdcb;font-size:9px;line-height:1.4}.learner-hero{min-height:118px;margin:-26px -28px 20px -25px;padding:26px 34px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid #10374a;background-size:cover;background-position:center}.learner-hero h1{margin:0;color:#fff;font-size:30px}.learner-hero p{margin:6px 0 0;color:#d7e4ed;font-size:14px}.dashboard-lower-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.85fr);gap:18px;margin-top:18px}.learner-panel{overflow:hidden;border:1px solid #103f55;border-radius:14px;background:#061522}.learner-panel-inner{padding:18px}.learner-panel-title{margin:0;color:#fff;font-size:19px;font-weight:900}.learner-panel-subtitle{margin:5px 0 14px;color:#8ea5b7;font-size:10px}.skill-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:11px;align-items:center;padding:12px 0;border-top:1px solid rgba(255,255,255,.07)}.skill-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:#103247;color:#8ee8ff;font-weight:900}.skill-icon.consistent{background:#19cf8c;color:#02150e}.skill-icon.reevaluating{color:#ffc567}.skill-name{color:#fff;font-size:11px;font-weight:900}.skill-note{margin-top:3px;color:#91a6b7;font-size:9px;line-height:1.4}.skill-status{padding:6px 9px;border:1px solid #1b526b;border-radius:999px;font-size:8px;white-space:nowrap}.skill-status.consistent{border-color:#19cf8c;color:#8ff1c9}.skill-status.demonstrated{border-color:#14c8ff;color:#8ee8ff}.skill-status.developing{border-color:#e4b325;color:#f3d46c}.skill-status.reevaluating{border-color:#ef9f24;color:#ffc567}.skill-empty{display:grid;gap:5px;padding:16px 0 6px;border-top:1px solid rgba(255,255,255,.07);color:#fff;font-size:11px}.skill-empty span{color:#8ea5b7;font-size:9px}.journey-metrics{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px}.journey-metric{padding:9px;border-right:1px solid rgba(255,255,255,.08)}.journey-metric:last-child{border-right:none}.journey-label{color:#8ea5b7;font-size:8px}.journey-value{margin-top:5px;color:#fff;font-size:18px;font-weight:900}.journey-image{width:100%;height:170px;object-fit:cover;border-top:1px solid #10374a}.powered-by{margin-top:22px;padding:15px 7px 0;border-top:1px solid #10374a;color:#7f98aa;font-size:8px;line-height:1.5;letter-spacing:.09em;text-transform:uppercase}@media(max-width:1050px){.dashboard-lower-grid{grid-template-columns:1fr}}
+
       </style>
 
 
@@ -2658,6 +2726,8 @@ NEXIVRA RUNTIME RULES
 
           <aside class="dashboard-side-nav">
 
+            <div class="client-brand-block"><img id="clientLogo" class="client-logo" alt="" hidden><div class="client-name-fallback" data-client-name>Client Organization</div><div class="client-tagline" data-client-tagline></div></div>
+
             <div class="dashboard-nav-label">
               LEARNER
             </div>
@@ -2667,17 +2737,15 @@ NEXIVRA RUNTIME RULES
               My Training
             </button>
 
-            <button
-              class="dashboard-nav-item"
-              disabled>
-              My Progress
-            </button>
+            <button class="dashboard-nav-item">My Skills</button>
 
             <button
               class="dashboard-nav-item"
               disabled>
               My Profile
             </button>
+
+            <button class="dashboard-nav-item" disabled>Certificates</button>
 
             <button
               class="dashboard-nav-item"
@@ -2695,8 +2763,12 @@ NEXIVRA RUNTIME RULES
               ● NEXIVRA Core Online
             </div>
 
+            <div class="powered-by"><span data-client-name>Client Organization</span><br>Training powered by NEXIVRA</div>
+
           </aside>
 
+
+          <div class="learner-hero" id="learnerHero"><h1 id="learnerHeroGreeting">Welcome back.</h1><p>Keep learning. Keep making a difference.</p></div>
 
           <div class="unified-eyebrow">
             MY LEARNING
@@ -2747,7 +2819,12 @@ NEXIVRA RUNTIME RULES
 
           </div>
 
-        </section>
+        
+          <div class="dashboard-lower-grid">
+            <section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">My Skills</h3><p class="learner-panel-subtitle">Skills NEXIVRA has observed and is helping you develop.</p><div id="learnerSkillsList"></div></div></section>
+            <section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">My Journey</h3><div class="journey-metrics"><div class="journey-metric"><div class="journey-label">Courses Started</div><div class="journey-value" id="journeyCourses">0</div></div><div class="journey-metric"><div class="journey-label">Time in Training</div><div class="journey-value" id="journeyTime">—</div></div><div class="journey-metric"><div class="journey-label">Last Activity</div><div class="journey-value" id="journeyLastActivity">—</div></div></div></div><img id="journeyBrandImage" class="journey-image" alt="" hidden></section>
+          </div>
+</section>
 
 
         <section id="unifiedTrainingView">
