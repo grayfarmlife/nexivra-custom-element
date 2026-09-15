@@ -30696,6 +30696,12 @@ NEXIVRA RUNTIME RULES
    * =========================================================
    */
   renderUnifiedDashboard() {
+    const adaptiveDashboardTopbar = this.shadowRoot?.querySelector(
+      ".unified-topbar"
+    );
+    if (adaptiveDashboardTopbar) {
+      adaptiveDashboardTopbar.style.display = "none";
+    }
     const dashboardTopbar = this.shadowRoot?.querySelector(
       ".unified-topbar"
     );
@@ -30853,8 +30859,66 @@ NEXIVRA RUNTIME RULES
       "learnerNameStrip",
       learnerDisplayName
     );
+    const momentumName = String(
+      this.dashboardData?.learner?.firstName || this.dashboardData?.learner?.displayName || this.dashboardData?.learner?.name || "Learner"
+    ).trim().split(/\s+/)[0];
+    this.setUnifiedText(
+      "learnerMomentumFirstName",
+      momentumName
+    );
+    const learnerDashboard = this.shadowRoot?.getElementById(
+      "unifiedDashboardView"
+    );
+    if (learnerDashboard) {
+      learnerDashboard.querySelectorAll(
+        ".assignment-progress, .assignment-progress-bar, .assignment-progress-shell, .assignment-progress-track, .assignment-progress-fill, progress"
+      ).forEach(
+        (node) => node.remove()
+      );
+      learnerDashboard.querySelectorAll(
+        ".assignment-meta, .assignment-subtitle"
+      ).forEach(
+        (node) => {
+          node.textContent = String(
+            node.textContent || ""
+          ).replace(
+            /\s*•\s*\d+%/g,
+            ""
+          ).replace(
+            /\s+\d+%/g,
+            ""
+          ).trim();
+        }
+      );
+      learnerDashboard.querySelectorAll(
+        ".assignment-card"
+      ).forEach(
+        (card) => {
+          if (!card.querySelector(
+            ".assignment-status-clean"
+          )) {
+            const cleanStatus = document.createElement(
+              "div"
+            );
+            cleanStatus.className = "assignment-status-clean";
+            cleanStatus.textContent = "Status: In Progress";
+            (card.querySelector(
+              ".assignment-card-main"
+            ) || card).appendChild(
+              cleanStatus
+            );
+          }
+        }
+      );
+    }
   }
   renderUnifiedTrainingContext() {
+    const adaptiveTrainingTopbar = this.shadowRoot?.querySelector(
+      ".unified-topbar"
+    );
+    if (adaptiveTrainingTopbar) {
+      adaptiveTrainingTopbar.style.display = "";
+    }
     const trainingTopbar = this.shadowRoot?.querySelector(
       ".unified-topbar"
     );
@@ -32206,8 +32270,7 @@ NEXIVRA RUNTIME RULES
         }
 
 
-        /* PACKAGE 2 FINAL DASHBOARD CLEANUP */
-
+        /* FINAL ADAPTIVE LEARNER DASHBOARD */
         #unifiedDashboardView .learner-hero h1,
         #unifiedDashboardView .learner-hero p,
         #unifiedDashboardView .unified-dashboard-heading,
@@ -32215,7 +32278,6 @@ NEXIVRA RUNTIME RULES
           display:none !important;
         }
 
-        /* Current assignment card: no percentage or progress bar. */
         #unifiedDashboardView .assignment-progress,
         #unifiedDashboardView .assignment-progress-bar,
         #unifiedDashboardView .assignment-progress-shell,
@@ -32225,24 +32287,48 @@ NEXIVRA RUNTIME RULES
           display:none !important;
         }
 
-        /* Bright, premium NEXIVRA header in training. */
-        .unified-topbar {
-          background:linear-gradient(90deg,#04111e 0%,#082b4c 62%,#0a3a64 100%);
-          border-bottom:1px solid #1c5d82;
-          box-shadow:0 4px 18px rgba(0,0,0,.22);
+        .learner-momentum {
+          padding:20px 24px 10px;
         }
 
-        .unified-header-actions,
-        .unified-header-actions * {
-          color:#eef8ff;
-        }
-
-        .learner-name-strip {
-          padding:18px 22px 8px;
+        .learner-momentum-line {
           color:#fff;
           font-size:28px;
           font-weight:900;
           letter-spacing:-.02em;
+        }
+
+        .learner-momentum-line strong {
+          color:#159ef6;
+        }
+
+        .learner-momentum-copy {
+          margin-top:6px;
+          color:#9fb3c2;
+          font-size:11px;
+        }
+
+        .assignment-status-clean {
+          display:inline-flex;
+          align-items:center;
+          gap:7px;
+          margin-top:7px;
+          color:#d7e4ed;
+          font-size:10px;
+          font-weight:800;
+        }
+
+        .assignment-status-clean::before {
+          content:"";
+          width:7px;
+          height:7px;
+          border-radius:50%;
+          background:#14c8ff;
+        }
+
+        .unified-topbar {
+          background:linear-gradient(90deg,#04111e 0%,#07345d 58%,#0b4f86 100%);
+          border-bottom:1px solid #1d6c99;
         }
 
       </style>
@@ -32313,7 +32399,7 @@ NEXIVRA RUNTIME RULES
 
             <button
               class="dashboard-nav-item active">
-              My Training
+              My Current Training
             </button>
 
             <button class="dashboard-nav-item">My Skills</button>
@@ -32353,6 +32439,16 @@ NEXIVRA RUNTIME RULES
             class="learner-name-strip"
             id="learnerNameStrip">
             Learner
+          </div>
+
+          <div class="learner-momentum" id="learnerMomentum">
+            <div class="learner-momentum-line">
+              <span id="learnerMomentumFirstName">Learner</span>,
+              <strong>let's keep learning.</strong>
+            </div>
+            <div class="learner-momentum-copy">
+              Every interaction is an opportunity to create a better experience.
+            </div>
           </div>
 
           <div class="unified-eyebrow">
