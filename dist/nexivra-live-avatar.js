@@ -6634,8 +6634,8 @@ function detectBrowser(window2) {
     navigator: navigator2
   } = window2;
   if (navigator2.userAgentData && navigator2.userAgentData.brands) {
-    const chromium = navigator2.userAgentData.brands.find((brand) => {
-      return brand.brand === "Chromium";
+    const chromium = navigator2.userAgentData.brands.find((brand2) => {
+      return brand2.brand === "Chromium";
     });
     if (chromium) {
       return {
@@ -31086,14 +31086,30 @@ NEXIVRA RUNTIME RULES
   }
   /* CLIENT-BRANDED LEARNER EXPERIENCE */
   getClientBranding() {
-    const a3 = (name) => String(this.getAttribute(name) || "").trim();
+    const attr = (name) => String(this.getAttribute(name) || "").trim();
+    const organizationId = String(
+      this.runtimeContext?.learner?.organizationId || this.dashboardData?.learner?.organizationId || ""
+    ).trim().toUpperCase();
+    const presets = {
+      CENTIER: {
+        name: "Centier Bank",
+        tagline: "People. Progress. Possibility.",
+        logoUrl: "https://static.wixstatic.com/media/433270_3976b84a984d4241a3f61ec285e66ccc~mv2.png",
+        heroImageUrl: "https://static.wixstatic.com/media/433270_0878bc90b26840fe875ecab862b8f245~mv2.png",
+        courseImageUrl: "https://static.wixstatic.com/media/433270_d2614d4f88654aeb8f64f7213a42809d~mv2.png",
+        journeyImageUrl: "https://static.wixstatic.com/media/433270_df3281e6f4684b689e72910950c23e61~mv2.png",
+        communityImageUrl: "https://static.wixstatic.com/media/433270_a8f6e904a622462b93119aa0f2910c3a~mv2.png"
+      }
+    };
+    const preset = presets[organizationId] || {};
     return {
-      name: a3("client-name") || this.runtimeContext?.organization?.name || this.runtimeContext?.learner?.organizationId || "Client Organization",
-      logoUrl: a3("client-logo-url"),
-      tagline: a3("client-tagline"),
-      heroImageUrl: a3("client-hero-image-url"),
-      courseImageUrl: a3("client-course-image-url"),
-      journeyImageUrl: a3("client-journey-image-url")
+      name: attr("client-name") || preset.name || organizationId || "Client Organization",
+      logoUrl: attr("client-logo-url") || preset.logoUrl || "",
+      tagline: attr("client-tagline") || preset.tagline || "",
+      heroImageUrl: attr("client-hero-image-url") || preset.heroImageUrl || "",
+      courseImageUrl: attr("client-course-image-url") || preset.courseImageUrl || "",
+      journeyImageUrl: attr("client-journey-image-url") || preset.journeyImageUrl || "",
+      communityImageUrl: preset.communityImageUrl || ""
     };
   }
   applyClientBranding() {
@@ -31110,6 +31126,14 @@ NEXIVRA RUNTIME RULES
     setImage("journeyBrandImage", b3.journeyImageUrl);
     const hero = this.shadowRoot?.getElementById("learnerHero");
     if (hero) hero.style.backgroundImage = b3.heroImageUrl ? `linear-gradient(90deg,rgba(2,9,18,.95),rgba(2,9,18,.18)),url("${b3.heroImageUrl}")` : "linear-gradient(90deg,#03101b,#082033)";
+    const community = this.shadowRoot?.getElementById("communityBrandImage");
+    if (community) {
+      community.style.backgroundImage = brand.communityImageUrl ? `url("${brand.communityImageUrl}")` : "none";
+    }
+    const courseVisual = this.shadowRoot?.getElementById("courseBrandVisual");
+    if (courseVisual) {
+      courseVisual.style.backgroundImage = brand.courseImageUrl ? `url("${brand.courseImageUrl}")` : "none";
+    }
   }
   renderLearnerSkills() {
     const list = this.shadowRoot?.getElementById("learnerSkillsList");
@@ -32075,6 +32099,38 @@ NEXIVRA RUNTIME RULES
         /* Approved dynamic client dashboard */
         .client-brand-block{display:grid;gap:7px;margin-bottom:18px;padding:4px 7px 18px;border-bottom:1px solid #10374a}.client-logo{max-width:125px;max-height:68px;object-fit:contain}.client-name-fallback{color:#fff;font-size:17px;font-weight:900}.client-tagline{color:#a9bdcb;font-size:9px;line-height:1.4}.learner-hero{min-height:118px;margin:-26px -28px 20px -25px;padding:26px 34px;display:flex;flex-direction:column;justify-content:center;border-bottom:1px solid #10374a;background-size:cover;background-position:center}.learner-hero h1{margin:0;color:#fff;font-size:30px}.learner-hero p{margin:6px 0 0;color:#d7e4ed;font-size:14px}.dashboard-lower-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.85fr);gap:18px;margin-top:18px}.learner-panel{overflow:hidden;border:1px solid #103f55;border-radius:14px;background:#061522}.learner-panel-inner{padding:18px}.learner-panel-title{margin:0;color:#fff;font-size:19px;font-weight:900}.learner-panel-subtitle{margin:5px 0 14px;color:#8ea5b7;font-size:10px}.skill-row{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:11px;align-items:center;padding:12px 0;border-top:1px solid rgba(255,255,255,.07)}.skill-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:#103247;color:#8ee8ff;font-weight:900}.skill-icon.consistent{background:#19cf8c;color:#02150e}.skill-icon.reevaluating{color:#ffc567}.skill-name{color:#fff;font-size:11px;font-weight:900}.skill-note{margin-top:3px;color:#91a6b7;font-size:9px;line-height:1.4}.skill-status{padding:6px 9px;border:1px solid #1b526b;border-radius:999px;font-size:8px;white-space:nowrap}.skill-status.consistent{border-color:#19cf8c;color:#8ff1c9}.skill-status.demonstrated{border-color:#14c8ff;color:#8ee8ff}.skill-status.developing{border-color:#e4b325;color:#f3d46c}.skill-status.reevaluating{border-color:#ef9f24;color:#ffc567}.skill-empty{display:grid;gap:5px;padding:16px 0 6px;border-top:1px solid rgba(255,255,255,.07);color:#fff;font-size:11px}.skill-empty span{color:#8ea5b7;font-size:9px}.journey-metrics{display:grid;grid-template-columns:repeat(3,1fr);margin-top:14px}.journey-metric{padding:9px;border-right:1px solid rgba(255,255,255,.08)}.journey-metric:last-child{border-right:none}.journey-label{color:#8ea5b7;font-size:8px}.journey-value{margin-top:5px;color:#fff;font-size:18px;font-weight:900}.journey-image{width:100%;height:170px;object-fit:cover;border-top:1px solid #10374a}.powered-by{margin-top:22px;padding:15px 7px 0;border-top:1px solid #10374a;color:#7f98aa;font-size:8px;line-height:1.5;letter-spacing:.09em;text-transform:uppercase}@media(max-width:1050px){.dashboard-lower-grid{grid-template-columns:1fr}}
 
+
+        #unifiedDashboardView .unified-eyebrow,
+        #unifiedDashboardView .unified-dashboard-title,
+        #unifiedDashboardView .dashboard-stats {
+          display:none !important;
+        }
+        .course-brand-visual {
+          height:120px;
+          margin-bottom:12px;
+          border-radius:10px;
+          background-size:cover;
+          background-position:center;
+          border:1px solid #16455c;
+        }
+        .community-banner {
+          position:relative;
+          min-height:145px;
+          background-size:cover;
+          background-position:center;
+          border-top:1px solid #10374a;
+        }
+        .community-banner::after {
+          content:"";
+          position:absolute; inset:0;
+          background:linear-gradient(90deg,rgba(2,9,18,.15),rgba(2,9,18,.78));
+        }
+        .community-banner-copy {
+          position:absolute; z-index:1; right:18px; bottom:18px;
+          max-width:235px; color:#fff; text-align:right;
+          font-size:15px; font-weight:800; line-height:1.25;
+        }
+
       </style>
 
 
@@ -32234,9 +32290,19 @@ NEXIVRA RUNTIME RULES
           </div>
 
         
-          <div class="dashboard-lower-grid">
+          <div
+              id="courseBrandVisual"
+              class="course-brand-visual">
+            </div>
+
+            <div class="dashboard-lower-grid">
             <section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">My Skills</h3><p class="learner-panel-subtitle">Skills NEXIVRA has observed and is helping you develop.</p><div id="learnerSkillsList"></div></div></section>
-            <section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">My Journey</h3><div class="journey-metrics"><div class="journey-metric"><div class="journey-label">Courses Started</div><div class="journey-value" id="journeyCourses">0</div></div><div class="journey-metric"><div class="journey-label">Time in Training</div><div class="journey-value" id="journeyTime">\u2014</div></div><div class="journey-metric"><div class="journey-label">Last Activity</div><div class="journey-value" id="journeyLastActivity">\u2014</div></div></div></div><img id="journeyBrandImage" class="journey-image" alt="" hidden></section>
+            <section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">My Journey</h3><div class="journey-metrics"><div class="journey-metric"><div class="journey-label">Courses Started</div><div class="journey-value" id="journeyCourses">0</div></div><div class="journey-metric"><div class="journey-label">Time in Training</div><div class="journey-value" id="journeyTime">\u2014</div></div><div class="journey-metric"><div class="journey-label">Last Activity</div><div class="journey-value" id="journeyLastActivity">\u2014</div></div></div></div><img id="journeyBrandImage" class="journey-image" alt="" hidden>
+              <div id="communityBrandImage" class="community-banner">
+                <div class="community-banner-copy">
+                  Great experiences build stronger communities.
+                </div>
+              </div></section>
           </div>
 </section>
 
