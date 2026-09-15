@@ -54,6 +54,11 @@ class NexivraLiveAvatar extends HTMLElement {
     this.trainingState = "READY";
     this.sessionStartupStage = "idle";
 
+    // Continuous learner progress persistence
+    this.checkpointTimer = null;
+    this.sessionStartedAt = null;
+    this.lastCheckpointAt = null;
+
     // Camera
     this.cameraStream = null;
 
@@ -778,6 +783,11 @@ NEXIVRA RUNTIME RULES
       }
     );
 
+
+    this.emitProgressCheckpoint(
+      "learner_turn"
+    );
+
     return true;
   }
 
@@ -882,6 +892,12 @@ NEXIVRA RUNTIME RULES
 
 
     this.stopVisualAnalysis();
+
+    this.emitProgressCheckpoint(
+      "session_end"
+    );
+
+    this.stopProgressCheckpoints();
 
     this.stopLearnerAudioMonitor();
 
@@ -2522,6 +2538,25 @@ NEXIVRA RUNTIME RULES
           .learner-course-summary { display:none; }
         }
 
+
+        /* Accessibility/readability: brighter learner navigation */
+        .nav-item,
+        .dashboard-nav-item {
+          color:#d7e4ed;
+          font-weight:700;
+        }
+
+        .nav-item.active,
+        .dashboard-nav-item.active {
+          color:#ffffff;
+        }
+
+        .nav-item:disabled,
+        .dashboard-nav-item:disabled {
+          color:#9fb3c2;
+          opacity:.72;
+        }
+
       </style>
 
 
@@ -2687,7 +2722,9 @@ NEXIVRA RUNTIME RULES
 
               <div class="nav-title">LEARNER</div>
 
-              <button class="nav-item active">
+              <button
+                class="nav-item active"
+                id="trainingMyTrainingButton">
                 My Training
               </button>
 
@@ -2936,6 +2973,12 @@ NEXIVRA RUNTIME RULES
       );
 
 
+    const trainingMyTrainingButton =
+      this.shadowRoot.getElementById(
+        "trainingMyTrainingButton"
+      );
+
+
     unifiedLogoutButton.addEventListener(
       "click",
       () => {
@@ -2959,25 +3002,36 @@ NEXIVRA RUNTIME RULES
       "click",
       () => {
 
-        if (this.sessionActive) {
+        this.exitTrainingFast()
+          .catch(
+            error => {
 
-          this.endSession()
-            .catch(
-              error => {
+              console.error(
+                "NEXIVRA FAST EXIT ERROR:",
+                error
+              );
 
-                console.warn(
-                  "NEXIVRA END SESSION WARNING:",
-                  error
-                );
-              }
-            );
-        }
+            }
+          );
+      }
+    );
 
-        this.setStatus(
-          "Saving your progress..."
-        );
 
-        this.requestPauseAndReturn();
+    trainingMyTrainingButton.addEventListener(
+      "click",
+      () => {
+
+        this.exitTrainingFast()
+          .catch(
+            error => {
+
+              console.error(
+                "NEXIVRA MY TRAINING EXIT ERROR:",
+                error
+              );
+
+            }
+          );
       }
     );
 
@@ -3190,6 +3244,14 @@ NEXIVRA RUNTIME RULES
           console.log(
             "NEXIVRA SPEECH EVENT: avatar stopped speaking"
           );
+
+
+          if (this.sessionActive) {
+
+            this.emitProgressCheckpoint(
+              "coach_turn_completed"
+            );
+          }
         }
       );
 
@@ -3321,6 +3383,224 @@ NEXIVRA RUNTIME RULES
         },
         500
       );
+  }
+
+
+  /*
+   * =========================================================
+   * CONTINUOUS PROGRESS CHECKPOINTS
+   * =========================================================
+   */
+
+  startProgressCheckpoints() {
+
+    this.stopProgressCheckpoints();
+
+    this.sessionStartedAt =
+      this.sessionStartedAt ||
+      Date.now();
+
+    this.emitProgressCheckpoint(
+      "session_started"
+    );
+
+    this.checkpointTimer =
+      setInterval(
+        () => {
+
+          if (
+            this.sessionActive &&
+            !this.sessionEnding
+          ) {
+
+            this.emitProgressCheckpoint(
+              "periodic"
+            );
+          }
+
+        },
+        30000
+      );
+  }
+
+
+  stopProgressCheckpoints() {
+
+    if (this.checkpointTimer) {
+
+      clearInterval(
+        this.checkpointTimer
+      );
+
+      this.checkpointTimer =
+        null;
+    }
+  }
+
+
+  emitProgressCheckpoint(
+    reason = "periodic"
+  ) {
+
+    if (!this.runtimeSessionId) {
+      return;
+    }
+
+    const now =
+      Date.now();
+
+    this.lastCheckpointAt =
+      now;
+
+    const elapsedSeconds =
+      this.sessionStartedAt
+        ? Math.max(
+            0,
+            Math.round(
+              (
+                now -
+                this.sessionStartedAt
+              ) /
+              1000
+            )
+          )
+        : 0;
+
+    this.dispatchRuntimeEvent(
+      "nexivra-progress-checkpoint",
+      {
+        sessionId:
+          this.runtimeSessionId,
+
+        reason,
+
+        checkpointAt:
+          new Date(
+            now
+          ).toISOString(),
+
+        elapsedSeconds,
+
+        courseId:
+          this.subjectId ||
+          null,
+
+        moduleId:
+          this.lessonId ||
+          null,
+
+        trainingStage:
+          this.runtimeContext
+            ?.session
+            ?.state
+            ?.stage ||
+          this.runtimeContext
+            ?.stage ||
+          "teaching",
+
+        observationCount:
+          this.observationTimeline
+            .length
+      }
+    );
+  }
+
+
+  async exitTrainingFast() {
+
+    /*
+     * Progress has already been saving throughout the
+     * session. Exit performs one small final checkpoint,
+     * releases media, and returns immediately.
+     */
+
+    this.emitProgressCheckpoint(
+      "navigation_exit"
+    );
+
+    this.stopProgressCheckpoints();
+
+    this.stopProgressCheckpoints();
+
+    this.stopVisualAnalysis();
+
+    this.stopLearnerAudioMonitor();
+
+    this.stopCamera();
+
+
+    try {
+
+      if (
+        this.session?.voiceChat &&
+        typeof this.session
+          .voiceChat
+          .stop ===
+          "function"
+      ) {
+
+        await this.session
+          .voiceChat
+          .stop();
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "NEXIVRA FAST EXIT VOICE WARNING:",
+        error
+      );
+    }
+
+
+    try {
+
+      if (
+        this.session &&
+        typeof this.session.stop ===
+          "function"
+      ) {
+
+        await this.session.stop();
+      }
+
+    } catch (error) {
+
+      console.warn(
+        "NEXIVRA FAST EXIT AVATAR WARNING:",
+        error
+      );
+    }
+
+
+    this.sessionActive =
+      false;
+
+    this.avatarStarted =
+      false;
+
+    this.session =
+      null;
+
+    this.setTrainingState(
+      "READY"
+    );
+
+
+    this.dispatchAppEvent(
+      "nexivra-pause-session",
+      {
+        sessionId:
+          this.runtimeSessionId ||
+          null,
+
+        fastExit:
+          true
+      }
+    );
+
+
+    this.showUnifiedDashboard();
   }
 
 
@@ -3538,6 +3818,9 @@ NEXIVRA RUNTIME RULES
       this.setStatus(
         "Session active."
       );
+
+
+      this.startProgressCheckpoints();
 
 
       this.dispatchRuntimeEvent(
