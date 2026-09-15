@@ -58,6 +58,8 @@ class NexivraLiveAvatar extends HTMLElement {
     this.checkpointTimer = null;
     this.sessionStartedAt = null;
     this.lastCheckpointAt = null;
+    this.learnerVoiceTurnCount = 0;
+    this.coachVoiceTurnCount = 0;
 
     // Camera
     this.cameraStream = null;
@@ -410,6 +412,28 @@ class NexivraLiveAvatar extends HTMLElement {
       this.lessonId ||
       null;
 
+
+    const persistedState =
+      context?.session?.state ||
+      {};
+
+
+    this.learnerVoiceTurnCount =
+      Number(
+        persistedState
+          .learnerVoiceTurnCount ||
+        0
+      );
+
+
+    this.coachVoiceTurnCount =
+      Number(
+        persistedState
+          .coachVoiceTurnCount ||
+        0
+      );
+
+
     this.runtimeContextInjected =
       false;
 
@@ -633,6 +657,18 @@ MODULE
 Title: ${module.title || "Untitled Module"}
 Description: ${module.description || ""}
 Learning mode: ${module.learningMode || "adaptive"}
+
+SESSION CONTINUITY
+This may be a resumed learning session.
+Persisted instructional stage: ${runtime.session?.state?.stage || "teaching"}
+Prior elapsed learning time: ${Number(runtime.session?.state?.elapsedSeconds || 0)} seconds
+Prior learner voice turns: ${Number(runtime.session?.state?.learnerVoiceTurnCount || 0)}
+Prior coach voice turns: ${Number(runtime.session?.state?.coachVoiceTurnCount || 0)}
+Prior checkpoint reason: ${runtime.session?.state?.checkpointReason || "none"}
+
+If prior elapsed time or prior turns are greater than zero, do not restart the module from the beginning.
+Briefly reorient the learner if needed, then continue naturally from the prior instructional flow.
+Do not claim a competency has been completed unless the evidence standard has actually been demonstrated.
 
 TEACHING CONFIGURATION
 Teaching objective:
@@ -3248,6 +3284,8 @@ NEXIVRA RUNTIME RULES
 
           if (this.sessionActive) {
 
+            this.coachVoiceTurnCount += 1;
+
             this.emitProgressCheckpoint(
               "coach_turn_completed"
             );
@@ -3500,7 +3538,13 @@ NEXIVRA RUNTIME RULES
 
         observationCount:
           this.observationTimeline
-            .length
+            .length,
+
+        learnerVoiceTurnCount:
+          this.learnerVoiceTurnCount,
+
+        coachVoiceTurnCount:
+          this.coachVoiceTurnCount
       }
     );
   }
@@ -5718,6 +5762,16 @@ Continue the learning interaction naturally.
                 console.log(
                   "NEXIVRA LEARNER AUDIO: speaking stopped"
                 );
+
+
+                if (this.sessionActive) {
+
+                  this.learnerVoiceTurnCount += 1;
+
+                  this.emitProgressCheckpoint(
+                    "learner_voice_turn"
+                  );
+                }
 
 
                 this.finishSpeechOverlapCandidate();
