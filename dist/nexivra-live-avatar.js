@@ -30696,6 +30696,12 @@ NEXIVRA RUNTIME RULES
    * =========================================================
    */
   renderUnifiedDashboard() {
+    const dashboardTopbar = this.shadowRoot?.querySelector(
+      ".unified-topbar"
+    );
+    if (dashboardTopbar) {
+      dashboardTopbar.style.display = "none";
+    }
     if (!this.shadowRoot) {
       return;
     }
@@ -30839,8 +30845,22 @@ NEXIVRA RUNTIME RULES
     this.setUnifiedText("journeyTime", journeySeconds > 0 ? `${Math.max(1, Math.round(journeySeconds / 60))}m` : "\u2014");
     this.setUnifiedText("journeyLastActivity", this.dashboardData?.journey?.lastActivityLabel || "\u2014");
     this.renderLearnerSkills();
+    const learnerDisplayName = [
+      this.dashboardData?.learner?.firstName,
+      this.dashboardData?.learner?.lastName
+    ].filter(Boolean).join(" ").trim() || this.dashboardData?.learner?.displayName || this.dashboardData?.learner?.name || "Learner";
+    this.setUnifiedText(
+      "learnerNameStrip",
+      learnerDisplayName
+    );
   }
   renderUnifiedTrainingContext() {
+    const trainingTopbar = this.shadowRoot?.querySelector(
+      ".unified-topbar"
+    );
+    if (trainingTopbar) {
+      trainingTopbar.style.display = "";
+    }
     const context = this.runtimeContext || {};
     this.setUnifiedText(
       "unifiedCourseTitle",
@@ -32131,6 +32151,60 @@ NEXIVRA RUNTIME RULES
           font-size:15px; font-weight:800; line-height:1.25;
         }
 
+
+        /* FINAL PACKAGE 2 LEARNER DASHBOARD CLEANUP */
+
+        #unifiedDashboardView .learner-hero h1,
+        #unifiedDashboardView .learner-hero p,
+        #unifiedDashboardView .unified-eyebrow,
+        #unifiedDashboardView .unified-dashboard-title,
+        #unifiedDashboardView .dashboard-stats,
+        #unifiedDashboardView .dashboard-summary-grid,
+        #unifiedDashboardView .dashboard-metrics,
+        #unifiedDashboardView .dashboard-stat-grid,
+        #unifiedDashboardView .assignment-progress,
+        #unifiedDashboardView .assignment-progress-bar,
+        #unifiedDashboardView .progress-bar,
+        #unifiedDashboardView .progress-track,
+        #unifiedDashboardView .progress-fill {
+          display:none !important;
+        }
+
+        .learner-name-strip {
+          padding:14px 20px 4px;
+          color:#fff;
+          font-size:22px;
+          font-weight:900;
+        }
+
+
+        /* Official NEXIVRA platform logo */
+        .nexivra-logo-brand {
+          display:flex;
+          align-items:center;
+          min-width:225px;
+        }
+
+        .nexivra-logo-image {
+          display:block;
+          width:auto;
+          max-width:235px;
+          height:48px;
+          object-fit:contain;
+          object-position:left center;
+        }
+
+        @media(max-width:700px) {
+          .nexivra-logo-brand {
+            min-width:auto;
+          }
+
+          .nexivra-logo-image {
+            max-width:170px;
+            height:40px;
+          }
+        }
+
       </style>
 
 
@@ -32138,16 +32212,11 @@ NEXIVRA RUNTIME RULES
 
         <div class="unified-topbar">
 
-          <div class="unified-brand">
-
-            <div>
-              NEXIVRA
-
-              <small>
-                CONNECTED LEARNING
-              </small>
-            </div>
-
+          <div class="nexivra-logo-brand">
+            <img
+              class="nexivra-logo-image"
+              src="https://static.wixstatic.com/media/433270_aba4225e8fc54279ba41af267bab397a~mv2.png"
+              alt="NEXIVRA">
           </div>
 
           <div class="learner-course-summary">
@@ -32239,6 +32308,12 @@ NEXIVRA RUNTIME RULES
 
 
           <div class="learner-hero" id="learnerHero"><h1 id="learnerHeroGreeting">Welcome back.</h1><p>Keep learning. Keep making a difference.</p></div>
+
+          <div
+            class="learner-name-strip"
+            id="learnerNameStrip">
+            Learner
+          </div>
 
           <div class="unified-eyebrow">
             MY LEARNING
