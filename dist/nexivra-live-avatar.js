@@ -623,20 +623,20 @@ var Message = class {
     return Object.getPrototypeOf(this).constructor;
   }
 };
-function makeMessageType(runtime2, typeName, fields, opt) {
+function makeMessageType(runtime, typeName, fields, opt) {
   var _a3;
   const localName = (_a3 = opt === null || opt === void 0 ? void 0 : opt.localName) !== null && _a3 !== void 0 ? _a3 : typeName.substring(typeName.lastIndexOf(".") + 1);
   const type = {
     [localName]: function(data) {
-      runtime2.util.initFields(this);
-      runtime2.util.initPartial(data, this);
+      runtime.util.initFields(this);
+      runtime.util.initPartial(data, this);
     }
   }[localName];
   Object.setPrototypeOf(type.prototype, new Message());
   Object.assign(type, {
-    runtime: runtime2,
+    runtime,
     typeName,
-    fields: runtime2.util.newFieldList(fields),
+    fields: runtime.util.newFieldList(fields),
     fromBinary(bytes, options) {
       return new type().fromBinary(bytes, options);
     },
@@ -647,7 +647,7 @@ function makeMessageType(runtime2, typeName, fields, opt) {
       return new type().fromJsonString(jsonString, options);
     },
     equals(a3, b3) {
-      return runtime2.util.equals(type, a3, b3);
+      return runtime.util.equals(type, a3, b3);
     }
   });
   return type;
@@ -1383,7 +1383,7 @@ var BinaryReader = class {
     return this.textDecoder.decode(this.bytes());
   }
 };
-function makeExtension(runtime2, typeName, extendee, field) {
+function makeExtension(runtime, typeName, extendee, field) {
   let fi2;
   return {
     typeName,
@@ -1393,11 +1393,11 @@ function makeExtension(runtime2, typeName, extendee, field) {
         const i3 = typeof field == "function" ? field() : field;
         i3.name = typeName.split(".").pop();
         i3.jsonName = "[".concat(typeName, "]");
-        fi2 = runtime2.util.newFieldList([i3]).list()[0];
+        fi2 = runtime.util.newFieldList([i3]).list()[0];
       }
       return fi2;
     },
-    runtime: runtime2
+    runtime
   };
 }
 function createExtensionContainer(extension) {
@@ -30423,11 +30423,11 @@ Learning mode: ${module.learningMode || "adaptive"}
 
 SESSION CONTINUITY
 This may be a resumed learning session.
-Persisted instructional stage: ${runtime.session?.state?.stage || "teaching"}
-Prior elapsed learning time: ${Number(runtime.session?.state?.elapsedSeconds || 0)} seconds
-Prior learner voice turns: ${Number(runtime.session?.state?.learnerVoiceTurnCount || 0)}
-Prior coach voice turns: ${Number(runtime.session?.state?.coachVoiceTurnCount || 0)}
-Prior checkpoint reason: ${runtime.session?.state?.checkpointReason || "none"}
+Persisted instructional stage: ${context.session?.state?.stage || "teaching"}
+Prior elapsed learning time: ${Number(context.session?.state?.elapsedSeconds || 0)} seconds
+Prior learner voice turns: ${Number(context.session?.state?.learnerVoiceTurnCount || 0)}
+Prior coach voice turns: ${Number(context.session?.state?.coachVoiceTurnCount || 0)}
+Prior checkpoint reason: ${context.session?.state?.checkpointReason || "none"}
 
 If prior elapsed time or prior turns are greater than zero, do not restart the module from the beginning.
 Briefly reorient the learner if needed, then continue naturally from the prior instructional flow.
