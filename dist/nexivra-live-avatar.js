@@ -30055,7 +30055,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
       "subject-id",
       "lesson-id",
       "runtime-session-id",
-      "runtime-context"
+      "runtime-context",
+      "dashboard-data",
+      "app-command"
     ];
   }
   constructor() {
@@ -30069,11 +30071,13 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.runtimeContext = null;
     this.runtimeContextInjected = false;
     this.runtimeContextInjectionPending = false;
+    this.dashboardData = null;
     this.avatarStarted = false;
     this.attachTimer = null;
     this.sessionActive = false;
     this.sessionEnding = false;
     this.trainingState = "READY";
+    this.sessionStartupStage = "idle";
     this.cameraStream = null;
     this.visionFileset = null;
     this.faceLandmarker = null;
@@ -30142,6 +30146,21 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.subjectId = this.getAttribute("subject-id") || null;
     this.lessonId = this.getAttribute("lesson-id") || null;
     this.runtimeSessionId = this.getAttribute("runtime-session-id") || null;
+    const dashboardDataAttribute = this.getAttribute(
+      "dashboard-data"
+    );
+    if (dashboardDataAttribute) {
+      try {
+        this.dashboardData = JSON.parse(
+          dashboardDataAttribute
+        );
+      } catch (error) {
+        console.error(
+          "NEXIVRA INITIAL DASHBOARD DATA ERROR:",
+          error
+        );
+      }
+    }
     const runtimeContextAttribute = this.getAttribute(
       "runtime-context"
     );
@@ -30159,6 +30178,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
         );
       }
     }
+    this.renderUnifiedDashboard();
     if (this.sessionToken) {
       this.startNexivra();
     }
@@ -30168,8 +30188,25 @@ var NexivraLiveAvatar = class extends HTMLElement {
       return;
     }
     if (name === "session-token") {
+      const previousToken = this.sessionToken;
       this.sessionToken = newValue;
+      if (this.isConnected && previousToken && previousToken !== newValue) {
+        this.resetLiveAvatarRuntime().then(() => {
+          this.sessionToken = newValue;
+          this.startNexivra();
+        }).catch((error) => {
+          console.error(
+            "NEXIVRA TOKEN RESET ERROR:",
+            error
+          );
+        });
+        return;
+      }
       if (this.isConnected) {
+        this.showUnifiedTraining();
+        this.setStatus(
+          "Connecting NEXIVRA Live Instructor..."
+        );
         this.startNexivra();
       }
       return;
@@ -30199,6 +30236,32 @@ var NexivraLiveAvatar = class extends HTMLElement {
           error
         );
       }
+      return;
+    }
+    if (name === "dashboard-data") {
+      try {
+        this.dashboardData = JSON.parse(
+          newValue
+        );
+        this.renderUnifiedDashboard();
+      } catch (error) {
+        console.error(
+          "NEXIVRA DASHBOARD DATA ATTRIBUTE ERROR:",
+          error
+        );
+      }
+      return;
+    }
+    if (name === "app-command") {
+      if (newValue === "show-dashboard") {
+        this.showUnifiedDashboard();
+        this.setStatus(
+          "Progress saved."
+        );
+      }
+      if (newValue === "show-training") {
+        this.showUnifiedTraining();
+      }
     }
   }
   /*
@@ -30215,6 +30278,13 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.subjectId = context?.course?.id || this.subjectId || null;
     this.lessonId = context?.module?.id || this.lessonId || null;
     this.runtimeContextInjected = false;
+    this.renderUnifiedTrainingContext();
+    this.showUnifiedTraining();
+    if (!this.sessionToken) {
+      this.setStatus(
+        "Preparing NEXIVRA Live Instructor..."
+      );
+    }
     this.dispatchRuntimeEvent(
       "nexivra-runtime-context-set",
       {
@@ -30492,6 +30562,310 @@ NEXIVRA RUNTIME RULES
   }
   /*
    * =========================================================
+   * UNIFIED LEARNER DASHBOARD CONTRACT
+   * =========================================================
+   */
+  dispatchAppEvent(name, detail = {}) {
+    this.dispatchEvent(
+      new CustomEvent(
+        name,
+        {
+          detail,
+          bubbles: true,
+          composed: true
+        }
+      )
+    );
+  }
+  requestAssignmentStart(assignmentId) {
+    const cleanId = String(
+      assignmentId || ""
+    ).trim();
+    if (!cleanId) {
+      return;
+    }
+    this.dispatchAppEvent(
+      "nexivra-start-assignment",
+      {
+        assignmentId: cleanId
+      }
+    );
+  }
+  requestDashboardRefresh() {
+    this.dispatchAppEvent(
+      "nexivra-refresh-dashboard",
+      {}
+    );
+  }
+  async requestLogout() {
+    this.setStatus(
+      "Signing out..."
+    );
+    if (this.sessionActive) {
+      try {
+        await this.endSession();
+      } catch (error) {
+        console.warn(
+          "NEXIVRA LOGOUT SESSION END WARNING:",
+          error
+        );
+      }
+    }
+    this.stopVisualAnalysis();
+    this.stopLearnerAudioMonitor();
+    this.stopCamera();
+    if (this.session) {
+      try {
+        await this.session.stop();
+      } catch (error) {
+        console.warn(
+          "NEXIVRA LOGOUT AVATAR STOP WARNING:",
+          error
+        );
+      }
+    }
+    this.session = null;
+    this.avatarStarted = false;
+    this.sessionActive = false;
+    this.dispatchAppEvent(
+      "nexivra-logout",
+      {
+        sessionId: this.runtimeSessionId || null
+      }
+    );
+  }
+  requestPauseAndReturn() {
+    this.dispatchAppEvent(
+      "nexivra-pause-session",
+      {
+        sessionId: this.runtimeSessionId || null
+      }
+    );
+  }
+  getLearnerDashboardSnapshot() {
+    return {
+      learner: this.dashboardData?.learner || null,
+      metrics: this.dashboardData?.metrics || null,
+      assignments: Array.isArray(
+        this.dashboardData?.assignments
+      ) ? [
+        ...this.dashboardData.assignments
+      ] : []
+    };
+  }
+  /*
+   * =========================================================
+   * UNIFIED LEARNER DASHBOARD RENDERING
+   * =========================================================
+   */
+  renderUnifiedDashboard() {
+    if (!this.shadowRoot) {
+      return;
+    }
+    const data = this.dashboardData || {};
+    const learner = data.learner || {};
+    const assignments = Array.isArray(
+      data.assignments
+    ) ? data.assignments : [];
+    const fullName = [
+      learner.firstName,
+      learner.lastName
+    ].filter(Boolean).join(" ");
+    this.setUnifiedText(
+      "unifiedLearnerIdentity",
+      fullName ? `${fullName} \u2022 ${learner.organizationId || ""}` : learner.organizationId || "Learner"
+    );
+    this.setUnifiedText(
+      "unifiedWelcome",
+      learner.firstName ? `Welcome back, ${learner.firstName}.` : "Welcome back."
+    );
+    this.setUnifiedText(
+      "unifiedAssignedCount",
+      data.metrics?.assigned ?? assignments.length
+    );
+    this.setUnifiedText(
+      "unifiedActiveCount",
+      data.metrics?.active ?? 0
+    );
+    this.setUnifiedText(
+      "unifiedCompletedCount",
+      data.metrics?.completed ?? 0
+    );
+    const list = this.shadowRoot.getElementById(
+      "unifiedAssignmentList"
+    );
+    if (!list) {
+      return;
+    }
+    if (!assignments.length) {
+      list.innerHTML = `
+        <div class="unified-empty">
+          No training has been assigned yet.
+        </div>
+      `;
+      return;
+    }
+    list.innerHTML = assignments.map(
+      (assignment) => {
+        const progress = Math.max(
+          0,
+          Math.min(
+            100,
+            Number(
+              assignment.progressPercent || 0
+            )
+          )
+        );
+        const status = assignment.status === "in_progress" ? "In Progress" : assignment.status === "completed" ? "Completed" : "Assigned";
+        const actionLabel = assignment.status === "in_progress" ? "Resume Training" : assignment.status === "completed" ? "Review Training" : "Start Training";
+        return `
+              <div class="unified-assignment-card">
+
+                <div class="unified-assignment-copy">
+
+                  <div class="unified-assignment-title">
+                    ${this.escapeUnifiedHtml(
+          assignment.courseTitle || "Course"
+        )}
+                  </div>
+
+                  <div class="unified-assignment-subject">
+                    ${this.escapeUnifiedHtml(
+          assignment.subjectName || assignment.description || ""
+        )}
+                  </div>
+
+                  <div class="unified-assignment-meta">
+                    ${this.escapeUnifiedHtml(
+          assignment.currentModuleTitle || "Not started"
+        )}
+                    \u2022 ${status}
+                    \u2022 ${progress}%
+                  </div>
+
+                  <div class="unified-progress-track">
+                    <div
+                      class="unified-progress-fill"
+                      style="width:${progress}%;">
+                    </div>
+                  </div>
+
+                </div>
+
+                <button
+                  class="unified-start-assignment"
+                  data-assignment-id="${this.escapeUnifiedHtml(
+          assignment.id || ""
+        )}">
+                  ${actionLabel}
+                </button>
+
+              </div>
+            `;
+      }
+    ).join("");
+    list.querySelectorAll(
+      "[data-assignment-id]"
+    ).forEach(
+      (button) => {
+        button.addEventListener(
+          "click",
+          () => {
+            const assignmentId = button.getAttribute(
+              "data-assignment-id"
+            );
+            this.requestAssignmentStart(
+              assignmentId
+            );
+          }
+        );
+      }
+    );
+  }
+  renderUnifiedTrainingContext() {
+    const context = this.runtimeContext || {};
+    this.setUnifiedText(
+      "unifiedCourseTitle",
+      context.course?.title || "Training"
+    );
+    this.setUnifiedText(
+      "unifiedModuleTitle",
+      context.module?.title || "Module"
+    );
+    this.setUnifiedText(
+      "unifiedModuleDescription",
+      context.module?.description || ""
+    );
+    const count = Array.isArray(
+      context.knowledgeSources
+    ) ? context.knowledgeSources.length : 0;
+    this.setUnifiedText(
+      "unifiedSourceCount",
+      `${count} approved knowledge source${count === 1 ? "" : "s"} connected`
+    );
+  }
+  showUnifiedDashboard() {
+    const dashboard = this.shadowRoot?.getElementById(
+      "unifiedDashboardView"
+    );
+    const training = this.shadowRoot?.getElementById(
+      "unifiedTrainingView"
+    );
+    if (dashboard) {
+      dashboard.style.display = "block";
+    }
+    if (training) {
+      training.style.display = "none";
+    }
+    this.renderUnifiedDashboard();
+  }
+  showUnifiedTraining() {
+    const dashboard = this.shadowRoot?.getElementById(
+      "unifiedDashboardView"
+    );
+    const training = this.shadowRoot?.getElementById(
+      "unifiedTrainingView"
+    );
+    if (dashboard) {
+      dashboard.style.display = "none";
+    }
+    if (training) {
+      training.style.display = "block";
+    }
+    this.renderUnifiedTrainingContext();
+  }
+  setUnifiedText(id, value) {
+    const element = this.shadowRoot?.getElementById(
+      id
+    );
+    if (element) {
+      element.textContent = String(
+        value ?? ""
+      );
+    }
+  }
+  escapeUnifiedHtml(value) {
+    return String(
+      value ?? ""
+    ).replaceAll(
+      "&",
+      "&amp;"
+    ).replaceAll(
+      "<",
+      "&lt;"
+    ).replaceAll(
+      ">",
+      "&gt;"
+    ).replaceAll(
+      '"',
+      "&quot;"
+    ).replaceAll(
+      "'",
+      "&#039;"
+    );
+  }
+  /*
+   * =========================================================
    * UI
    * =========================================================
    */
@@ -30668,7 +31042,350 @@ NEXIVRA RUNTIME RULES
           }
         }
 
+        /* Unified learner application */
+
+        .unified-shell {
+          min-height:820px;
+          background:#020912;
+          color:#f5f7fb;
+        }
+
+        .unified-topbar {
+          min-height:72px;
+          padding:12px 22px;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:18px;
+          border-bottom:1px solid #10374a;
+          background:#03101b;
+        }
+
+        .unified-brand {
+          font-weight:900;
+          letter-spacing:.15em;
+        }
+
+        .unified-brand small {
+          display:block;
+          margin-top:4px;
+          color:#14c8ff;
+          font-size:9px;
+          letter-spacing:.22em;
+        }
+
+        .unified-header-actions {
+          display:flex;
+          align-items:center;
+          gap:12px;
+        }
+
+        .unified-identity {
+          color:#93a8ba;
+          font-size:11px;
+          text-align:right;
+        }
+
+        .unified-logout,
+        .unified-back {
+          border:1px solid #10374a;
+          background:transparent;
+          color:#fff;
+        }
+
+        #unifiedDashboardView {
+          padding:28px;
+          min-height:700px;
+        }
+
+        #unifiedTrainingView {
+          display:none;
+        }
+
+        .unified-eyebrow {
+          color:#14c8ff;
+          font-size:10px;
+          font-weight:900;
+          letter-spacing:.22em;
+        }
+
+        .unified-title {
+          margin:8px 0;
+          font-size:38px;
+        }
+
+        .unified-intro {
+          margin:0;
+          color:#93a8ba;
+        }
+
+        .unified-metrics {
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:14px;
+          margin:22px 0;
+        }
+
+        .unified-metric {
+          padding:18px;
+          border:1px solid #10374a;
+          border-radius:15px;
+          background:#071523;
+        }
+
+        .unified-metric span {
+          display:block;
+          color:#93a8ba;
+          font-size:9px;
+          font-weight:900;
+          letter-spacing:.14em;
+        }
+
+        .unified-metric strong {
+          display:block;
+          margin-top:8px;
+          font-size:32px;
+        }
+
+        .unified-list {
+          border:1px solid #10374a;
+          border-radius:15px;
+          overflow:hidden;
+          background:#071523;
+        }
+
+        .unified-list-heading {
+          padding:17px 19px;
+          border-bottom:1px solid #10374a;
+          font-weight:900;
+        }
+
+        #unifiedAssignmentList {
+          padding:15px;
+          display:grid;
+          gap:11px;
+        }
+
+        .unified-assignment-card {
+          padding:15px;
+          display:grid;
+          grid-template-columns:1fr auto;
+          gap:16px;
+          align-items:center;
+          border:1px solid rgba(255,255,255,.08);
+          border-radius:13px;
+          background:rgba(255,255,255,.02);
+        }
+
+        .unified-assignment-title {
+          font-size:16px;
+          font-weight:900;
+        }
+
+        .unified-assignment-subject,
+        .unified-assignment-meta {
+          margin-top:5px;
+          color:#93a8ba;
+          font-size:10px;
+        }
+
+        .unified-progress-track {
+          height:6px;
+          margin-top:11px;
+          overflow:hidden;
+          border-radius:999px;
+          background:#020912;
+        }
+
+        .unified-progress-fill {
+          height:100%;
+          background:linear-gradient(90deg,#14c8ff,#ff9d00);
+        }
+
+        .unified-start-assignment {
+          background:#14c8ff;
+          color:#02101a;
+        }
+
+        .unified-empty {
+          padding:28px;
+          color:#93a8ba;
+          text-align:center;
+        }
+
+        .unified-training-context {
+          padding:17px 20px;
+          border-bottom:1px solid #10374a;
+          background:#03101b;
+        }
+
+        .unified-training-row {
+          display:flex;
+          justify-content:space-between;
+          align-items:flex-start;
+          gap:15px;
+        }
+
+        .unified-training-context h2 {
+          margin:5px 0;
+          font-size:22px;
+        }
+
+        .unified-training-context p {
+          margin:0;
+          color:#93a8ba;
+          font-size:11px;
+        }
+
+        .unified-source-count {
+          margin-top:9px;
+          color:#f6c56f;
+          font-size:10px;
+        }
+
+        @media(max-width:700px) {
+          .unified-metrics {
+            grid-template-columns:1fr;
+          }
+
+          .unified-assignment-card {
+            grid-template-columns:1fr;
+          }
+
+          #unifiedDashboardView {
+            padding:18px;
+          }
+        }
+
       </style>
+
+
+      <div class="unified-shell">
+
+        <div class="unified-topbar">
+
+          <div class="unified-brand">
+            NEXIVRA
+            <small>CONNECTED LEARNING</small>
+          </div>
+
+          <div class="unified-header-actions">
+
+            <div
+              class="unified-identity"
+              id="unifiedLearnerIdentity">
+              Learner
+            </div>
+
+            <button
+              class="unified-logout"
+              id="unifiedLogoutButton">
+              Log Out
+            </button>
+
+          </div>
+
+        </div>
+
+
+        <section id="unifiedDashboardView">
+
+          <div class="unified-eyebrow">
+            MY LEARNING
+          </div>
+
+          <h1
+            class="unified-title"
+            id="unifiedWelcome">
+            Welcome back.
+          </h1>
+
+          <p class="unified-intro">
+            Your assigned learning,
+            progress, and active NEXIVRA
+            sessions are here.
+          </p>
+
+          <div class="unified-metrics">
+
+            <div class="unified-metric">
+              <span>ASSIGNED</span>
+              <strong id="unifiedAssignedCount">0</strong>
+            </div>
+
+            <div class="unified-metric">
+              <span>ACTIVE</span>
+              <strong id="unifiedActiveCount">0</strong>
+            </div>
+
+            <div class="unified-metric">
+              <span>COMPLETED</span>
+              <strong id="unifiedCompletedCount">0</strong>
+            </div>
+
+          </div>
+
+          <div class="unified-list">
+
+            <div class="unified-list-heading">
+              My Training
+            </div>
+
+            <div id="unifiedAssignmentList">
+              <div class="unified-empty">
+                Connecting to NEXIVRA...
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <section id="unifiedTrainingView">
+
+          <div class="unified-training-context">
+
+            <div class="unified-training-row">
+
+              <div>
+
+                <div class="unified-eyebrow">
+                  LIVE TRAINING
+                </div>
+
+                <h2 id="unifiedCourseTitle">
+                  Training
+                </h2>
+
+                <div
+                  id="unifiedModuleTitle"
+                  style="
+                    font-weight:800;
+                    margin-bottom:5px;
+                  ">
+                  Module
+                </div>
+
+                <p id="unifiedModuleDescription"></p>
+
+                <div
+                  class="unified-source-count"
+                  id="unifiedSourceCount">
+                  Loading approved knowledge...
+                </div>
+
+              </div>
+
+              <button
+                class="unified-back"
+                id="unifiedBackButton">
+                \u2190 My Training
+              </button>
+
+            </div>
+
+          </div>
 
 
       <div class="wrap">
@@ -30737,6 +31454,10 @@ NEXIVRA RUNTIME RULES
         </div>
 
       </div>
+
+        </section>
+
+      </div>
     `;
   }
   bindControls() {
@@ -30765,6 +31486,45 @@ NEXIVRA RUNTIME RULES
         }
       }
     );
+    const unifiedLogoutButton = this.shadowRoot.getElementById(
+      "unifiedLogoutButton"
+    );
+    const unifiedBackButton = this.shadowRoot.getElementById(
+      "unifiedBackButton"
+    );
+    unifiedLogoutButton.addEventListener(
+      "click",
+      () => {
+        this.requestLogout().catch(
+          (error) => {
+            console.error(
+              "NEXIVRA LOGOUT REQUEST ERROR:",
+              error
+            );
+          }
+        );
+      }
+    );
+    unifiedBackButton.addEventListener(
+      "click",
+      () => {
+        if (this.sessionActive) {
+          this.endSession().catch(
+            (error) => {
+              console.warn(
+                "NEXIVRA END SESSION WARNING:",
+                error
+              );
+            }
+          );
+        }
+        this.setStatus(
+          "Saving your progress..."
+        );
+        this.requestPauseAndReturn();
+      }
+    );
+    this.renderUnifiedDashboard();
   }
   setStatus(message) {
     console.log(
@@ -30811,6 +31571,47 @@ NEXIVRA RUNTIME RULES
       ENDING: "Reviewing Practice"
     };
     indicatorText.textContent = labels[state] || "Session Active";
+  }
+  /*
+   * =========================================================
+   * LIVEAVATAR RUNTIME RESET
+   * =========================================================
+   */
+  async resetLiveAvatarRuntime() {
+    if (this.sessionActive) {
+      try {
+        await this.endSession();
+      } catch (error) {
+        console.warn(
+          "NEXIVRA SESSION RESET WARNING:",
+          error
+        );
+      }
+    }
+    if (this.session) {
+      try {
+        await this.session.stop();
+      } catch (error) {
+        console.warn(
+          "NEXIVRA AVATAR STOP WARNING:",
+          error
+        );
+      }
+    }
+    this.session = null;
+    this.sessionToken = null;
+    this.avatarStarted = false;
+    this.runtimeContextInjected = false;
+    this.runtimeContextInjectionPending = false;
+    const avatarVideo = this.shadowRoot?.getElementById(
+      "avatarVideo"
+    );
+    if (avatarVideo) {
+      avatarVideo.srcObject = null;
+    }
+    this.setStatus(
+      "Preparing NEXIVRA..."
+    );
   }
   /*
    * =========================================================
@@ -30889,6 +31690,14 @@ NEXIVRA RUNTIME RULES
             this.setStatus(
               "NEXIVRA is ready. Click Start Session."
             );
+            this.dispatchRuntimeEvent(
+              "nexivra-liveavatar-ready",
+              {
+                sessionId: this.runtimeSessionId,
+                subjectId: this.subjectId,
+                lessonId: this.lessonId
+              }
+            );
             video.play().catch(
               () => {
               }
@@ -30945,8 +31754,9 @@ NEXIVRA RUNTIME RULES
     }
     try {
       sessionButton.disabled = true;
+      this.sessionStartupStage = "browser_media";
       this.setStatus(
-        "Connecting microphone and camera..."
+        "Connecting camera and microphone..."
       );
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -30970,22 +31780,38 @@ NEXIVRA RUNTIME RULES
       learnerPreview.classList.add(
         "active"
       );
+      this.dispatchRuntimeEvent(
+        "nexivra-media-ready",
+        {
+          sessionId: this.runtimeSessionId,
+          audioTracks: stream.getAudioTracks().length,
+          videoTracks: stream.getVideoTracks().length
+        }
+      );
+      this.sessionStartupStage = "audio_monitor";
+      this.setStatus(
+        "Preparing learner audio..."
+      );
       await this.startLearnerAudioMonitor(
         stream
       );
+      this.sessionStartupStage = "vision";
       this.setStatus(
         "Starting visual analysis..."
       );
       await this.initializeVision();
       this.startVisualAnalysis();
+      this.sessionStartupStage = "runtime_context";
       this.setStatus(
         "Preparing learning context..."
       );
       await this.injectRuntimeContext();
+      this.sessionStartupStage = "voice_chat";
       this.setStatus(
         "Starting voice conversation..."
       );
       await this.session.voiceChat.start();
+      this.sessionStartupStage = "active";
       this.sessionActive = true;
       this.resetLiveState();
       this.setTrainingState(
@@ -31008,19 +31834,42 @@ NEXIVRA RUNTIME RULES
         }
       );
     } catch (error) {
+      const failedStage = this.sessionStartupStage || "unknown";
       console.error(
         "NEXIVRA SESSION START ERROR:",
-        error
+        {
+          stage: failedStage,
+          error
+        }
+      );
+      this.dispatchRuntimeEvent(
+        "nexivra-session-start-error",
+        {
+          sessionId: this.runtimeSessionId,
+          stage: failedStage,
+          name: error?.name || "",
+          message: error?.message || String(error)
+        }
       );
       sessionButton.disabled = false;
       this.stopVisualAnalysis();
       this.stopLearnerAudioMonitor();
       this.stopCamera();
+      this.sessionActive = false;
+      this.sessionStartupStage = "idle";
       this.setTrainingState(
         "READY"
       );
+      const stageLabels = {
+        browser_media: "camera/microphone permission",
+        audio_monitor: "learner audio preparation",
+        vision: "visual analysis",
+        runtime_context: "learning context",
+        voice_chat: "LiveAvatar voice conversation"
+      };
+      const readableStage = stageLabels[failedStage] || failedStage;
       this.setStatus(
-        "SESSION START ERROR: " + (error?.message || String(error))
+        `SESSION START ERROR during ${readableStage}: ${error?.message || String(error)}`
       );
     }
   }
@@ -31101,6 +31950,7 @@ NEXIVRA RUNTIME RULES
         visualSummary: this.buildVisualSummary()
       }
     );
+    this.requestDashboardRefresh();
   }
   resetLiveState() {
     this.absentSince = null;
