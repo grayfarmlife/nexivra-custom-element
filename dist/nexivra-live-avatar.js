@@ -623,20 +623,20 @@ var Message = class {
     return Object.getPrototypeOf(this).constructor;
   }
 };
-function makeMessageType(runtime, typeName, fields, opt) {
+function makeMessageType(runtime2, typeName, fields, opt) {
   var _a3;
   const localName = (_a3 = opt === null || opt === void 0 ? void 0 : opt.localName) !== null && _a3 !== void 0 ? _a3 : typeName.substring(typeName.lastIndexOf(".") + 1);
   const type = {
     [localName]: function(data) {
-      runtime.util.initFields(this);
-      runtime.util.initPartial(data, this);
+      runtime2.util.initFields(this);
+      runtime2.util.initPartial(data, this);
     }
   }[localName];
   Object.setPrototypeOf(type.prototype, new Message());
   Object.assign(type, {
-    runtime,
+    runtime: runtime2,
     typeName,
-    fields: runtime.util.newFieldList(fields),
+    fields: runtime2.util.newFieldList(fields),
     fromBinary(bytes, options) {
       return new type().fromBinary(bytes, options);
     },
@@ -647,7 +647,7 @@ function makeMessageType(runtime, typeName, fields, opt) {
       return new type().fromJsonString(jsonString, options);
     },
     equals(a3, b3) {
-      return runtime.util.equals(type, a3, b3);
+      return runtime2.util.equals(type, a3, b3);
     }
   });
   return type;
@@ -1383,7 +1383,7 @@ var BinaryReader = class {
     return this.textDecoder.decode(this.bytes());
   }
 };
-function makeExtension(runtime, typeName, extendee, field) {
+function makeExtension(runtime2, typeName, extendee, field) {
   let fi2;
   return {
     typeName,
@@ -1393,11 +1393,11 @@ function makeExtension(runtime, typeName, extendee, field) {
         const i3 = typeof field == "function" ? field() : field;
         i3.name = typeName.split(".").pop();
         i3.jsonName = "[".concat(typeName, "]");
-        fi2 = runtime.util.newFieldList([i3]).list()[0];
+        fi2 = runtime2.util.newFieldList([i3]).list()[0];
       }
       return fi2;
     },
-    runtime
+    runtime: runtime2
   };
 }
 function createExtensionContainer(extension) {
@@ -30081,6 +30081,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.checkpointTimer = null;
     this.sessionStartedAt = null;
     this.lastCheckpointAt = null;
+    this.learnerVoiceTurnCount = 0;
+    this.coachVoiceTurnCount = 0;
     this.cameraStream = null;
     this.visionFileset = null;
     this.faceLandmarker = null;
@@ -30280,6 +30282,13 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.runtimeSessionId = context?.session?.id || this.runtimeSessionId || null;
     this.subjectId = context?.course?.id || this.subjectId || null;
     this.lessonId = context?.module?.id || this.lessonId || null;
+    const persistedState = context?.session?.state || {};
+    this.learnerVoiceTurnCount = Number(
+      persistedState.learnerVoiceTurnCount || 0
+    );
+    this.coachVoiceTurnCount = Number(
+      persistedState.coachVoiceTurnCount || 0
+    );
     this.runtimeContextInjected = false;
     this.renderUnifiedTrainingContext();
     this.showUnifiedTraining();
@@ -30411,6 +30420,18 @@ MODULE
 Title: ${module.title || "Untitled Module"}
 Description: ${module.description || ""}
 Learning mode: ${module.learningMode || "adaptive"}
+
+SESSION CONTINUITY
+This may be a resumed learning session.
+Persisted instructional stage: ${runtime.session?.state?.stage || "teaching"}
+Prior elapsed learning time: ${Number(runtime.session?.state?.elapsedSeconds || 0)} seconds
+Prior learner voice turns: ${Number(runtime.session?.state?.learnerVoiceTurnCount || 0)}
+Prior coach voice turns: ${Number(runtime.session?.state?.coachVoiceTurnCount || 0)}
+Prior checkpoint reason: ${runtime.session?.state?.checkpointReason || "none"}
+
+If prior elapsed time or prior turns are greater than zero, do not restart the module from the beginning.
+Briefly reorient the learner if needed, then continue naturally from the prior instructional flow.
+Do not claim a competency has been completed unless the evidence standard has actually been demonstrated.
 
 TEACHING CONFIGURATION
 Teaching objective:
@@ -32553,6 +32574,7 @@ NEXIVRA RUNTIME RULES
             "NEXIVRA SPEECH EVENT: avatar stopped speaking"
           );
           if (this.sessionActive) {
+            this.coachVoiceTurnCount += 1;
             this.emitProgressCheckpoint(
               "coach_turn_completed"
             );
@@ -32683,7 +32705,9 @@ NEXIVRA RUNTIME RULES
         courseId: this.subjectId || null,
         moduleId: this.lessonId || null,
         trainingStage: this.runtimeContext?.session?.state?.stage || this.runtimeContext?.stage || "teaching",
-        observationCount: this.observationTimeline.length
+        observationCount: this.observationTimeline.length,
+        learnerVoiceTurnCount: this.learnerVoiceTurnCount,
+        coachVoiceTurnCount: this.coachVoiceTurnCount
       }
     );
   }
@@ -33680,6 +33704,12 @@ Continue the learning interaction naturally.
               console.log(
                 "NEXIVRA LEARNER AUDIO: speaking stopped"
               );
+              if (this.sessionActive) {
+                this.learnerVoiceTurnCount += 1;
+                this.emitProgressCheckpoint(
+                  "learner_voice_turn"
+                );
+              }
               this.finishSpeechOverlapCandidate();
             }
           } else {
