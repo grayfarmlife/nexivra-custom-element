@@ -32205,6 +32205,46 @@ NEXIVRA RUNTIME RULES
           }
         }
 
+
+        /* PACKAGE 2 FINAL DASHBOARD CLEANUP */
+
+        #unifiedDashboardView .learner-hero h1,
+        #unifiedDashboardView .learner-hero p,
+        #unifiedDashboardView .unified-dashboard-heading,
+        #unifiedDashboardView .unified-dashboard-stats {
+          display:none !important;
+        }
+
+        /* Current assignment card: no percentage or progress bar. */
+        #unifiedDashboardView .assignment-progress,
+        #unifiedDashboardView .assignment-progress-bar,
+        #unifiedDashboardView .assignment-progress-shell,
+        #unifiedDashboardView .assignment-progress-track,
+        #unifiedDashboardView .assignment-progress-fill,
+        #unifiedDashboardView progress {
+          display:none !important;
+        }
+
+        /* Bright, premium NEXIVRA header in training. */
+        .unified-topbar {
+          background:linear-gradient(90deg,#04111e 0%,#082b4c 62%,#0a3a64 100%);
+          border-bottom:1px solid #1c5d82;
+          box-shadow:0 4px 18px rgba(0,0,0,.22);
+        }
+
+        .unified-header-actions,
+        .unified-header-actions * {
+          color:#eef8ff;
+        }
+
+        .learner-name-strip {
+          padding:18px 22px 8px;
+          color:#fff;
+          font-size:28px;
+          font-weight:900;
+          letter-spacing:-.02em;
+        }
+
       </style>
 
 
