@@ -30054,7 +30054,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
       "session-token",
       "subject-id",
       "lesson-id",
-      "runtime-session-id"
+      "runtime-session-id",
+      "runtime-context"
     ];
   }
   constructor() {
@@ -30141,6 +30142,23 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.subjectId = this.getAttribute("subject-id") || null;
     this.lessonId = this.getAttribute("lesson-id") || null;
     this.runtimeSessionId = this.getAttribute("runtime-session-id") || null;
+    const runtimeContextAttribute = this.getAttribute(
+      "runtime-context"
+    );
+    if (runtimeContextAttribute) {
+      try {
+        this.setRuntimeContext(
+          JSON.parse(
+            runtimeContextAttribute
+          )
+        );
+      } catch (error) {
+        console.error(
+          "NEXIVRA INITIAL RUNTIME CONTEXT ERROR:",
+          error
+        );
+      }
+    }
     if (this.sessionToken) {
       this.startNexivra();
     }
@@ -30166,6 +30184,21 @@ var NexivraLiveAvatar = class extends HTMLElement {
     }
     if (name === "runtime-session-id") {
       this.runtimeSessionId = newValue;
+      return;
+    }
+    if (name === "runtime-context") {
+      try {
+        this.setRuntimeContext(
+          JSON.parse(
+            newValue
+          )
+        );
+      } catch (error) {
+        console.error(
+          "NEXIVRA RUNTIME CONTEXT ATTRIBUTE ERROR:",
+          error
+        );
+      }
     }
   }
   /*
