@@ -3,17 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>NEXIVRA Learner</title>
-
-<script
-  type="module"
-  src="./nexivra-live-avatar.js">
-</script>
-
 <style>
-
-:root {
+:root{
   --bg:#020912;
   --panel:#071523;
   --panel2:#0b1b2b;
@@ -25,393 +17,119 @@
   --success:#35d39a;
   --danger:#ff6b6b;
 }
-
-* {
-  box-sizing:border-box;
-}
-
-html,
-body {
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family:Arial,Helvetica,sans-serif;
-}
-
-body {
-  min-height:100vh;
-}
-
-button,
-input,
-textarea {
-  font:inherit;
-}
-
-button {
-  cursor:pointer;
-}
-
-.shell {
-  min-height:100vh;
-  display:grid;
-  grid-template-columns:240px 1fr;
-}
-
-.sidebar {
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+body{min-height:100vh}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.shell{min-height:100vh;display:grid;grid-template-columns:240px 1fr}
+.sidebar{
   border-right:1px solid var(--line);
-  background:
-    linear-gradient(
-      180deg,
-      #03101b 0%,
-      #020912 100%
-    );
+  background:linear-gradient(180deg,#03101b 0%,#020912 100%);
   padding:24px 18px;
 }
-
-.brand {
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-bottom:34px;
-}
-
-.brand-mark {
-  width:42px;
-  height:42px;
-  border-radius:12px;
-  display:grid;
-  place-items:center;
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:34px}
+.brand-mark{
+  width:42px;height:42px;border-radius:12px;
+  display:grid;place-items:center;
   border:1px solid var(--line);
-  background:
-    radial-gradient(
-      circle at 30% 20%,
-      rgba(20,200,255,.25),
-      transparent 40%
-    ),
-    #06121f;
+  background:radial-gradient(circle at 30% 20%,rgba(20,200,255,.25),transparent 40%),#06121f;
   font-weight:900;
 }
-
-.brand-copy strong {
-  display:block;
-  letter-spacing:.14em;
+.brand-copy strong{display:block;letter-spacing:.14em}
+.brand-copy span{font-size:10px;color:var(--muted);letter-spacing:.18em}
+.nav{display:grid;gap:8px}
+.nav button{
+  width:100%;text-align:left;padding:12px 14px;border-radius:12px;
+  border:1px solid transparent;background:transparent;color:var(--muted);
 }
-
-.brand-copy span {
-  font-size:10px;
-  color:var(--muted);
-  letter-spacing:.18em;
+.nav button.active,.nav button:hover{
+  color:var(--text);border-color:var(--line);background:rgba(20,200,255,.06)
 }
-
-.nav {
-  display:grid;
-  gap:8px;
-}
-
-.nav button {
-  width:100%;
-  text-align:left;
-  padding:12px 14px;
-  border-radius:12px;
-  border:1px solid transparent;
-  background:transparent;
-  color:var(--muted);
-}
-
-.nav button.active,
-.nav button:hover {
-  color:var(--text);
-  border-color:var(--line);
-  background:rgba(20,200,255,.06);
-}
-
-.sidebar-footer {
-  position:sticky;
-  top:calc(100vh - 90px);
-  margin-top:36px;
-}
-
-.status {
+.sidebar-footer{position:sticky;top:calc(100vh - 90px);margin-top:36px}
+.status{
   border:1px solid rgba(53,211,154,.25);
-  color:#9ef0cf;
-  background:rgba(53,211,154,.06);
-  border-radius:999px;
-  padding:9px 12px;
-  font-size:11px;
+  color:#9ef0cf;background:rgba(53,211,154,.06);
+  border-radius:999px;padding:9px 12px;font-size:11px;
 }
-
-.main {
-  min-width:0;
+.main{min-width:0}
+.topbar{
+  height:74px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 28px;background:rgba(2,9,18,.92);position:sticky;top:0;z-index:5;
 }
-
-.topbar {
-  height:74px;
-  border-bottom:1px solid var(--line);
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 28px;
-  background:rgba(2,9,18,.92);
-  position:sticky;
-  top:0;
-  z-index:5;
+.topbar h1{font-size:20px;margin:0}
+.user-chip{
+  display:flex;align-items:center;gap:10px;border:1px solid var(--line);
+  border-radius:12px;padding:7px 10px;
 }
-
-.topbar h1 {
-  font-size:20px;
-  margin:0;
+.avatar{
+  width:34px;height:34px;border-radius:50%;
+  display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#07111a;font-weight:900;
 }
-
-.user-chip {
-  display:flex;
-  align-items:center;
-  gap:10px;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:7px 10px;
+.user-chip strong{display:block;font-size:12px}
+.user-chip span{display:block;color:var(--muted);font-size:10px}
+.content{padding:32px;max-width:1400px;margin:0 auto}
+.eyebrow{color:var(--accent);font-size:10px;letter-spacing:.24em;font-weight:900}
+.hero{margin-bottom:26px}
+.hero h2{font-size:42px;margin:8px 0 8px}
+.hero p{color:var(--muted);max-width:800px;line-height:1.6}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0}
+.metric{
+  border:1px solid var(--line);border-radius:16px;padding:18px;
+  background:linear-gradient(135deg,rgba(20,200,255,.05),rgba(255,157,0,.03));
 }
-
-.avatar {
-  width:34px;
-  height:34px;
-  border-radius:50%;
-  display:grid;
-  place-items:center;
-  background:
-    linear-gradient(
-      135deg,
-      var(--accent),
-      var(--accent2)
-    );
-  color:#07111a;
-  font-weight:900;
+.metric span{font-size:10px;letter-spacing:.15em;color:var(--muted);font-weight:800}
+.metric strong{display:block;font-size:34px;margin-top:8px}
+.card{border:1px solid var(--line);border-radius:16px;background:rgba(6,18,30,.8)}
+.card-head{padding:18px 20px;border-bottom:1px solid var(--line)}
+.card-head h3{margin:0;font-size:17px}
+.card-head p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.card-body{padding:18px 20px}
+.assignment-grid{display:grid;gap:14px}
+.assignment{
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;padding:18px;background:rgba(255,255,255,.02)
 }
-
-.user-chip strong {
-  display:block;
-  font-size:12px;
+.assignment-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.assignment h4{margin:0 0 6px;font-size:18px}
+.assignment p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.badge{
+  border-radius:999px;padding:6px 9px;font-size:9px;font-weight:900;
+  border:1px solid var(--line);color:var(--muted);white-space:nowrap
 }
-
-.user-chip span {
-  display:block;
-  color:var(--muted);
-  font-size:10px;
+.progress-wrap{margin-top:16px}
+.progress-track{height:8px;border-radius:999px;background:#06101a;overflow:hidden;border:1px solid #0c2a3b}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.assignment-actions{display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:12px}
+.btn{
+  border:1px solid var(--line);border-radius:10px;padding:10px 14px;
+  color:var(--text);background:#071522;font-weight:800;
 }
-
-.content {
-  padding:32px;
-  max-width:1400px;
-  margin:0 auto;
+.btn-primary{
+  background:linear-gradient(135deg,#159ef6,#14d5ff);
+  color:#02101a;border-color:transparent;
 }
+.btn-ghost{background:transparent}
+.empty{padding:34px;text-align:center;color:var(--muted)}
+.hidden{display:none!important}
 
-.eyebrow {
-  color:var(--accent);
-  font-size:10px;
-  letter-spacing:.24em;
-  font-weight:900;
-}
-
-.hero {
-  margin-bottom:26px;
-}
-
-.hero h2 {
-  font-size:42px;
-  margin:8px 0 8px;
-}
-
-.hero p {
-  color:var(--muted);
-  max-width:800px;
-  line-height:1.6;
-}
-
-.metrics {
-  display:grid;
-  grid-template-columns:
-    repeat(3,1fr);
-  gap:14px;
-  margin:22px 0;
-}
-
-.metric {
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:18px;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(20,200,255,.05),
-      rgba(255,157,0,.03)
-    );
-}
-
-.metric span {
-  font-size:10px;
-  letter-spacing:.15em;
-  color:var(--muted);
-  font-weight:800;
-}
-
-.metric strong {
-  display:block;
-  font-size:34px;
-  margin-top:8px;
-}
-
-.card {
-  border:1px solid var(--line);
-  border-radius:16px;
-  background:rgba(6,18,30,.8);
-}
-
-.card-head {
-  padding:18px 20px;
-  border-bottom:1px solid var(--line);
-}
-
-.card-head h3 {
-  margin:0;
-  font-size:17px;
-}
-
-.card-head p {
-  margin:4px 0 0;
-  color:var(--muted);
-  font-size:11px;
-}
-
-.card-body {
-  padding:18px 20px;
-}
-
-.assignment-grid {
-  display:grid;
-  gap:14px;
-}
-
-.assignment {
-  border:
-    1px solid
-    rgba(255,255,255,.08);
-  border-radius:14px;
-  padding:18px;
-  background:
-    rgba(255,255,255,.02);
-}
-
-.assignment-top {
-  display:flex;
-  justify-content:space-between;
-  gap:14px;
-  align-items:flex-start;
-}
-
-.assignment h4 {
-  margin:0 0 6px;
-  font-size:18px;
-}
-
-.assignment p {
-  margin:0;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.5;
-}
-
-.badge {
-  border-radius:999px;
-  padding:6px 9px;
-  font-size:9px;
-  font-weight:900;
-  border:1px solid var(--line);
-  color:var(--muted);
-  white-space:nowrap;
-}
-
-.progress-wrap {
-  margin-top:16px;
-}
-
-.progress-track {
-  height:8px;
-  border-radius:999px;
-  background:#06101a;
-  overflow:hidden;
-  border:1px solid #0c2a3b;
-}
-
-.progress-bar {
-  height:100%;
-  background:
-    linear-gradient(
-      90deg,
-      var(--accent),
-      var(--accent2)
-    );
-}
-
-.assignment-actions {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-top:16px;
-  gap:12px;
-}
-
-.btn {
-  border:1px solid var(--line);
-  border-radius:10px;
-  padding:10px 14px;
-  color:var(--text);
-  background:#071522;
-  font-weight:800;
-}
-
-.btn-primary {
-  background:
-    linear-gradient(
-      135deg,
-      #159ef6,
-      #14d5ff
-    );
-  color:#02101a;
-  border-color:transparent;
-}
-
-.btn-ghost {
-  background:transparent;
-}
-
-.empty {
-  padding:34px;
-  text-align:center;
-  color:var(--muted);
-}
-
-.hidden {
-  display:none !important;
-}
-  /* =========================================================
-   LIVEAVATAR TRAINING EXPERIENCE
-========================================================= */
-
-.avatar-stage {
+/* Live Avatar */
+.avatar-stage{
   min-height:520px;
   border-bottom:1px solid var(--line);
   background:#050b12;
   position:relative;
 }
-
-.avatar-stage nexivra-live-avatar {
+.avatar-stage nexivra-live-avatar{
   display:block;
   width:100%;
   min-height:520px;
   height:520px;
 }
-
-.avatar-waiting {
+.avatar-waiting{
   min-height:520px;
   display:grid;
   place-items:center;
@@ -420,505 +138,155 @@ button {
   letter-spacing:.08em;
 }
 
-
-/* =========================================================
-   RUNTIME
-========================================================= */
-
-.runtime-layout {
-  display:grid;
-  grid-template-columns:260px 1fr;
-  gap:18px;
+/* Runtime */
+.runtime-layout{display:grid;grid-template-columns:260px 1fr;gap:18px}
+.runtime-sidebar,.runtime-main{
+  border:1px solid var(--line);border-radius:16px;background:rgba(5,16,28,.88)
 }
-
-.runtime-sidebar,
-.runtime-main {
-  border:1px solid var(--line);
-  border-radius:16px;
-  background:rgba(5,16,28,.88);
+.runtime-sidebar{padding:16px}
+.runtime-course{font-size:11px;color:var(--muted);margin-bottom:12px}
+.module-list{display:grid;gap:8px}
+.module-item{
+  width:100%;text-align:left;border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.02);color:var(--muted);
+  border-radius:11px;padding:12px;
 }
-
-.runtime-sidebar {
-  padding:16px;
+.module-item.active{border-color:var(--accent);color:var(--text);background:rgba(20,200,255,.06)}
+.module-item small{display:block;color:var(--muted);margin-top:4px}
+.runtime-main{min-height:650px;display:flex;flex-direction:column}
+.runtime-head{
+  padding:18px 20px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;gap:14px;align-items:center
 }
-
-.runtime-course {
-  font-size:11px;
-  color:var(--muted);
-  margin-bottom:12px;
+.runtime-head h3{margin:0;font-size:20px}
+.runtime-head p{margin:4px 0 0;color:var(--muted);font-size:11px}
+.stage{font-size:9px;letter-spacing:.16em;color:var(--accent);font-weight:900}
+.messages{padding:20px;display:flex;flex-direction:column;gap:12px;flex:1;overflow:auto;min-height:360px}
+.message{
+  max-width:78%;padding:13px 15px;border-radius:14px;line-height:1.55;font-size:13px;
+  border:1px solid rgba(255,255,255,.07)
 }
-
-.module-list {
-  display:grid;
-  gap:8px;
+.message.coach{align-self:flex-start;background:rgba(20,200,255,.06)}
+.message.learner{align-self:flex-end;background:rgba(255,157,0,.07)}
+.runtime-status{
+  margin:0 20px 16px;padding:12px 14px;border-radius:12px;
+  border:1px solid rgba(255,157,0,.20);background:rgba(255,157,0,.05);
+  color:#f6c56f;font-size:11px;line-height:1.5
 }
-
-.module-item {
-  width:100%;
-  text-align:left;
-  border:1px solid rgba(255,255,255,.07);
-  background:rgba(255,255,255,.02);
-  color:var(--muted);
-  border-radius:11px;
-  padding:12px;
+.composer{
+  padding:16px 20px;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:10px
 }
-
-.module-item.active {
-  border-color:var(--accent);
-  color:var(--text);
-  background:rgba(20,200,255,.06);
+.composer textarea{
+  resize:none;min-height:48px;max-height:130px;border-radius:12px;
+  background:#04111d;border:1px solid var(--line);color:var(--text);padding:12px;
 }
-
-.module-item small {
-  display:block;
-  color:var(--muted);
-  margin-top:4px;
+.toast{
+  position:fixed;right:20px;bottom:20px;z-index:20;
+  border-radius:12px;padding:13px 16px;max-width:380px;
+  background:#091824;border:1px solid var(--line);display:none
 }
-
-.runtime-main {
-  min-height:650px;
-  display:flex;
-  flex-direction:column;
+.toast.error{border-color:rgba(255,107,107,.35);color:#ffc0c0}
+.toast.success{border-color:rgba(53,211,154,.35);color:#a8f4d8}
+@media(max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .metrics{grid-template-columns:1fr}
+  .runtime-layout{grid-template-columns:1fr}
+  .content{padding:20px}
+  .hero h2{font-size:34px}
 }
-
-.runtime-head {
-  padding:18px 20px;
-  border-bottom:1px solid var(--line);
-  display:flex;
-  justify-content:space-between;
-  gap:14px;
-  align-items:center;
-}
-
-.runtime-head h3 {
-  margin:0;
-  font-size:20px;
-}
-
-.runtime-head p {
-  margin:4px 0 0;
-  color:var(--muted);
-  font-size:11px;
-}
-
-.stage {
-  font-size:9px;
-  letter-spacing:.16em;
-  color:var(--accent);
-  font-weight:900;
-}
-
-.messages {
-  padding:20px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  flex:1;
-  overflow:auto;
-  min-height:120px;
-}
-
-.message {
-  max-width:78%;
-  padding:13px 15px;
-  border-radius:14px;
-  line-height:1.55;
-  font-size:13px;
-  border:1px solid rgba(255,255,255,.07);
-}
-
-.message.coach {
-  align-self:flex-start;
-  background:rgba(20,200,255,.06);
-}
-
-.message.learner {
-  align-self:flex-end;
-  background:rgba(255,157,0,.07);
-}
-
-.runtime-status {
-  margin:0 20px 16px;
-  padding:12px 14px;
-  border-radius:12px;
-  border:1px solid rgba(255,157,0,.20);
-  background:rgba(255,157,0,.05);
-  color:#f6c56f;
-  font-size:11px;
-  line-height:1.5;
-}
-
-.toast {
-  position:fixed;
-  right:20px;
-  bottom:20px;
-  z-index:20;
-  border-radius:12px;
-  padding:13px 16px;
-  max-width:380px;
-  background:#091824;
-  border:1px solid var(--line);
-  display:none;
-}
-
-.toast.error {
-  border-color:rgba(255,107,107,.35);
-  color:#ffc0c0;
-}
-
-.toast.success {
-  border-color:rgba(53,211,154,.35);
-  color:#a8f4d8;
-}
-
-
-/* =========================================================
-   RESPONSIVE
-========================================================= */
-
-@media(max-width:900px) {
-
-  .shell {
-    grid-template-columns:1fr;
-  }
-
-  .sidebar {
-    display:none;
-  }
-
-  .metrics {
-    grid-template-columns:1fr;
-  }
-
-  .runtime-layout {
-    grid-template-columns:1fr;
-  }
-
-  .content {
-    padding:20px;
-  }
-
-  .hero h2 {
-    font-size:34px;
-  }
-
-}
-
 </style>
 </head>
-
 <body>
 
 <div class="shell">
-
-  <!-- =====================================================
-       LEARNER NAVIGATION
-  ====================================================== -->
-
   <aside class="sidebar">
-
     <div class="brand">
-
-      <div class="brand-mark">
-        N
-      </div>
-
+      <div class="brand-mark">N</div>
       <div class="brand-copy">
         <strong>NEXIVRA</strong>
         <span>LEARNING</span>
       </div>
-
     </div>
-
 
     <nav class="nav">
-
-      <button
-        class="active"
-        data-view="dashboard"
-        onclick="showDashboard()">
-        Overview
-      </button>
-
-      <button
-        data-view="training"
-        onclick="resumeMostRecent()">
-        My Training
-      </button>
-
+      <button class="active" data-view="dashboard" onclick="showDashboard()">Overview</button>
+      <button data-view="training" onclick="resumeMostRecent()">My Training</button>
     </nav>
 
-
     <div class="sidebar-footer">
-
-      <div class="status">
-        ● NEXIVRA Core Online
-      </div>
-
+      <div class="status">● NEXIVRA Core Online</div>
     </div>
-
   </aside>
 
-
-  <!-- =====================================================
-       MAIN APPLICATION
-  ====================================================== -->
-
   <main class="main">
-
-
-    <!-- TOP BAR -->
-
     <div class="topbar">
-
-      <h1 id="topbarTitle">
-        Overview
-      </h1>
-
+      <h1 id="topbarTitle">Overview</h1>
 
       <div class="user-chip">
-
-        <div
-          class="avatar"
-          id="learnerInitials">
-          NX
-        </div>
-
+        <div class="avatar" id="learnerInitials">NX</div>
         <div>
-
-          <strong id="learnerName">
-            Learner
-          </strong>
-
-          <span id="learnerOrg">
-            Organization
-          </span>
-
+          <strong id="learnerName">Learner</strong>
+          <span id="learnerOrg">Organization</span>
         </div>
-
       </div>
-
     </div>
 
-
-    <!-- ===================================================
-         LEARNER DASHBOARD
-    ==================================================== -->
-
-    <section
-      class="content"
-      id="dashboardView">
-
-
+    <section class="content" id="dashboardView">
       <div class="hero">
-
-        <div class="eyebrow">
-          CONNECTED LEARNING
-        </div>
-
-        <h2 id="welcomeTitle">
-          Welcome back.
-        </h2>
-
-        <p>
-          Your assigned learning, progress, and active
-          NEXIVRA sessions are here.
-        </p>
-
+        <div class="eyebrow">CONNECTED LEARNING</div>
+        <h2 id="welcomeTitle">Welcome back.</h2>
+        <p>Your assigned learning, progress, and active NEXIVRA sessions are here.</p>
       </div>
-
 
       <div class="metrics">
-
-        <div class="metric">
-
-          <span>
-            ASSIGNED
-          </span>
-
-          <strong id="metricAssigned">
-            0
-          </strong>
-
-        </div>
-
-
-        <div class="metric">
-
-          <span>
-            ACTIVE
-          </span>
-
-          <strong id="metricActive">
-            0
-          </strong>
-
-        </div>
-
-
-        <div class="metric">
-
-          <span>
-            COMPLETED
-          </span>
-
-          <strong id="metricCompleted">
-            0
-          </strong>
-
-        </div>
-
+        <div class="metric"><span>ASSIGNED</span><strong id="metricAssigned">0</strong></div>
+        <div class="metric"><span>ACTIVE</span><strong id="metricActive">0</strong></div>
+        <div class="metric"><span>COMPLETED</span><strong id="metricCompleted">0</strong></div>
       </div>
-
 
       <div class="card">
-
         <div class="card-head">
-
-          <h3>
-            My Training
-          </h3>
-
-          <p>
-            Start a new assignment or continue
-            where you left off.
-          </p>
-
+          <h3>My Training</h3>
+          <p>Start a new assignment or continue where you left off.</p>
         </div>
-
-
         <div class="card-body">
-
-          <div
-            id="assignmentsContainer"
-            class="assignment-grid">
-
-            <div class="empty">
-              Connecting to NEXIVRA...
-            </div>
-
+          <div id="assignmentsContainer" class="assignment-grid">
+            <div class="empty">Connecting to NEXIVRA...</div>
           </div>
-
         </div>
-
       </div>
-
     </section>
 
-
-    <!-- ===================================================
-         LIVE TRAINING RUNTIME
-    ==================================================== -->
-
-    <section
-      class="content hidden"
-      id="runtimeView">
-
-
+    <section class="content hidden" id="runtimeView">
       <div class="runtime-layout">
-
-
-        <!-- MODULE NAVIGATION -->
-
         <aside class="runtime-sidebar">
-
-          <button
-            class="btn btn-ghost"
-            style="
-              width:100%;
-              margin-bottom:14px;
-            "
-            onclick="pauseAndReturn()">
-            ← My Training
-          </button>
-
-
-          <div
-            class="runtime-course"
-            id="runtimeCourseTitle">
-            Course
-          </div>
-
-
-          <div
-            class="module-list"
-            id="moduleList">
-          </div>
-
+          <button class="btn btn-ghost" style="width:100%;margin-bottom:14px" onclick="pauseAndReturn()">← My Training</button>
+          <div class="runtime-course" id="runtimeCourseTitle">Course</div>
+          <div class="module-list" id="moduleList"></div>
         </aside>
 
-
-        <!-- LIVE INSTRUCTOR -->
-
         <div class="runtime-main">
-
-
           <div class="runtime-head">
-
             <div>
-
-              <div
-                class="stage"
-                id="runtimeStage">
-                TEACHING
-              </div>
-
-              <h3 id="runtimeModuleTitle">
-                Module
-              </h3>
-
-              <p id="runtimeModuleDescription">
-              </p>
-
+              <div class="stage" id="runtimeStage">TEACHING</div>
+              <h3 id="runtimeModuleTitle">Module</h3>
+              <p id="runtimeModuleDescription"></p>
             </div>
 
-
-            <button
-              class="btn"
-              onclick="requestRuntimeContext()">
-              Runtime Status
-            </button>
-
+            <button class="btn" onclick="requestRuntimeContext()">Runtime Status</button>
           </div>
 
-
-          <!-- LIVEAVATAR -->
-
-          <div
-            class="avatar-stage"
-            id="avatarStage">
-
-
-            <div
-              class="avatar-waiting"
-              id="avatarWaiting">
-              Preparing NEXIVRA Live Instructor...
+          <div class="avatar-stage" id="avatarStage">
+            <div class="avatar-waiting" id="avatarWaiting">
+              NEXIVRA Live Instructor opens below the learner dashboard.
+              Use the instructor controls to begin the live camera and voice session.
             </div>
-
-
-            <nexivra-live-avatar
-              id="liveAvatar"
-              style="display:none;">
-            </nexivra-live-avatar>
-
-
           </div>
 
-
-          <!-- RUNTIME STATUS -->
-
-          <div
-            class="runtime-status"
-            id="runtimeStatus">
-
-            Learner runtime connected.
-            Preparing LiveAvatar session and
-            approved learning context.
-
+          <div class="runtime-status" id="runtimeStatus">
+            Learner runtime connected. Preparing LiveAvatar session and approved learning context.
           </div>
-
-
-          <!-- SESSION EVENT HISTORY -->
 
           <div
             class="messages"
@@ -927,1504 +295,289 @@ button {
               min-height:120px;
               max-height:190px;
               border-top:1px solid var(--line);
-            ">
-          </div>
-
-
+            "
+          ></div>
         </div>
-
       </div>
-
     </section>
-
   </main>
-
 </div>
 
+<div class="toast" id="toast"></div>
 
-<div
-  class="toast"
-  id="toast">
-</div>
 <script>
-
 const state = {
-
   dashboard: null,
-
   assignments: [],
-
   runtime: null,
-
   activeAssignmentId: null,
-
   activeSessionId: null,
-
-  runtimeContext: null,
-
-  avatarToken: null,
-
-  avatarEventsBound: false
-
+  runtimeContext: null
 };
 
-
-/* =========================================================
-   WIX COMMUNICATION
-========================================================= */
-
-function sendToWix(
-  type,
-  payload = {}
-) {
-
-  window.parent.postMessage(
-    {
-      source:
-        'NEXIVRA_LEARNER',
-
-      type,
-
-      payload
-    },
-    '*'
-  );
-
+function sendToWix(type,payload={}) {
+  window.parent.postMessage({
+    source:'NEXIVRA_LEARNER',
+    type,
+    payload
+  },'*');
 }
 
+window.addEventListener('message',event=>{
+  const msg=event.data;
+  if(!msg || msg.source!=='NEXIVRA_WIX') return;
 
-/* =========================================================
-   WIX MESSAGE LISTENER
-========================================================= */
+  const {type,payload}=msg;
 
-window.addEventListener(
-  'message',
-  event => {
+  switch(type){
+    case 'DASHBOARD_DATA':
+      if(payload?.ok) renderDashboard(payload);
+      else showError(payload?.reason || 'Unable to load dashboard.');
+      break;
 
-    const message =
-      event.data;
+    case 'RUNTIME_DATA':
+      if(payload?.ok) openRuntime(payload);
+      break;
 
+    case 'RUNTIME_CONTEXT':
+      handleRuntimeContext(payload);
+      break;
 
-    if (
-      !message ||
-      message.source !==
-        'NEXIVRA_WIX'
-    ) {
-      return;
-    }
-
-
-    const {
-      type,
-      payload
-    } = message;
-
-
-    switch (type) {
-
-
-      case 'DASHBOARD_DATA':
-
-        if (payload?.ok) {
-
-          renderDashboard(
-            payload
+    case 'EXTERNAL_AVATAR_ACTIVE':
+      if(payload?.ok){
+        const waiting=
+          document.getElementById(
+            'avatarWaiting'
           );
 
-        } else {
-
-          showError(
-            payload?.reason ||
-            'Unable to load dashboard.'
-          );
-
+        if(waiting){
+          waiting.textContent=
+            'NEXIVRA Live Instructor is ready below. Click Start Session on the instructor when you are ready.';
         }
+      }
+      break;
 
-        break;
 
+    case 'SESSION_SAVED':
+      if(payload?.ok && state.runtime){
+        state.runtime.session=payload.session;
+        renderMessages();
+      }
+      break;
 
-      case 'RUNTIME_DATA':
-
-        if (payload?.ok) {
-
-          openRuntime(
-            payload
-          );
-
+    case 'MODULE_CHANGED':
+      if(payload?.ok){
+        if(state.runtime){
+          state.runtime.module=payload.module;
+          state.runtime.session=payload.session;
+          state.runtime.progress=payload.progress;
+          state.runtime.knowledgeSources=payload.knowledgeSources || [];
+          renderRuntime();
+          requestRuntimeContext();
         }
+      }
+      break;
 
-        break;
+    case 'MODULE_COMPLETED':
+      handleModuleCompleted(payload);
+      break;
 
+    case 'SESSION_PAUSED':
+      showDashboard();
+      break;
 
-      case 'RUNTIME_CONTEXT':
-
-        handleRuntimeContext(
-          payload
-        );
-
-        break;
-
-
-      case 'AVATAR_TOKEN_DATA':
-
-        handleAvatarToken(
-          payload
-        );
-
-        break;
-
-
-      case 'SESSION_SAVED':
-
-        if (
-          payload?.ok &&
-          state.runtime
-        ) {
-
-          state.runtime.session =
-            payload.session;
-
-
-          renderMessages();
-
-        }
-
-        break;
-
-
-      case 'MODULE_CHANGED':
-
-        if (payload?.ok) {
-
-          if (state.runtime) {
-
-            state.runtime.module =
-              payload.module;
-
-
-            state.runtime.session =
-              payload.session;
-
-
-            state.runtime.progress =
-              payload.progress;
-
-
-            state.runtime.knowledgeSources =
-              payload.knowledgeSources ||
-              [];
-
-
-            renderRuntime();
-
-
-            requestRuntimeContext();
-
-
-            const avatar =
-              document.getElementById(
-                'liveAvatar'
-              );
-
-
-            if (avatar) {
-
-              avatar.setAttribute(
-                'lesson-id',
-                state.runtime
-                  .module?.id ||
-                ''
-              );
-
-            }
-
-          }
-
-        }
-
-        break;
-
-
-      case 'MODULE_COMPLETED':
-
-        handleModuleCompleted(
-          payload
-        );
-
-        break;
-
-
-      case 'SESSION_PAUSED':
-
-        showDashboard();
-
-        break;
-
-
-      case 'ACTION_ERROR':
-
-        showError(
-          payload?.message ||
-          'NEXIVRA could not complete that request.'
-        );
-
-        break;
-
-    }
-
+    case 'ACTION_ERROR':
+      showError(payload?.message || 'NEXIVRA could not complete that request.');
+      break;
   }
-);
+});
 
+function renderDashboard(data){
+  state.dashboard=data;
+  state.assignments=data.assignments || [];
 
-/* =========================================================
-   LEARNER DASHBOARD
-========================================================= */
+  const learner=data.learner || {};
+  const name=[learner.firstName,learner.lastName].filter(Boolean).join(' ') || 'Learner';
+  const initials=[learner.firstName?.[0],learner.lastName?.[0]].filter(Boolean).join('').toUpperCase() || 'NX';
 
-function renderDashboard(
-  data
-) {
-
-  state.dashboard =
-    data;
-
-
-  state.assignments =
-    data.assignments ||
-    [];
-
-
-  const learner =
-    data.learner ||
-    {};
-
-
-  const name =
-    [
-      learner.firstName,
-      learner.lastName
-    ]
-      .filter(Boolean)
-      .join(' ') ||
-    'Learner';
-
-
-  const initials =
-    [
-      learner.firstName?.[0],
-      learner.lastName?.[0]
-    ]
-      .filter(Boolean)
-      .join('')
-      .toUpperCase() ||
-    'NX';
-
-
-  setText(
-    'learnerName',
-    name
-  );
-
-
-  setText(
-    'learnerInitials',
-    initials
-  );
-
-
-  setText(
-    'learnerOrg',
-    learner.organizationId ||
-    'Organization'
-  );
-
-
-  setText(
-    'welcomeTitle',
-    learner.firstName
-      ? `Welcome back, ${learner.firstName}.`
-      : 'Welcome back.'
-  );
-
-
-  setText(
-    'metricAssigned',
-    data.metrics?.assigned ??
-    0
-  );
-
-
-  setText(
-    'metricActive',
-    data.metrics?.active ??
-    0
-  );
-
-
-  setText(
-    'metricCompleted',
-    data.metrics?.completed ??
-    0
-  );
-
+  setText('learnerName',name);
+  setText('learnerInitials',initials);
+  setText('learnerOrg',learner.organizationId || 'Organization');
+  setText('welcomeTitle',learner.firstName ? `Welcome back, ${learner.firstName}.` : 'Welcome back.');
+  setText('metricAssigned',data.metrics?.assigned ?? 0);
+  setText('metricActive',data.metrics?.active ?? 0);
+  setText('metricCompleted',data.metrics?.completed ?? 0);
 
   renderAssignments();
-
 }
 
-
-/* =========================================================
-   ASSIGNMENTS
-========================================================= */
-
-function renderAssignments() {
-
-  const container =
-    document.getElementById(
-      'assignmentsContainer'
-    );
-
-
-  if (!container) {
+function renderAssignments(){
+  const el=document.getElementById('assignmentsContainer');
+  if(!state.assignments.length){
+    el.innerHTML='<div class="empty">No training has been assigned yet.</div>';
     return;
   }
 
-
-  if (
-    !state.assignments.length
-  ) {
-
-    container.innerHTML = `
-      <div class="empty">
-        No training has been assigned yet.
+  el.innerHTML=state.assignments.map(a=>`
+    <div class="assignment">
+      <div class="assignment-top">
+        <div>
+          <h4>${escapeHTML(a.courseTitle)}</h4>
+          <p>${escapeHTML(a.subjectName || a.description || '')}</p>
+        </div>
+        <span class="badge">${escapeHTML(formatStatus(a.status))}</span>
       </div>
-    `;
 
-    return;
-  }
+      <div class="progress-wrap">
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-bottom:6px">
+          <span>${escapeHTML(a.currentModuleTitle || 'Not started')}</span>
+          <span>${Number(a.progressPercent || 0)}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar" style="width:${Math.max(0,Math.min(100,Number(a.progressPercent || 0)))}%"></div>
+        </div>
+      </div>
 
-
-  container.innerHTML =
-    state.assignments
-      .map(
-        assignment => `
-
-          <div class="assignment">
-
-            <div class="assignment-top">
-
-              <div>
-
-                <h4>
-                  ${escapeHTML(
-                    assignment.courseTitle
-                  )}
-                </h4>
-
-                <p>
-                  ${escapeHTML(
-                    assignment.subjectName ||
-                    assignment.description ||
-                    ''
-                  )}
-                </p>
-
-              </div>
-
-
-              <span class="badge">
-                ${escapeHTML(
-                  formatStatus(
-                    assignment.status
-                  )
-                )}
-              </span>
-
-            </div>
-
-
-            <div class="progress-wrap">
-
-              <div
-                style="
-                  display:flex;
-                  justify-content:space-between;
-                  color:var(--muted);
-                  font-size:10px;
-                  margin-bottom:6px;
-                "
-              >
-
-                <span>
-                  ${escapeHTML(
-                    assignment
-                      .currentModuleTitle ||
-                    'Not started'
-                  )}
-                </span>
-
-                <span>
-                  ${Number(
-                    assignment
-                      .progressPercent ||
-                    0
-                  )}%
-                </span>
-
-              </div>
-
-
-              <div class="progress-track">
-
-                <div
-                  class="progress-bar"
-                  style="
-                    width:${
-                      Math.max(
-                        0,
-                        Math.min(
-                          100,
-                          Number(
-                            assignment
-                              .progressPercent ||
-                            0
-                          )
-                        )
-                      )
-                    }%;
-                  "
-                >
-                </div>
-
-              </div>
-
-            </div>
-
-
-            <div class="assignment-actions">
-
-              <span
-                style="
-                  color:var(--muted);
-                  font-size:10px;
-                "
-              >
-
-                ${
-                  assignment.lastActivityDate
-                    ? `Last activity ${
-                        formatDate(
-                          assignment
-                            .lastActivityDate
-                        )
-                      }`
-                    : 'Ready when you are'
-                }
-
-              </span>
-
-
-              <button
-                class="btn btn-primary"
-                onclick="startAssignment(
-                  '${escapeAttribute(
-                    assignment.id
-                  )}'
-                )"
-              >
-
-                ${
-                  assignment.status ===
-                    'in_progress'
-                    ? 'Resume Training'
-                    : assignment.status ===
-                        'completed'
-                      ? 'Review'
-                      : 'Start Training'
-                }
-
-              </button>
-
-            </div>
-
-          </div>
-
-        `
-      )
-      .join('');
-
+      <div class="assignment-actions">
+        <span style="color:var(--muted);font-size:10px">
+          ${a.lastActivityDate ? `Last activity ${formatDate(a.lastActivityDate)}` : 'Ready when you are'}
+        </span>
+        <button class="btn btn-primary" onclick="startAssignment('${escapeAttribute(a.id)}')">
+          ${a.status==='in_progress' ? 'Resume Training' : a.status==='completed' ? 'Review' : 'Start Training'}
+        </button>
+      </div>
+    </div>
+  `).join('');
 }
 
-
-/* =========================================================
-   START / RESUME ASSIGNMENT
-========================================================= */
-
-function startAssignment(
-  assignmentId
-) {
-
-  if (!assignmentId) {
-    return;
-  }
-
-
-  state.activeAssignmentId =
-    assignmentId;
-
-
-  sendToWix(
-    'START_ASSIGNMENT',
-    {
-      assignmentId
-    }
-  );
-
+function startAssignment(id){
+  state.activeAssignmentId=id;
+  sendToWix('START_ASSIGNMENT',{assignmentId:id});
 }
 
-
-/* =========================================================
-   OPEN TRAINING RUNTIME
-========================================================= */
-
-function openRuntime(
-  data
-) {
-
-  state.runtime =
-    data;
-
-
-  state.activeSessionId =
-    data.session?.id ||
-    null;
-
-
-  state.activeAssignmentId =
-    data.assignment?.id ||
-    state.activeAssignmentId;
-
-
+function openRuntime(data){
+  state.runtime=data;
+  state.activeSessionId=data.session?.id || null;
+  state.activeAssignmentId=data.assignment?.id || state.activeAssignmentId;
   renderRuntime();
-
 
   requestRuntimeContext();
 
-
-  requestAvatarToken();
-
-
-  const dashboardView =
-    document.getElementById(
-      'dashboardView'
-    );
-
-
-  const runtimeView =
-    document.getElementById(
-      'runtimeView'
-    );
-
-
-  if (dashboardView) {
-
-    dashboardView
-      .classList
-      .add(
-        'hidden'
-      );
-
-  }
-
-
-  if (runtimeView) {
-
-    runtimeView
-      .classList
-      .remove(
-        'hidden'
-      );
-
-  }
-
-
-  setText(
-    'topbarTitle',
-    'Training'
-  );
-
-
-  document
-    .querySelectorAll(
-      '.nav button'
-    )
-    .forEach(
-      button => {
-
-        button.classList.toggle(
-          'active',
-          button.dataset.view ===
-            'training'
-        );
-
-      }
-    );
-
+  document.getElementById('dashboardView').classList.add('hidden');
+  document.getElementById('runtimeView').classList.remove('hidden');
+  setText('topbarTitle','Training');
 }
 
+function renderRuntime(){
+  if(!state.runtime) return;
 
-/* =========================================================
-   RENDER RUNTIME
-========================================================= */
-
-function renderRuntime() {
-
-  if (!state.runtime) {
-    return;
-  }
-
-
-  setText(
-    'runtimeCourseTitle',
-    state.runtime
-      .course?.title ||
-    'Course'
-  );
-
-
-  setText(
-    'runtimeModuleTitle',
-    state.runtime
-      .module?.title ||
-    'Module'
-  );
-
-
-  setText(
-    'runtimeModuleDescription',
-    state.runtime
-      .module?.description ||
-    ''
-  );
-
-
-  setText(
-    'runtimeStage',
-    (
-      state.runtime
-        .session?.state?.stage ||
-      'teaching'
-    ).toUpperCase()
-  );
-
+  setText('runtimeCourseTitle',state.runtime.course?.title || 'Course');
+  setText('runtimeModuleTitle',state.runtime.module?.title || 'Module');
+  setText('runtimeModuleDescription',state.runtime.module?.description || '');
+  setText('runtimeStage',(state.runtime.session?.state?.stage || 'teaching').toUpperCase());
 
   renderModuleList();
-
   renderMessages();
 
+  const sourceCount=(state.runtime.knowledgeSources || []).length;
+  const stage=state.runtime.session?.state?.stage || 'teaching';
 
-  const sourceCount =
-    (
-      state.runtime
-        .knowledgeSources ||
-      []
-    ).length;
-
-
-  const stage =
-    state.runtime
-      .session?.state?.stage ||
-    'teaching';
-
-
-  const status =
-    document.getElementById(
-      'runtimeStatus'
-    );
-
-
-  if (status) {
-
-    status.textContent =
-      `${sourceCount} approved knowledge source${
-        sourceCount === 1
-          ? ''
-          : 's'
-      } connected to this module. Runtime stage: ${stage}. Preparing NEXIVRA Live Instructor.`;
-
-  }
-
+  document.getElementById('runtimeStatus').textContent=
+    `${sourceCount} approved knowledge source${sourceCount===1?'':'s'} connected to this module. Runtime stage: ${stage}. AI instructor connection is the final handoff for Package 2.`;
 }
 
+function renderModuleList(){
+  const el=document.getElementById('moduleList');
+  const modules=state.runtime?.modules || [];
+  const active=state.runtime?.module?.id;
 
-/* =========================================================
-   MODULE NAVIGATION
-========================================================= */
-
-function renderModuleList() {
-
-  const container =
-    document.getElementById(
-      'moduleList'
-    );
-
-
-  if (!container) {
-    return;
-  }
-
-
-  const modules =
-    state.runtime?.modules ||
-    [];
-
-
-  const activeModuleId =
-    state.runtime?.module?.id;
-
-
-  container.innerHTML =
-    modules
-      .map(
-        (
-          module,
-          index
-        ) => `
-
-          <button
-            class="
-              module-item
-              ${
-                module.id ===
-                  activeModuleId
-                  ? 'active'
-                  : ''
-              }
-            "
-            onclick="
-              selectModule(
-                '${escapeAttribute(
-                  module.id
-                )}'
-              )
-            "
-          >
-
-            <strong>
-              ${escapeHTML(
-                module.title
-              )}
-            </strong>
-
-            <small>
-              Module ${index + 1}
-            </small>
-
-          </button>
-
-        `
-      )
-      .join('');
-
+  el.innerHTML=modules.map((m,i)=>`
+    <button class="module-item ${m.id===active?'active':''}" onclick="selectModule('${escapeAttribute(m.id)}')">
+      <strong>${escapeHTML(m.title)}</strong>
+      <small>Module ${i+1}</small>
+    </button>
+  `).join('');
 }
 
-
-function selectModule(
-  moduleId
-) {
-
-  if (
-    !state.activeSessionId ||
-    !moduleId
-  ) {
-    return;
-  }
-
-
-  sendToWix(
-    'MOVE_TO_MODULE',
-    {
-      sessionId:
-        state.activeSessionId,
-
-      moduleId
-    }
-  );
-
+function selectModule(moduleId){
+  if(!state.activeSessionId) return;
+  sendToWix('MOVE_TO_MODULE',{
+    sessionId:state.activeSessionId,
+    moduleId
+  });
 }
 
+function renderMessages(){
+  const el=document.getElementById('messages');
+  const history=state.runtime?.session?.state?.messageHistory || [];
 
-/* =========================================================
-   SESSION HISTORY
-========================================================= */
-
-function renderMessages() {
-
-  const container =
-    document.getElementById(
-      'messages'
-    );
-
-
-  if (!container) {
-    return;
-  }
-
-
-  const history =
-    state.runtime
-      ?.session
-      ?.state
-      ?.messageHistory ||
-    [];
-
-
-  if (!history.length) {
-
-    container.innerHTML = `
+  if(!history.length){
+    el.innerHTML=`
       <div class="message coach">
-        NEXIVRA runtime is ready.
-        Live session events and typed learner
-        turns will be preserved here.
+        NEXIVRA runtime is ready. Live session events and typed learner turns will be preserved here.
       </div>
     `;
-
     return;
   }
 
+  el.innerHTML=history.slice(-12).map(m=>`
+    <div class="message ${m.role==='learner'?'learner':'coach'}">
+      ${escapeHTML(m.text || '')}
+    </div>
+  `).join('');
 
-  container.innerHTML =
-    history
-      .slice(-12)
-      .map(
-        message => `
-
-          <div
-            class="
-              message
-              ${
-                message.role ===
-                  'learner'
-                  ? 'learner'
-                  : 'coach'
-              }
-            "
-          >
-
-            ${escapeHTML(
-              message.text ||
-              ''
-            )}
-
-          </div>
-
-        `
-      )
-      .join('');
-
-
-  container.scrollTop =
-    container.scrollHeight;
-
-}
-  /* =========================================================
-   RUNTIME CONTEXT
-========================================================= */
-
-function requestRuntimeContext() {
-
-  if (!state.activeSessionId) {
-    return;
-  }
-
-
-  sendToWix(
-    'GET_RUNTIME_CONTEXT',
-    {
-      sessionId:
-        state.activeSessionId
-    }
-  );
-
+  el.scrollTop=el.scrollHeight;
 }
 
+function requestRuntimeContext(){
+  if(!state.activeSessionId) return;
+  sendToWix('GET_RUNTIME_CONTEXT',{sessionId:state.activeSessionId});
+}
 
-function handleRuntimeContext(
-  payload
-) {
+function handleRuntimeContext(payload){
+  if(!payload?.ok) return;
 
-  if (!payload?.ok) {
-    return;
-  }
-
-
-  state.runtimeContext =
+  state.runtimeContext=
     payload.runtime ||
     null;
 
-
-  if (
-    state.runtimeContext &&
-    state.activeSessionId
-  ) {
-
-    state.runtimeContext.session = {
-      ...(
-        state.runtimeContext.session ||
-        {}
-      ),
-
-      id:
-        state.activeSessionId
-    };
-
-  }
-
-
-  attachRuntimeContextToAvatar();
-
-
-  const sources =
-    state.runtimeContext
-      ?.knowledgeSources ||
+  const sources=
+    state.runtimeContext?.knowledgeSources ||
     [];
 
+  document.getElementById('runtimeStatus').textContent=
+    `${sources.length} approved knowledge source${sources.length===1?'':'s'} loaded. NEXIVRA Live Instructor is connected through the secure Wix training element.`;
 
-  const status =
-    document.getElementById(
-      'runtimeStatus'
-    );
-
-
-  if (status) {
-
-    status.textContent =
-      `${sources.length} approved knowledge source${
-        sources.length === 1
-          ? ''
-          : 's'
-      } loaded. NEXIVRA Live Instructor context is ready.`;
-
-  }
-
-
-  if (!payload.aiConnected) {
-
-    showToast(
-      'Runtime context loaded. Waiting for LiveAvatar session.',
-      'success'
-    );
-
-  }
-
+  showToast(
+    'Learning context loaded. Use the Live Instructor below to begin.',
+    'success'
+  );
 }
 
 
-/* =========================================================
-   LIVEAVATAR SESSION TOKEN
-========================================================= */
-
-function requestAvatarToken() {
-
-  if (!state.activeSessionId) {
-    return;
-  }
-
-
-  sendToWix(
-    'GET_AVATAR_TOKEN',
-    {
-      sessionId:
-        state.activeSessionId
-    }
-  );
-
-}
-
-
-function handleAvatarToken(
-  payload
-) {
-
-  if (!payload?.ok) {
-
-    showError(
-      payload?.message ||
-      'NEXIVRA could not start the Live Instructor.'
-    );
-
-    return;
-  }
-
-
-  state.avatarToken =
-    payload.sessionToken ||
-    '';
-
-
-  const avatar =
-    document.getElementById(
-      'liveAvatar'
-    );
-
-
-  const waiting =
-    document.getElementById(
-      'avatarWaiting'
-    );
-
-
-  if (
-    !avatar ||
-    !state.avatarToken
-  ) {
-
-    showError(
-      'LiveAvatar session token was not available.'
-    );
-
-    return;
-  }
-
-
-  bindAvatarEvents();
-
-
-  /*
-   * Supply the LiveAvatar token.
-   * The custom element begins connecting when this
-   * attribute becomes available.
-   */
-
-  avatar.setAttribute(
-    'session-token',
-    state.avatarToken
-  );
-
-
-  avatar.setAttribute(
-    'runtime-session-id',
-    state.activeSessionId ||
-    ''
-  );
-
-
-  if (
-    state.runtime
-      ?.course
-      ?.id
-  ) {
-
-    avatar.setAttribute(
-      'subject-id',
-      state.runtime.course.id
-    );
-
-  }
-
-
-  if (
-    state.runtime
-      ?.module
-      ?.id
-  ) {
-
-    avatar.setAttribute(
-      'lesson-id',
-      state.runtime.module.id
-    );
-
-  }
-
-
-  attachRuntimeContextToAvatar();
-
-
-  avatar.style.display =
-    'block';
-
-
-  if (waiting) {
-
-    waiting.style.display =
-      'none';
-
-  }
-
-}
-
-
-/* =========================================================
-   ATTACH NEXIVRA LEARNING CONTEXT TO LIVEAVATAR
-========================================================= */
-
-function attachRuntimeContextToAvatar() {
-
-  const avatar =
-    document.getElementById(
-      'liveAvatar'
-    );
-
-
-  if (
-    !avatar ||
-    !state.runtimeContext ||
-    typeof avatar.setRuntimeContext !==
-      'function'
-  ) {
-    return;
-  }
-
-
-  avatar.setRuntimeContext(
-    state.runtimeContext
-  );
-
-}
-
-
-/* =========================================================
-   LIVEAVATAR EVENT BRIDGE
-========================================================= */
-
-function bindAvatarEvents() {
-
-  if (
-    state.avatarEventsBound
-  ) {
-    return;
-  }
-
-
-  const avatar =
-    document.getElementById(
-      'liveAvatar'
-    );
-
-
-  if (!avatar) {
-    return;
-  }
-
-
-  /*
-   * Typed learner message.
-   *
-   * Voice remains inside the LiveAvatar realtime
-   * conversation. Typed turns are persisted here.
-   */
-
-  avatar.addEventListener(
-    'nexivra-learner-message',
-    event => {
-
-      const text =
-        event.detail?.text ||
-        '';
-
-
-      if (
-        !text ||
-        !state.activeSessionId
-      ) {
-        return;
-      }
-
-
-      sendToWix(
-        'SAVE_RUNTIME_TURN',
-        {
-          sessionId:
-            state.activeSessionId,
-
-          learnerMessage:
-            text
-        }
-      );
-
-    }
-  );
-
-
-  /*
-   * Subject-neutral visual/audio observation.
-   */
-
-  avatar.addEventListener(
-    'nexivra-observation',
-    event => {
-
-      if (
-        !state.activeSessionId
-      ) {
-        return;
-      }
-
-
-      sendToWix(
-        'SAVE_RUNTIME_TURN',
-        {
-          sessionId:
-            state.activeSessionId,
-
-          runtimePatch: {
-            lastObservation:
-              event.detail ||
-              null
-          }
-        }
-      );
-
-    }
-  );
-
-
-  /*
-   * LiveAvatar learner session has started.
-   */
-
-  avatar.addEventListener(
-    'nexivra-session-started',
-    () => {
-
-      if (
-        !state.activeSessionId
-      ) {
-        return;
-      }
-
-
-      sendToWix(
-        'SAVE_RUNTIME_TURN',
-        {
-          sessionId:
-            state.activeSessionId,
-
-          runtimePatch: {
-
-            liveAvatarStarted:
-              true,
-
-            liveAvatarStartedAt:
-              new Date()
-                .toISOString()
-
-          }
-        }
-      );
-
-    }
-  );
-
-
-  /*
-   * LiveAvatar learner session has ended.
-   */
-
-  avatar.addEventListener(
-    'nexivra-session-ended',
-    event => {
-
-      if (
-        !state.activeSessionId
-      ) {
-        return;
-      }
-
-
-      sendToWix(
-        'SAVE_RUNTIME_TURN',
-        {
-          sessionId:
-            state.activeSessionId,
-
-          runtimePatch: {
-
-            liveAvatarEndedAt:
-              new Date()
-                .toISOString(),
-
-            finalObservationSummary:
-              event.detail ||
-              null
-
-          }
-        }
-      );
-
-    }
-  );
-
-
-  /*
-   * Runtime context successfully reached
-   * the LiveAvatar Core.
-   */
-
-  avatar.addEventListener(
-    'nexivra-runtime-context-injected',
-    event => {
-
-      console.log(
-        'NEXIVRA learner context injected:',
-        event.detail
-      );
-
-
-      const status =
-        document.getElementById(
-          'runtimeStatus'
-        );
-
-
-      if (status) {
-
-        status.textContent =
-          'NEXIVRA Live Instructor is connected to the active learner, course, module, and approved knowledge context.';
-
-      }
-
-    }
-  );
-
-
-  state.avatarEventsBound =
-    true;
-
-}
-
-
-/* =========================================================
-   MODULE COMPLETION
-========================================================= */
-
-function handleModuleCompleted(
-  payload
-) {
-
-  if (!payload?.ok) {
-    return;
-  }
-
-
-  if (
-    payload.completedCourse
-  ) {
-
-    showToast(
-      'Course complete. Great work.',
-      'success'
-    );
-
-
-    sendToWix(
-      'GET_DASHBOARD'
-    );
-
-
+function handleModuleCompleted(payload){
+  if(!payload?.ok) return;
+
+  if(payload.completedCourse){
+    showToast('Course complete. Great work.','success');
+    sendToWix('GET_DASHBOARD');
     showDashboard();
-
-
     return;
   }
 
-
-  if (
-    state.runtime &&
-    payload.nextModule
-  ) {
-
-    state.runtime.module =
-      payload.nextModule;
-
-
-    state.runtime.progress = {
-
-      ...(
-        state.runtime.progress ||
-        {}
-      ),
-
-      progressPercent:
-        payload.progressPercent
-
+  if(state.runtime && payload.nextModule){
+    state.runtime.module=payload.nextModule;
+    state.runtime.progress={
+      ...(state.runtime.progress || {}),
+      progressPercent:payload.progressPercent
     };
-
-
-    state.runtime.knowledgeSources =
-      payload.knowledgeSources ||
-      [];
-
-
+    state.runtime.knowledgeSources=payload.knowledgeSources || [];
     renderRuntime();
-
-
-    requestRuntimeContext();
-
-
-    const avatar =
-      document.getElementById(
-        'liveAvatar'
-      );
-
-
-    if (avatar) {
-
-      avatar.setAttribute(
-        'lesson-id',
-        payload.nextModule.id ||
-        ''
-      );
-
-    }
-
   }
-
 }
 
-
-/* =========================================================
-   PAUSE / RETURN TO DASHBOARD
-========================================================= */
-
-async function pauseAndReturn() {
-
-  const avatar =
-    document.getElementById(
-      'liveAvatar'
-    );
-
-
-  /*
-   * End the local LiveAvatar learner interaction
-   * before pausing the NEXIVRA runtime session.
-   */
-
-  if (
-    avatar?.sessionActive &&
-    typeof avatar.endSession ===
-      'function'
-  ) {
-
-    try {
-
-      await avatar.endSession();
-
-    } catch (error) {
-
-      console.warn(
-        'NEXIVRA avatar end warning:',
-        error
-      );
-
-    }
-
-  }
-
-
-  if (
-    state.activeSessionId
-  ) {
-
+async function pauseAndReturn(){
+  if(state.activeSessionId){
     sendToWix(
       'PAUSE_SESSION',
       {
@@ -2432,332 +585,78 @@ async function pauseAndReturn() {
           state.activeSessionId
       }
     );
-
-  } else {
-
+  }else{
     showDashboard();
-
   }
-
 }
 
+function showDashboard(){
+  document.getElementById('runtimeView').classList.add('hidden');
+  document.getElementById('dashboardView').classList.remove('hidden');
+  setText('topbarTitle','Overview');
 
-/* =========================================================
-   RETURN TO LEARNER DASHBOARD
-========================================================= */
-
-function showDashboard() {
-
-  const runtimeView =
-    document.getElementById(
-      'runtimeView'
-    );
-
-
-  const dashboardView =
-    document.getElementById(
-      'dashboardView'
-    );
-
-
-  if (runtimeView) {
-
-    runtimeView
-      .classList
-      .add(
-        'hidden'
-      );
-
-  }
-
-
-  if (dashboardView) {
-
-    dashboardView
-      .classList
-      .remove(
-        'hidden'
-      );
-
-  }
-
-
-  setText(
-    'topbarTitle',
-    'Overview'
-  );
-
-
-  document
-    .querySelectorAll(
-      '.nav button'
-    )
-    .forEach(
-      button => {
-
-        button.classList.toggle(
-          'active',
-          button.dataset.view ===
-            'dashboard'
-        );
-
-      }
-    );
-
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view==='dashboard'));
 }
 
-
-/* =========================================================
-   RESUME MOST RECENT TRAINING
-========================================================= */
-
-function resumeMostRecent() {
-
-  const active =
-    state.assignments.find(
-      assignment =>
-        assignment.status ===
-        'in_progress'
-    ) ||
-    state.assignments.find(
-      assignment =>
-        assignment.status !==
-        'completed'
-    );
-
-
-  if (active) {
-
-    startAssignment(
-      active.id
-    );
-
-    return;
-  }
-
-
-  showToast(
-    'No active training assignment is available.',
-    'error'
-  );
-
-}
-  /* =========================================================
-   UI UTILITIES
-========================================================= */
-
-function setText(
-  id,
-  value
-) {
-
-  const element =
-    document.getElementById(
-      id
-    );
-
-
-  if (element) {
-
-    element.textContent =
-      String(
-        value ??
-        ''
-      );
-
-  }
-
+function resumeMostRecent(){
+  const active=state.assignments.find(a=>a.status==='in_progress') || state.assignments.find(a=>a.status!=='completed');
+  if(active) startAssignment(active.id);
+  else showToast('No active training assignment is available.','error');
 }
 
-
-/* =========================================================
-   TOASTS / ERRORS
-========================================================= */
-
-function showToast(
-  message,
-  type = 'success'
-) {
-
-  const element =
-    document.getElementById(
-      'toast'
-    );
-
-
-  if (!element) {
-    return;
-  }
-
-
-  element.textContent =
-    message;
-
-
-  element.className =
-    `toast ${type}`;
-
-
-  element.style.display =
-    'block';
-
-
-  clearTimeout(
-    window.__nexivraToastTimer
-  );
-
-
-  window.__nexivraToastTimer =
-    setTimeout(
-      () => {
-
-        element.style.display =
-          'none';
-
-      },
-      4500
-    );
-
+function setText(id,value){
+  const el=document.getElementById(id);
+  if(el) el.textContent=String(value ?? '');
 }
 
-
-function showError(
-  message
-) {
-
-  showToast(
-    message,
-    'error'
-  );
-
+function showToast(message,type='success'){
+  const el=document.getElementById('toast');
+  el.textContent=message;
+  el.className=`toast ${type}`;
+  el.style.display='block';
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer=setTimeout(()=>el.style.display='none',4500);
 }
 
+function showError(message){
+  showToast(message,'error');
+}
 
-/* =========================================================
-   STATUS FORMATTER
-========================================================= */
-
-function formatStatus(
-  status
-) {
-
-  const statuses = {
-
-    assigned:
-      'Assigned',
-
-    in_progress:
-      'In Progress',
-
-    completed:
-      'Completed'
-
+function formatStatus(status){
+  const map={
+    assigned:'Assigned',
+    in_progress:'In Progress',
+    completed:'Completed'
   };
-
-
-  return (
-    statuses[status] ||
-    status ||
-    'Assigned'
-  );
-
+  return map[status] || status || 'Assigned';
 }
 
-
-/* =========================================================
-   DATE FORMATTER
-========================================================= */
-
-function formatDate(
-  value
-) {
-
-  try {
-
-    return new Date(
-      value
-    ).toLocaleDateString();
-
-  } catch (error) {
-
+function formatDate(value){
+  try{
+    return new Date(value).toLocaleDateString();
+  }catch{
     return '';
-
   }
-
 }
 
-
-/* =========================================================
-   SAFE HTML
-========================================================= */
-
-function escapeHTML(
-  value
-) {
-
-  return String(
-    value ??
-    ''
-  )
-    .replaceAll(
-      '&',
-      '&amp;'
-    )
-    .replaceAll(
-      '<',
-      '&lt;'
-    )
-    .replaceAll(
-      '>',
-      '&gt;'
-    )
-    .replaceAll(
-      '"',
-      '&quot;'
-    )
-    .replaceAll(
-      "'",
-      '&#039;'
-    );
-
+function escapeHTML(value){
+  return String(value ?? '')
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
 }
 
-
-function escapeAttribute(
-  value
-) {
-
-  return escapeHTML(
-    value
-  );
-
+function escapeAttribute(value){
+  return escapeHTML(value);
 }
 
-
-/* =========================================================
-   INITIAL NEXIVRA HANDSHAKE
-========================================================= */
-
-/*
- * Tell the Wix Learner Page Bridge that the
- * GitHub-hosted learner application is loaded
- * and ready to receive data.
- */
-
-window.parent.postMessage(
-  {
-    source:
-      'NEXIVRA_LEARNER',
-
-    type:
-      'NEXIVRA_READY',
-
-    payload: {}
-  },
-  '*'
-);
-
+window.parent.postMessage({
+  source:'NEXIVRA_LEARNER',
+  type:'NEXIVRA_READY',
+  payload:{}
+},'*');
 </script>
-
 </body>
 </html>
