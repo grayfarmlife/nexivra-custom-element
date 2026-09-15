@@ -30078,6 +30078,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.sessionEnding = false;
     this.trainingState = "READY";
     this.sessionStartupStage = "idle";
+    this.checkpointTimer = null;
+    this.sessionStartedAt = null;
+    this.lastCheckpointAt = null;
     this.cameraStream = null;
     this.visionFileset = null;
     this.faceLandmarker = null;
@@ -30546,6 +30549,9 @@ NEXIVRA RUNTIME RULES
         text: clean
       }
     );
+    this.emitProgressCheckpoint(
+      "learner_turn"
+    );
     return true;
   }
   dispatchRuntimeEvent(name, detail = {}) {
@@ -30612,6 +30618,10 @@ NEXIVRA RUNTIME RULES
       }
     }
     this.stopVisualAnalysis();
+    this.emitProgressCheckpoint(
+      "session_end"
+    );
+    this.stopProgressCheckpoints();
     this.stopLearnerAudioMonitor();
     this.stopCamera();
     if (this.session) {
@@ -31962,6 +31972,25 @@ NEXIVRA RUNTIME RULES
           .learner-course-summary { display:none; }
         }
 
+
+        /* Accessibility/readability: brighter learner navigation */
+        .nav-item,
+        .dashboard-nav-item {
+          color:#d7e4ed;
+          font-weight:700;
+        }
+
+        .nav-item.active,
+        .dashboard-nav-item.active {
+          color:#ffffff;
+        }
+
+        .nav-item:disabled,
+        .dashboard-nav-item:disabled {
+          color:#9fb3c2;
+          opacity:.72;
+        }
+
       </style>
 
 
@@ -32127,7 +32156,9 @@ NEXIVRA RUNTIME RULES
 
               <div class="nav-title">LEARNER</div>
 
-              <button class="nav-item active">
+              <button
+                class="nav-item active"
+                id="trainingMyTrainingButton">
                 My Training
               </button>
 
@@ -32354,6 +32385,9 @@ NEXIVRA RUNTIME RULES
     const unifiedBackButton = this.shadowRoot.getElementById(
       "unifiedBackButton"
     );
+    const trainingMyTrainingButton = this.shadowRoot.getElementById(
+      "trainingMyTrainingButton"
+    );
     unifiedLogoutButton.addEventListener(
       "click",
       () => {
@@ -32370,20 +32404,27 @@ NEXIVRA RUNTIME RULES
     unifiedBackButton.addEventListener(
       "click",
       () => {
-        if (this.sessionActive) {
-          this.endSession().catch(
-            (error) => {
-              console.warn(
-                "NEXIVRA END SESSION WARNING:",
-                error
-              );
-            }
-          );
-        }
-        this.setStatus(
-          "Saving your progress..."
+        this.exitTrainingFast().catch(
+          (error) => {
+            console.error(
+              "NEXIVRA FAST EXIT ERROR:",
+              error
+            );
+          }
         );
-        this.requestPauseAndReturn();
+      }
+    );
+    trainingMyTrainingButton.addEventListener(
+      "click",
+      () => {
+        this.exitTrainingFast().catch(
+          (error) => {
+            console.error(
+              "NEXIVRA MY TRAINING EXIT ERROR:",
+              error
+            );
+          }
+        );
       }
     );
     this.renderUnifiedDashboard();
@@ -32511,6 +32552,11 @@ NEXIVRA RUNTIME RULES
           console.log(
             "NEXIVRA SPEECH EVENT: avatar stopped speaking"
           );
+          if (this.sessionActive) {
+            this.emitProgressCheckpoint(
+              "coach_turn_completed"
+            );
+          }
         }
       );
       await this.session.start();
@@ -32582,6 +32628,108 @@ NEXIVRA RUNTIME RULES
       },
       500
     );
+  }
+  /*
+   * =========================================================
+   * CONTINUOUS PROGRESS CHECKPOINTS
+   * =========================================================
+   */
+  startProgressCheckpoints() {
+    this.stopProgressCheckpoints();
+    this.sessionStartedAt = this.sessionStartedAt || Date.now();
+    this.emitProgressCheckpoint(
+      "session_started"
+    );
+    this.checkpointTimer = setInterval(
+      () => {
+        if (this.sessionActive && !this.sessionEnding) {
+          this.emitProgressCheckpoint(
+            "periodic"
+          );
+        }
+      },
+      3e4
+    );
+  }
+  stopProgressCheckpoints() {
+    if (this.checkpointTimer) {
+      clearInterval(
+        this.checkpointTimer
+      );
+      this.checkpointTimer = null;
+    }
+  }
+  emitProgressCheckpoint(reason = "periodic") {
+    if (!this.runtimeSessionId) {
+      return;
+    }
+    const now = Date.now();
+    this.lastCheckpointAt = now;
+    const elapsedSeconds = this.sessionStartedAt ? Math.max(
+      0,
+      Math.round(
+        (now - this.sessionStartedAt) / 1e3
+      )
+    ) : 0;
+    this.dispatchRuntimeEvent(
+      "nexivra-progress-checkpoint",
+      {
+        sessionId: this.runtimeSessionId,
+        reason,
+        checkpointAt: new Date(
+          now
+        ).toISOString(),
+        elapsedSeconds,
+        courseId: this.subjectId || null,
+        moduleId: this.lessonId || null,
+        trainingStage: this.runtimeContext?.session?.state?.stage || this.runtimeContext?.stage || "teaching",
+        observationCount: this.observationTimeline.length
+      }
+    );
+  }
+  async exitTrainingFast() {
+    this.emitProgressCheckpoint(
+      "navigation_exit"
+    );
+    this.stopProgressCheckpoints();
+    this.stopProgressCheckpoints();
+    this.stopVisualAnalysis();
+    this.stopLearnerAudioMonitor();
+    this.stopCamera();
+    try {
+      if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") {
+        await this.session.voiceChat.stop();
+      }
+    } catch (error) {
+      console.warn(
+        "NEXIVRA FAST EXIT VOICE WARNING:",
+        error
+      );
+    }
+    try {
+      if (this.session && typeof this.session.stop === "function") {
+        await this.session.stop();
+      }
+    } catch (error) {
+      console.warn(
+        "NEXIVRA FAST EXIT AVATAR WARNING:",
+        error
+      );
+    }
+    this.sessionActive = false;
+    this.avatarStarted = false;
+    this.session = null;
+    this.setTrainingState(
+      "READY"
+    );
+    this.dispatchAppEvent(
+      "nexivra-pause-session",
+      {
+        sessionId: this.runtimeSessionId || null,
+        fastExit: true
+      }
+    );
+    this.showUnifiedDashboard();
   }
   /*
    * =========================================================
@@ -32687,6 +32835,7 @@ NEXIVRA RUNTIME RULES
       this.setStatus(
         "Session active."
       );
+      this.startProgressCheckpoints();
       this.dispatchRuntimeEvent(
         "nexivra-session-started",
         {
