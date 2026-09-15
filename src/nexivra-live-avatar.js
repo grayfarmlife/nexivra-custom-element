@@ -999,15 +999,30 @@ NEXIVRA RUNTIME RULES
         .filter(Boolean)
         .join(" ");
 
-    this.setUnifiedText(
-      "unifiedLearnerIdentity",
-      fullName
-        ? `${fullName} • ${learner.organizationId || ""}`
-        : (
+    const identity =
+      this.shadowRoot
+        ?.getElementById(
+          "unifiedLearnerIdentity"
+        );
+
+
+    if (identity) {
+
+      identity.innerHTML = `
+        ${this.escapeUnifiedHtml(
+          fullName ||
+          "Learner"
+        )}
+
+        <span class="org">
+          ${this.escapeUnifiedHtml(
             learner.organizationId ||
-            "Learner"
-          )
-    );
+            "Organization"
+          )}
+        </span>
+      `;
+    }
+
 
     this.setUnifiedText(
       "unifiedWelcome",
@@ -1193,6 +1208,20 @@ NEXIVRA RUNTIME RULES
       ""
     );
 
+
+    const stage =
+      context.session?.state?.stage ||
+      context.stage ||
+      "teaching";
+
+
+    this.setUnifiedText(
+      "unifiedTrainingStage",
+      String(stage)
+        .replaceAll("_", " ")
+        .toUpperCase()
+    );
+
     const count =
       Array.isArray(
         context.knowledgeSources
@@ -1203,13 +1232,177 @@ NEXIVRA RUNTIME RULES
     this.setUnifiedText(
       "unifiedSourceCount",
       `${count} approved knowledge source${
-        count === 1
-          ? ""
-          : "s"
+        count === 1 ? "" : "s"
       } connected`
     );
-  }
 
+    this.setUnifiedText(
+      "unifiedCourseNavTitle",
+      context.course?.title ||
+      "Training"
+    );
+
+    this.setUnifiedText(
+      "unifiedKnowledgeSummary",
+      `${count} Knowledge Source${
+        count === 1 ? "" : "s"
+      } connected to this module`
+    );
+
+    const moduleNav =
+      this.shadowRoot
+        ?.getElementById(
+          "unifiedModuleNav"
+        );
+
+    if (!moduleNav) {
+      return;
+    }
+
+    const modules =
+      Array.isArray(
+        context.modules
+      )
+        ? context.modules
+        : [];
+
+    const activeModuleId =
+      context.module?.id ||
+      this.lessonId;
+
+    if (!modules.length) {
+
+      moduleNav.innerHTML = `
+        <div class="module-nav-item active">
+          Module 1<br>
+          <strong>
+            ${this.escapeUnifiedHtml(
+              context.module?.title ||
+              "Current Module"
+            )}
+          </strong>
+          <br>Current
+        </div>
+      `;
+
+      return;
+    }
+
+    moduleNav.innerHTML =
+      modules
+        .map(
+          (module, index) => {
+
+            const active =
+              module.id ===
+              activeModuleId;
+
+            const completed =
+              module.status ===
+              "completed";
+
+            const locked =
+              module.status ===
+                "locked" ||
+              (
+                !active &&
+                !completed &&
+                index > 0
+              );
+
+            const statusLabel =
+              completed
+                ? "✓ Completed"
+                : active
+                  ? "Current"
+                  : locked
+                    ? "🔒 Locked"
+                    : "Available";
+
+            if (locked) {
+
+              return `
+                <div
+                  class="
+                    module-nav-item
+                    locked
+                  ">
+
+                  Module ${index + 1}<br>
+
+                  <strong>
+                    ${this.escapeUnifiedHtml(
+                      module.title ||
+                      "Module"
+                    )}
+                  </strong>
+
+                  <br>${statusLabel}
+
+                </div>
+              `;
+            }
+
+            return `
+              <button
+                class="
+                  module-nav-item
+                  module-nav-button
+                  ${active ? "active" : ""}
+                  ${completed ? "completed" : ""}
+                "
+                data-module-id="${this.escapeUnifiedHtml(
+                  module.id || ""
+                )}">
+
+                Module ${index + 1}<br>
+
+                <strong>
+                  ${this.escapeUnifiedHtml(
+                    module.title ||
+                    "Module"
+                  )}
+                </strong>
+
+                <br>${statusLabel}
+
+              </button>
+            `;
+          }
+        )
+        .join("");
+
+    moduleNav
+      .querySelectorAll(
+        "[data-module-id]"
+      )
+      .forEach(
+        button => {
+
+          button.addEventListener(
+            "click",
+            () => {
+
+              const moduleId =
+                button.getAttribute(
+                  "data-module-id"
+                );
+
+              if (
+                moduleId &&
+                moduleId !==
+                  activeModuleId
+              ) {
+
+                this.requestModuleChange(
+                  moduleId
+                );
+              }
+            }
+          );
+        }
+      );
+  }
 
   showUnifiedDashboard() {
 
@@ -1314,6 +1507,51 @@ NEXIVRA RUNTIME RULES
         "'",
         "&#039;"
       );
+  }
+
+
+  /*
+   * =========================================================
+   * MODULE PROGRESSION
+   * =========================================================
+   */
+
+  requestModuleChange(moduleId) {
+
+    const cleanId =
+      String(moduleId || "").trim();
+
+    if (!cleanId) {
+      return;
+    }
+
+    this.dispatchAppEvent(
+      "nexivra-change-module",
+      {
+        sessionId:
+          this.runtimeSessionId || null,
+        moduleId:
+          cleanId
+      }
+    );
+  }
+
+
+  requestModuleCompletion() {
+
+    if (!this.runtimeSessionId) {
+      return;
+    }
+
+    this.dispatchAppEvent(
+      "nexivra-complete-module",
+      {
+        sessionId:
+          this.runtimeSessionId,
+        moduleId:
+          this.lessonId || null
+      }
+    );
   }
 
 
@@ -1711,6 +1949,452 @@ NEXIVRA RUNTIME RULES
           }
         }
 
+
+        .nexivra-training-grid {
+          display:grid;
+          grid-template-columns:170px 250px minmax(0,1fr);
+          min-height:700px;
+          background:#020912;
+        }
+
+        .nexivra-primary-nav,
+        .nexivra-course-nav {
+          padding:18px 14px;
+          border-right:1px solid #10374a;
+          background:#03101b;
+        }
+
+        .nexivra-course-nav {
+          background:#06131f;
+        }
+
+        .nav-title,
+        .course-label {
+          margin-bottom:10px;
+          color:#5e7a90;
+          font-size:9px;
+          font-weight:900;
+          letter-spacing:.18em;
+        }
+
+        .nav-item {
+          width:100%;
+          margin-bottom:7px;
+          padding:10px 11px;
+          border:1px solid transparent;
+          border-radius:9px;
+          background:transparent;
+          color:#8ea5b7;
+          text-align:left;
+        }
+
+        .nav-item.active {
+          border-color:#10374a;
+          background:rgba(20,200,255,.08);
+          color:#fff;
+        }
+
+        .nav-item:disabled {
+          opacity:.45;
+          cursor:default;
+        }
+
+        .core-status {
+          margin-top:28px;
+          padding:9px;
+          border:1px solid rgba(53,211,154,.25);
+          border-radius:999px;
+          color:#9ef0cf;
+          font-size:9px;
+          text-align:center;
+        }
+
+        .course-label {
+          margin-top:20px;
+        }
+
+        .course-name {
+          margin-bottom:16px;
+          color:#fff;
+          font-size:14px;
+          font-weight:900;
+          line-height:1.35;
+        }
+
+        .module-nav {
+          display:grid;
+          gap:7px;
+        }
+
+        .module-nav-item {
+          padding:10px;
+          border:1px solid rgba(255,255,255,.07);
+          border-radius:9px;
+          color:#91a6b7;
+          font-size:10px;
+          line-height:1.35;
+        }
+
+        .module-nav-item.active {
+          border-color:#14c8ff;
+          background:rgba(20,200,255,.07);
+          color:#fff;
+        }
+
+        .module-nav-item.locked {
+          opacity:.5;
+        }
+
+        .module-nav-item.completed {
+          border-color:rgba(53,211,154,.3);
+          color:#9ef0cf;
+        }
+
+        .knowledge-summary {
+          margin-top:16px;
+          padding:10px;
+          border:1px solid rgba(255,157,0,.18);
+          border-radius:9px;
+          color:#f6c56f;
+          font-size:9px;
+          line-height:1.4;
+        }
+
+        .nexivra-live-panel {
+          min-width:0;
+          background:#020912;
+        }
+
+        .nexivra-live-panel .wrap {
+          height:560px;
+          min-height:560px;
+        }
+
+        @media(max-width:1050px) {
+          .nexivra-training-grid {
+            grid-template-columns:145px 210px minmax(0,1fr);
+          }
+        }
+
+        @media(max-width:800px) {
+          .nexivra-training-grid {
+            grid-template-columns:1fr;
+          }
+
+          .nexivra-primary-nav {
+            display:none;
+          }
+
+          .nexivra-course-nav {
+            border-right:none;
+            border-bottom:1px solid #10374a;
+          }
+        }
+
+
+        /* Refined enterprise header */
+
+        .unified-topbar {
+          min-height:64px;
+          padding:9px 18px;
+          background:linear-gradient(90deg,#020b14,#061725);
+        }
+
+        .unified-brand {
+          display:flex;
+          align-items:center;
+          gap:10px;
+          letter-spacing:.11em;
+        }
+
+        .unified-brand::before {
+          content:"N";
+          width:34px;
+          height:34px;
+          display:grid;
+          place-items:center;
+          border:1px solid #1c526b;
+          border-radius:9px;
+          background:linear-gradient(135deg,rgba(20,200,255,.22),rgba(255,157,0,.10));
+          color:#fff;
+          font-size:18px;
+          font-weight:900;
+        }
+
+        .unified-brand small {
+          margin-top:2px;
+          color:#6f8da2;
+          font-size:8px;
+          letter-spacing:.18em;
+        }
+
+        .unified-header-actions {
+          gap:10px;
+        }
+
+        .unified-identity {
+          min-width:150px;
+          color:#dce8f0;
+          font-size:11px;
+          line-height:1.35;
+        }
+
+        .unified-identity .org {
+          display:block;
+          color:#6f8da2;
+          font-size:9px;
+          letter-spacing:.08em;
+        }
+
+        .unified-logout {
+          padding:8px 11px;
+          border-color:#1b4257;
+          border-radius:8px;
+          color:#dce8f0;
+          font-size:10px;
+        }
+
+        .unified-logout:hover {
+          border-color:#14c8ff;
+          background:rgba(20,200,255,.07);
+        }
+
+
+        .module-nav-button {
+          width:100%;
+          background:transparent;
+          text-align:left;
+          cursor:pointer;
+        }
+
+        .module-nav-button:hover {
+          border-color:#14c8ff;
+        }
+
+
+        /* Live Instructor panel polish */
+
+        .live-panel-header {
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:14px;
+          margin-bottom:10px;
+        }
+
+        .training-stage-badge {
+          padding:6px 9px;
+          border:1px solid rgba(20,200,255,.28);
+          border-radius:999px;
+          background:rgba(20,200,255,.07);
+          color:#8ee8ff;
+          font-size:9px;
+          font-weight:900;
+          letter-spacing:.12em;
+          white-space:nowrap;
+        }
+
+        .runtime-ready {
+          display:inline-flex;
+          align-items:center;
+          gap:6px;
+          margin-top:9px;
+          padding:6px 9px;
+          border:1px solid rgba(53,211,154,.25);
+          border-radius:999px;
+          color:#9ef0cf;
+          background:rgba(53,211,154,.06);
+          font-size:9px;
+        }
+
+        .nexivra-live-panel .unified-training-context {
+          padding:15px 18px;
+        }
+
+        .nexivra-live-panel .wrap {
+          border-top:1px solid #10374a;
+        }
+
+        .nexivra-live-panel .controls {
+          left:14px;
+          right:14px;
+          bottom:54px;
+          padding:8px;
+          border:1px solid rgba(255,255,255,.08);
+          border-radius:10px;
+          background:rgba(2,9,18,.74);
+          backdrop-filter:blur(8px);
+        }
+
+        .nexivra-live-panel .controls input {
+          background:#f7f9fb;
+        }
+
+        .nexivra-live-panel .controls button {
+          min-width:74px;
+        }
+
+        .nexivra-live-panel #sessionButton {
+          background:linear-gradient(135deg,#159ef6,#14d5ff);
+          color:#02101a;
+        }
+
+        .nexivra-live-panel #sessionButton.session-active {
+          background:#17232d;
+          color:#fff;
+          border:1px solid #8ea5b7;
+        }
+
+        .nexivra-live-panel .status {
+          left:14px;
+          right:14px;
+          bottom:10px;
+          max-width:none;
+          border:1px solid rgba(255,157,0,.18);
+          background:rgba(2,9,18,.82);
+          color:#d9e4ec;
+          font-size:11px;
+        }
+
+        .instructor-label {
+          position:absolute;
+          left:14px;
+          top:14px;
+          z-index:55;
+          padding:6px 9px;
+          border-radius:8px;
+          background:rgba(2,9,18,.72);
+          color:#fff;
+          font-size:10px;
+          font-weight:800;
+          letter-spacing:.05em;
+        }
+
+
+        /* Cohesive dashboard experience */
+
+        #unifiedDashboardView {
+          position:relative;
+          padding:26px 28px 30px 190px;
+          min-height:700px;
+          background:#020912;
+        }
+
+        #unifiedDashboardView::before {
+          content:"";
+          position:absolute;
+          left:0;
+          top:0;
+          bottom:0;
+          width:165px;
+          border-right:1px solid #10374a;
+          background:#03101b;
+        }
+
+        .dashboard-side-nav {
+          position:absolute;
+          left:14px;
+          top:22px;
+          width:137px;
+          z-index:2;
+        }
+
+        .dashboard-nav-label {
+          margin-bottom:10px;
+          color:#5e7a90;
+          font-size:9px;
+          font-weight:900;
+          letter-spacing:.18em;
+        }
+
+        .dashboard-nav-item {
+          width:100%;
+          margin-bottom:7px;
+          padding:10px 11px;
+          border:1px solid transparent;
+          border-radius:9px;
+          background:transparent;
+          color:#8ea5b7;
+          text-align:left;
+          font-size:11px;
+        }
+
+        .dashboard-nav-item.active {
+          border-color:#10374a;
+          background:rgba(20,200,255,.08);
+          color:#fff;
+        }
+
+        .dashboard-nav-item:disabled {
+          opacity:.45;
+          cursor:default;
+        }
+
+        .dashboard-core-status {
+          margin-top:26px;
+          padding:8px;
+          border:1px solid rgba(53,211,154,.25);
+          border-radius:999px;
+          color:#9ef0cf;
+          font-size:8px;
+          text-align:center;
+        }
+
+        .unified-list-heading {
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:12px;
+        }
+
+        .unified-list-heading::after {
+          content:"ASSIGNED LEARNING";
+          color:#5e7a90;
+          font-size:8px;
+          letter-spacing:.14em;
+        }
+
+        .unified-assignment-card {
+          transition:
+            border-color .18s ease,
+            transform .18s ease,
+            background .18s ease;
+        }
+
+        .unified-assignment-card:hover {
+          transform:translateY(-1px);
+          border-color:#1d5067;
+          background:rgba(20,200,255,.025);
+        }
+
+        .unified-start-assignment {
+          min-width:125px;
+          border-radius:9px;
+          background:linear-gradient(135deg,#159ef6,#14d5ff);
+          color:#02101a;
+          font-size:10px;
+          box-shadow:0 5px 18px rgba(20,200,255,.10);
+        }
+
+        .unified-start-assignment:hover {
+          filter:brightness(1.05);
+        }
+
+        .unified-progress-track {
+          max-width:560px;
+        }
+
+        @media(max-width:800px) {
+          #unifiedDashboardView {
+            padding:20px;
+          }
+
+          #unifiedDashboardView::before,
+          .dashboard-side-nav {
+            display:none;
+          }
+        }
+
       </style>
 
 
@@ -1719,8 +2403,15 @@ NEXIVRA RUNTIME RULES
         <div class="unified-topbar">
 
           <div class="unified-brand">
-            NEXIVRA
-            <small>CONNECTED LEARNING</small>
+
+            <div>
+              NEXIVRA
+
+              <small>
+                THE NEXT GENERATION OF CONNECTED INTELLIGENCE
+              </small>
+            </div>
+
           </div>
 
           <div class="unified-header-actions">
@@ -1743,6 +2434,48 @@ NEXIVRA RUNTIME RULES
 
 
         <section id="unifiedDashboardView">
+
+          <aside class="dashboard-side-nav">
+
+            <div class="dashboard-nav-label">
+              LEARNER
+            </div>
+
+            <button
+              class="dashboard-nav-item active">
+              My Training
+            </button>
+
+            <button
+              class="dashboard-nav-item"
+              disabled>
+              My Progress
+            </button>
+
+            <button
+              class="dashboard-nav-item"
+              disabled>
+              My Profile
+            </button>
+
+            <button
+              class="dashboard-nav-item"
+              disabled>
+              Resources
+            </button>
+
+            <button
+              class="dashboard-nav-item"
+              disabled>
+              Help
+            </button>
+
+            <div class="dashboard-core-status">
+              ● NEXIVRA Core Online
+            </div>
+
+          </aside>
+
 
           <div class="unified-eyebrow">
             MY LEARNING
@@ -1798,14 +2531,89 @@ NEXIVRA RUNTIME RULES
 
         <section id="unifiedTrainingView">
 
+          <div class="nexivra-training-grid">
+
+            <aside class="nexivra-primary-nav">
+
+              <div class="nav-title">LEARNER</div>
+
+              <button class="nav-item active">
+                My Training
+              </button>
+
+              <button class="nav-item" disabled>
+                My Progress
+              </button>
+
+              <button class="nav-item" disabled>
+                My Profile
+              </button>
+
+              <button class="nav-item" disabled>
+                Resources
+              </button>
+
+              <button class="nav-item" disabled>
+                Help
+              </button>
+
+              <div class="core-status">
+                ● NEXIVRA Core Online
+              </div>
+
+            </aside>
+
+
+            <aside class="nexivra-course-nav">
+
+              <button
+                class="unified-back"
+                id="unifiedBackButton">
+                ← My Training
+              </button>
+
+              <div class="course-label">COURSE</div>
+
+              <div
+                class="course-name"
+                id="unifiedCourseNavTitle">
+                Training
+              </div>
+
+              <div
+                class="module-nav"
+                id="unifiedModuleNav">
+              </div>
+
+              <div
+                class="knowledge-summary"
+                id="unifiedKnowledgeSummary">
+                Loading knowledge sources...
+              </div>
+
+            </aside>
+
+
+            <main class="nexivra-live-panel">
+
           <div class="unified-training-context">
 
             <div class="unified-training-row">
 
-              <div>
+              <div style="width:100%;">
 
-                <div class="unified-eyebrow">
-                  LIVE TRAINING
+                <div class="live-panel-header">
+
+                  <div class="unified-eyebrow">
+                    LIVE INSTRUCTOR
+                  </div>
+
+                  <div
+                    class="training-stage-badge"
+                    id="unifiedTrainingStage">
+                    TEACHING
+                  </div>
+
                 </div>
 
                 <h2 id="unifiedCourseTitle">
@@ -1829,13 +2637,15 @@ NEXIVRA RUNTIME RULES
                   Loading approved knowledge...
                 </div>
 
+                <div
+                  class="runtime-ready"
+                  id="unifiedRuntimeReady">
+                  ● Runtime Ready
+                </div>
+
               </div>
 
-              <button
-                class="unified-back"
-                id="unifiedBackButton">
-                ← My Training
-              </button>
+
 
             </div>
 
@@ -1843,6 +2653,10 @@ NEXIVRA RUNTIME RULES
 
 
       <div class="wrap">
+
+        <div class="instructor-label">
+          NEXIVRA Live Instructor
+        </div>
 
         <video
           id="avatarVideo"
@@ -1908,6 +2722,10 @@ NEXIVRA RUNTIME RULES
         </div>
 
       </div>
+
+            </main>
+
+          </div>
 
         </section>
 
