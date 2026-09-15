@@ -660,11 +660,11 @@ Learning mode: ${module.learningMode || "adaptive"}
 
 SESSION CONTINUITY
 This may be a resumed learning session.
-Persisted instructional stage: ${runtime.session?.state?.stage || "teaching"}
-Prior elapsed learning time: ${Number(runtime.session?.state?.elapsedSeconds || 0)} seconds
-Prior learner voice turns: ${Number(runtime.session?.state?.learnerVoiceTurnCount || 0)}
-Prior coach voice turns: ${Number(runtime.session?.state?.coachVoiceTurnCount || 0)}
-Prior checkpoint reason: ${runtime.session?.state?.checkpointReason || "none"}
+Persisted instructional stage: ${context.session?.state?.stage || "teaching"}
+Prior elapsed learning time: ${Number(context.session?.state?.elapsedSeconds || 0)} seconds
+Prior learner voice turns: ${Number(context.session?.state?.learnerVoiceTurnCount || 0)}
+Prior coach voice turns: ${Number(context.session?.state?.coachVoiceTurnCount || 0)}
+Prior checkpoint reason: ${context.session?.state?.checkpointReason || "none"}
 
 If prior elapsed time or prior turns are greater than zero, do not restart the module from the beginning.
 Briefly reorient the learner if needed, then continue naturally from the prior instructional flow.
