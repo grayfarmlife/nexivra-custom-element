@@ -1196,6 +1196,48 @@ NEXIVRA RUNTIME RULES
       "Training"
     );
 
+
+    this.setUnifiedText(
+      "topCourseTitle",
+      context.course?.title ||
+      "My Training"
+    );
+
+
+    const progressValue =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Number(
+            context.progress?.progressPercent ||
+            0
+          )
+        )
+      );
+
+
+    const topProgress =
+      this.shadowRoot
+        ?.getElementById(
+          "topCourseProgress"
+        );
+
+
+    if (topProgress) {
+      topProgress.style.width =
+        `${progressValue}%`;
+    }
+
+
+    this.setUnifiedText(
+      "topCourseProgressCopy",
+      `Module ${
+        context.module?.moduleOrder ||
+        1
+      } • ${progressValue}% complete`
+    );
+
     this.setUnifiedText(
       "unifiedModuleTitle",
       context.module?.title ||
@@ -1952,7 +1994,7 @@ NEXIVRA RUNTIME RULES
 
         .nexivra-training-grid {
           display:grid;
-          grid-template-columns:170px 250px minmax(0,1fr);
+          grid-template-columns:170px minmax(0,1fr) 280px;
           min-height:700px;
           background:#020912;
         }
@@ -2072,7 +2114,7 @@ NEXIVRA RUNTIME RULES
 
         @media(max-width:1050px) {
           .nexivra-training-grid {
-            grid-template-columns:145px 210px minmax(0,1fr);
+            grid-template-columns:145px minmax(0,1fr) 230px;
           }
         }
 
@@ -2395,6 +2437,91 @@ NEXIVRA RUNTIME RULES
           }
         }
 
+
+        /* Approved learner training layout */
+        .nexivra-training-grid {
+          grid-template-areas:"primary live course";
+        }
+
+        .nexivra-primary-nav { grid-area:primary; }
+
+        .nexivra-live-panel { grid-area:live; }
+
+        .nexivra-course-nav {
+          grid-area:course;
+          border-right:none;
+          border-left:1px solid #10374a;
+        }
+
+        /* Keep learner-facing information focused. */
+        #unifiedTrainingView .unified-training-context {
+          padding:12px 16px;
+        }
+
+        #unifiedTrainingView .unified-training-context h2 {
+          margin:4px 0;
+          font-size:19px;
+        }
+
+        #unifiedTrainingView #unifiedModuleTitle,
+        #unifiedTrainingView #unifiedModuleDescription,
+        #unifiedTrainingView #unifiedSourceCount {
+          display:none;
+        }
+
+        .nexivra-course-nav .unified-back {
+          width:100%;
+        }
+
+        @media(max-width:800px) {
+          .nexivra-training-grid {
+            grid-template-areas:
+              "course"
+              "live";
+          }
+
+          .nexivra-course-nav {
+            border-left:none;
+          }
+        }
+
+
+        .learner-course-summary {
+          flex:1;
+          max-width:620px;
+          margin:0 28px;
+        }
+
+        .learner-course-summary-title {
+          color:#fff;
+          font-size:13px;
+          font-weight:900;
+        }
+
+        .learner-course-progress {
+          height:5px;
+          margin-top:6px;
+          overflow:hidden;
+          border-radius:999px;
+          background:#122535;
+        }
+
+        .learner-course-progress-fill {
+          width:0%;
+          height:100%;
+          background:linear-gradient(90deg,#14c8ff,#159ef6);
+        }
+
+        .learner-course-progress-copy {
+          margin-top:4px;
+          color:#6f8da2;
+          font-size:8px;
+        }
+
+        @media(max-width:700px) {
+          .learner-course-summary { display:none; }
+        }
+
       </style>
 
 
@@ -2408,8 +2535,31 @@ NEXIVRA RUNTIME RULES
               NEXIVRA
 
               <small>
-                THE NEXT GENERATION OF CONNECTED INTELLIGENCE
+                CONNECTED LEARNING
               </small>
+            </div>
+
+          </div>
+
+          <div class="learner-course-summary">
+
+            <div
+              class="learner-course-summary-title"
+              id="topCourseTitle">
+              My Training
+            </div>
+
+            <div class="learner-course-progress">
+              <div
+                class="learner-course-progress-fill"
+                id="topCourseProgress">
+              </div>
+            </div>
+
+            <div
+              class="learner-course-progress-copy"
+              id="topCourseProgressCopy">
+              Ready to learn
             </div>
 
           </div>
