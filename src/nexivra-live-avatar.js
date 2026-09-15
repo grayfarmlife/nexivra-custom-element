@@ -17,7 +17,8 @@ class NexivraLiveAvatar extends HTMLElement {
       "session-token",
       "subject-id",
       "lesson-id",
-      "runtime-session-id"
+      "runtime-session-id",
+      "runtime-context"
     ];
   }
 
@@ -157,6 +158,31 @@ class NexivraLiveAvatar extends HTMLElement {
       this.getAttribute("runtime-session-id") ||
       null;
 
+    const runtimeContextAttribute =
+      this.getAttribute(
+        "runtime-context"
+      );
+
+    if (runtimeContextAttribute) {
+
+      try {
+
+        this.setRuntimeContext(
+          JSON.parse(
+            runtimeContextAttribute
+          )
+        );
+
+      } catch (error) {
+
+        console.error(
+          "NEXIVRA INITIAL RUNTIME CONTEXT ERROR:",
+          error
+        );
+
+      }
+    }
+
     if (this.sessionToken) {
       this.startNexivra();
     }
@@ -199,6 +225,27 @@ class NexivraLiveAvatar extends HTMLElement {
 
     if (name === "runtime-session-id") {
       this.runtimeSessionId = newValue;
+      return;
+    }
+
+    if (name === "runtime-context") {
+
+      try {
+
+        this.setRuntimeContext(
+          JSON.parse(
+            newValue
+          )
+        );
+
+      } catch (error) {
+
+        console.error(
+          "NEXIVRA RUNTIME CONTEXT ATTRIBUTE ERROR:",
+          error
+        );
+
+      }
     }
   }
 
