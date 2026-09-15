@@ -618,6 +618,8 @@ NEXIVRA RUNTIME RULES
       )
     );
   }
+
+
   /*
    * =========================================================
    * UI
@@ -1246,7 +1248,6 @@ NEXIVRA RUNTIME RULES
 
 
       const stream =
-              const stream =
         await navigator.mediaDevices
           .getUserMedia({
 
@@ -2460,7 +2461,9 @@ NEXIVRA RUNTIME RULES
         null;
     }
   }
-    /*
+
+
+  /*
    * =========================================================
    * SUBJECT-NEUTRAL LIVE EVENT ACTIONS
    * =========================================================
@@ -3186,7 +3189,7 @@ Continue the learning interaction naturally.
             }
 
           },
-          60
+          50
         );
 
 
@@ -3202,23 +3205,18 @@ Continue the learning interaction naturally.
 
   calculateRms(samples) {
 
-    let sum =
-      0;
+    let sum = 0;
 
 
     for (
-      let index = 0;
-      index < samples.length;
-      index++
+      let i = 0;
+      i < samples.length;
+      i++
     ) {
 
-      const value =
-        samples[index];
-
-
       sum +=
-        value *
-        value;
+        samples[i] *
+        samples[i];
     }
 
 
@@ -3227,7 +3225,9 @@ Continue the learning interaction naturally.
       samples.length
     );
   }
-    /*
+
+
+  /*
    * =========================================================
    * SUBJECT-NEUTRAL OVERLAP DETECTION
    * =========================================================
@@ -3672,7 +3672,6 @@ Keep the response natural, specific, constructive, and conversational.
         this.learnerAudioTimer
       );
 
-
       this.learnerAudioTimer =
         null;
     }
@@ -3798,7 +3797,6 @@ Keep the response natural, specific, constructive, and conversational.
       clearInterval(
         this.attachTimer
       );
-
 
       this.attachTimer =
         null;
