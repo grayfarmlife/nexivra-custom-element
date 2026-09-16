@@ -30696,17 +30696,11 @@ NEXIVRA RUNTIME RULES
    * =========================================================
    */
   renderUnifiedDashboard() {
-    const adaptiveDashboardTopbar = this.shadowRoot?.querySelector(
+    const topbar = this.shadowRoot?.querySelector(
       ".unified-topbar"
     );
-    if (adaptiveDashboardTopbar) {
-      adaptiveDashboardTopbar.style.display = "none";
-    }
-    const dashboardTopbar = this.shadowRoot?.querySelector(
-      ".unified-topbar"
-    );
-    if (dashboardTopbar) {
-      dashboardTopbar.style.display = "none";
+    if (topbar) {
+      topbar.style.display = "none";
     }
     if (!this.shadowRoot) {
       return;
@@ -30716,14 +30710,14 @@ NEXIVRA RUNTIME RULES
     const assignments = Array.isArray(
       data.assignments
     ) ? data.assignments : [];
-    const fullName = [
-      learner.firstName,
-      learner.lastName
-    ].filter(Boolean).join(" ");
     const identity = this.shadowRoot?.getElementById(
       "unifiedLearnerIdentity"
     );
     if (identity) {
+      const fullName = [
+        learner.firstName,
+        learner.lastName
+      ].filter(Boolean).join(" ");
       identity.innerHTML = `
         ${this.escapeUnifiedHtml(
         fullName || "Learner"
@@ -30736,181 +30730,128 @@ NEXIVRA RUNTIME RULES
         </span>
       `;
     }
+    const firstName = String(
+      learner.firstName || learner.displayName || learner.name || "Learner"
+    ).trim().split(/\s+/)[0];
     this.setUnifiedText(
-      "unifiedWelcome",
-      learner.firstName ? `Welcome back, ${learner.firstName}.` : "Welcome back."
-    );
-    this.setUnifiedText(
-      "unifiedAssignedCount",
-      data.metrics?.assigned ?? assignments.length
-    );
-    this.setUnifiedText(
-      "unifiedActiveCount",
-      data.metrics?.active ?? 0
-    );
-    this.setUnifiedText(
-      "unifiedCompletedCount",
-      data.metrics?.completed ?? 0
+      "learnerMomentumFirstName",
+      firstName
     );
     const list = this.shadowRoot.getElementById(
       "unifiedAssignmentList"
     );
-    if (!list) {
-      return;
-    }
-    if (!assignments.length) {
-      list.innerHTML = `
-        <div class="unified-empty">
-          No training has been assigned yet.
-        </div>
-      `;
-      return;
-    }
-    list.innerHTML = assignments.map(
-      (assignment) => {
-        const progress = Math.max(
-          0,
-          Math.min(
-            100,
-            Number(
-              assignment.progressPercent || 0
-            )
-          )
-        );
-        const status = assignment.status === "in_progress" ? "In Progress" : assignment.status === "completed" ? "Completed" : "Assigned";
-        const actionLabel = assignment.status === "in_progress" ? "Resume Training" : assignment.status === "completed" ? "Review Training" : "Start Training";
-        return `
-              <div class="unified-assignment-card">
+    if (list) {
+      if (!assignments.length) {
+        list.innerHTML = `
+          <div class="unified-empty">
+            No training has been assigned yet.
+          </div>
+        `;
+      } else {
+        list.innerHTML = assignments.map(
+          (assignment) => {
+            const status = assignment.status === "completed" ? "Completed" : assignment.status === "in_progress" ? "In Progress" : "Assigned";
+            const actionLabel = assignment.status === "completed" ? "Review Training" : assignment.status === "in_progress" ? "Resume Training" : "Start Training";
+            return `
+                  <div class="final-assignment-card">
 
-                <div class="unified-assignment-copy">
+                    <img
+                      class="final-course-image"
+                      data-course-brand-image
+                      alt="">
 
-                  <div class="unified-assignment-title">
-                    ${this.escapeUnifiedHtml(
-          assignment.courseTitle || "Course"
-        )}
-                  </div>
+                    <div class="final-assignment-copy">
 
-                  <div class="unified-assignment-subject">
-                    ${this.escapeUnifiedHtml(
-          assignment.subjectName || assignment.description || ""
-        )}
-                  </div>
+                      <div class="final-assignment-title">
+                        ${this.escapeUnifiedHtml(
+              assignment.courseTitle || "Course"
+            )}
+                      </div>
 
-                  <div class="unified-assignment-meta">
-                    ${this.escapeUnifiedHtml(
-          assignment.currentModuleTitle || "Not started"
-        )}
-                    \u2022 ${status}
-                    \u2022 ${progress}%
-                  </div>
+                      <div class="final-assignment-subject">
+                        ${this.escapeUnifiedHtml(
+              assignment.subjectName || assignment.description || ""
+            )}
+                      </div>
 
-                  <div class="unified-progress-track">
-                    <div
-                      class="unified-progress-fill"
-                      style="width:${progress}%;">
+                      <div class="final-assignment-status">
+                        <span class="final-status-dot"></span>
+                        Status: ${status}
+                      </div>
+
                     </div>
+
+                    <button
+                      class="unified-start-assignment final-resume-button"
+                      data-assignment-id="${this.escapeUnifiedHtml(
+              assignment.id || ""
+            )}">
+                      ${actionLabel} \u2192
+                    </button>
+
                   </div>
-
-                </div>
-
-                <button
-                  class="unified-start-assignment"
-                  data-assignment-id="${this.escapeUnifiedHtml(
-          assignment.id || ""
-        )}">
-                  ${actionLabel}
-                </button>
-
-              </div>
-            `;
-      }
-    ).join("");
-    list.querySelectorAll(
-      "[data-assignment-id]"
-    ).forEach(
-      (button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            const assignmentId = button.getAttribute(
-              "data-assignment-id"
-            );
-            this.requestAssignmentStart(
-              assignmentId
+                `;
+          }
+        ).join("");
+        const brand2 = this.getClientBranding();
+        list.querySelectorAll(
+          "[data-course-brand-image]"
+        ).forEach(
+          (image) => {
+            if (brand2.courseImageUrl) {
+              image.src = brand2.courseImageUrl;
+              image.hidden = false;
+            } else {
+              image.hidden = true;
+            }
+          }
+        );
+        list.querySelectorAll(
+          "[data-assignment-id]"
+        ).forEach(
+          (button) => {
+            button.addEventListener(
+              "click",
+              () => {
+                const assignmentId = button.getAttribute(
+                  "data-assignment-id"
+                );
+                this.requestAssignmentStart(
+                  assignmentId
+                );
+              }
             );
           }
         );
       }
-    );
-    this.applyClientBranding();
-    const learnerFirstName = String(this.dashboardData?.learner?.firstName || "").trim();
-    this.setUnifiedText("learnerHeroGreeting", learnerFirstName ? `Welcome back, ${learnerFirstName}.` : "Welcome back.");
-    const journeyAssignments = Array.isArray(this.dashboardData?.assignments) ? this.dashboardData.assignments : [];
-    this.setUnifiedText("journeyCourses", String(journeyAssignments.filter((a3) => a3.status === "in_progress" || a3.status === "completed").length));
-    const journeySeconds = Number(this.dashboardData?.journey?.trainingSeconds || this.dashboardData?.journey?.elapsedSeconds || 0);
-    this.setUnifiedText("journeyTime", journeySeconds > 0 ? `${Math.max(1, Math.round(journeySeconds / 60))}m` : "\u2014");
-    this.setUnifiedText("journeyLastActivity", this.dashboardData?.journey?.lastActivityLabel || "\u2014");
-    this.renderLearnerSkills();
-    const learnerDisplayName = [
-      this.dashboardData?.learner?.firstName,
-      this.dashboardData?.learner?.lastName
-    ].filter(Boolean).join(" ").trim() || this.dashboardData?.learner?.displayName || this.dashboardData?.learner?.name || "Learner";
-    this.setUnifiedText(
-      "learnerNameStrip",
-      learnerDisplayName
-    );
-    const momentumName = String(
-      this.dashboardData?.learner?.firstName || this.dashboardData?.learner?.displayName || this.dashboardData?.learner?.name || "Learner"
-    ).trim().split(/\s+/)[0];
-    this.setUnifiedText(
-      "learnerMomentumFirstName",
-      momentumName
-    );
-    const learnerDashboard = this.shadowRoot?.getElementById(
-      "unifiedDashboardView"
-    );
-    if (learnerDashboard) {
-      learnerDashboard.querySelectorAll(
-        ".assignment-progress, .assignment-progress-bar, .assignment-progress-shell, .assignment-progress-track, .assignment-progress-fill, progress"
-      ).forEach(
-        (node) => node.remove()
-      );
-      learnerDashboard.querySelectorAll(
-        ".assignment-meta, .assignment-subtitle"
-      ).forEach(
-        (node) => {
-          node.textContent = String(
-            node.textContent || ""
-          ).replace(
-            /\s*•\s*\d+%/g,
-            ""
-          ).replace(
-            /\s+\d+%/g,
-            ""
-          ).trim();
-        }
-      );
-      learnerDashboard.querySelectorAll(
-        ".assignment-card"
-      ).forEach(
-        (card) => {
-          if (!card.querySelector(
-            ".assignment-status-clean"
-          )) {
-            const cleanStatus = document.createElement(
-              "div"
-            );
-            cleanStatus.className = "assignment-status-clean";
-            cleanStatus.textContent = "Status: In Progress";
-            (card.querySelector(
-              ".assignment-card-main"
-            ) || card).appendChild(
-              cleanStatus
-            );
-          }
-        }
-      );
     }
+    this.applyClientBranding();
+    const startedCourses = assignments.filter(
+      (assignment) => assignment.status === "in_progress" || assignment.status === "completed"
+    ).length;
+    this.setUnifiedText(
+      "journeyCourses",
+      String(
+        startedCourses
+      )
+    );
+    const journeySeconds = Number(
+      data.journey?.trainingSeconds || data.journey?.elapsedSeconds || 0
+    );
+    this.setUnifiedText(
+      "journeyTime",
+      journeySeconds > 0 ? `${Math.max(
+        1,
+        Math.round(
+          journeySeconds / 60
+        )
+      )}m` : "\u2014"
+    );
+    this.setUnifiedText(
+      "journeyLastActivity",
+      data.journey?.lastActivityLabel || "\u2014"
+    );
+    this.renderLearnerSkills();
   }
   renderUnifiedTrainingContext() {
     const adaptiveTrainingTopbar = this.shadowRoot?.querySelector(
@@ -32331,6 +32272,165 @@ NEXIVRA RUNTIME RULES
           border-bottom:1px solid #1d6c99;
         }
 
+
+        /* =====================================================
+           CORRECT LEARNER DASHBOARD \u2014 NO LEGACY MARKUP
+           ===================================================== */
+
+        #unifiedDashboardView {
+          grid-template-columns:165px minmax(0,1fr);
+          min-height:100vh;
+        }
+
+        .final-dashboard-main {
+          min-width:0;
+          background:#020b13;
+        }
+
+        .final-dashboard-main .learner-hero {
+          min-height:180px;
+          margin:0;
+          padding:0;
+          border-bottom:1px solid #16455c;
+          background-size:cover;
+          background-position:center;
+        }
+
+        .learner-momentum {
+          padding:22px 26px 16px;
+        }
+
+        .learner-momentum-line {
+          color:#fff;
+          font-size:30px;
+          font-weight:900;
+          letter-spacing:-.025em;
+        }
+
+        .learner-momentum-line strong {
+          color:#159ef6;
+        }
+
+        .learner-momentum-copy {
+          margin-top:6px;
+          color:#a8bdcb;
+          font-size:11px;
+        }
+
+        .final-current-training {
+          margin:0 26px;
+          overflow:hidden;
+          border:1px solid #15506b;
+          border-radius:14px;
+          background:#061522;
+        }
+
+        .final-section-heading {
+          padding:15px 18px;
+          border-bottom:1px solid #16455c;
+          color:#fff;
+          font-size:15px;
+          font-weight:900;
+        }
+
+        .final-current-training
+        #unifiedAssignmentList {
+          padding:16px;
+        }
+
+        .final-assignment-card {
+          display:grid;
+          grid-template-columns:260px minmax(0,1fr) 190px;
+          gap:22px;
+          align-items:center;
+          padding:0;
+          border:0;
+          background:transparent;
+        }
+
+        .final-course-image {
+          width:260px;
+          height:145px;
+          object-fit:cover;
+          border:1px solid #16455c;
+          border-radius:10px;
+          background:#0a2030;
+        }
+
+        .final-assignment-title {
+          color:#fff;
+          font-size:17px;
+          font-weight:900;
+        }
+
+        .final-assignment-subject {
+          margin-top:5px;
+          color:#9fb3c2;
+          font-size:11px;
+        }
+
+        .final-assignment-status {
+          display:flex;
+          align-items:center;
+          gap:8px;
+          margin-top:14px;
+          color:#d7e4ed;
+          font-size:11px;
+          font-weight:800;
+        }
+
+        .final-status-dot {
+          width:8px;
+          height:8px;
+          border-radius:50%;
+          background:#14c8ff;
+          box-shadow:0 0 10px rgba(20,200,255,.45);
+        }
+
+        .final-resume-button {
+          width:100%;
+          min-height:48px;
+          border-radius:9px;
+          font-weight:900;
+        }
+
+        .final-dashboard-main
+        .dashboard-lower-grid {
+          grid-template-columns:minmax(0,1fr) minmax(340px,.85fr);
+          margin:18px 26px 30px;
+        }
+
+        .final-dashboard-main
+        .learner-panel {
+          min-height:300px;
+        }
+
+        .final-dashboard-main
+        .journey-image {
+          height:220px;
+        }
+
+        @media(max-width:1050px) {
+
+          .final-assignment-card {
+            grid-template-columns:180px minmax(0,1fr);
+          }
+
+          .final-course-image {
+            width:180px;
+            height:115px;
+          }
+
+          .final-resume-button {
+            grid-column:1 / -1;
+          }
+
+          .final-dashboard-main
+          .dashboard-lower-grid {
+            grid-template-columns:1fr;
+          }
+        }
+
       </style>
 
 
@@ -32391,36 +32491,52 @@ NEXIVRA RUNTIME RULES
 
           <aside class="dashboard-side-nav">
 
-            <div class="client-brand-block"><img id="clientLogo" class="client-logo" alt="" hidden><div class="client-name-fallback" data-client-name>Client Organization</div><div class="client-tagline" data-client-tagline></div></div>
+            <div class="client-brand-block">
+
+              <img
+                id="clientLogo"
+                class="client-logo"
+                alt=""
+                hidden>
+
+              <div
+                class="client-name-fallback"
+                data-client-name>
+                Client Organization
+              </div>
+
+              <div
+                class="client-tagline"
+                data-client-tagline>
+              </div>
+
+            </div>
 
             <div class="dashboard-nav-label">
               LEARNER
             </div>
 
-            <button
-              class="dashboard-nav-item active">
-              My Current Training
+            <button class="dashboard-nav-item active">
+              My Training
             </button>
 
-            <button class="dashboard-nav-item">My Skills</button>
+            <button class="dashboard-nav-item">
+              My Skills
+            </button>
 
-            <button
-              class="dashboard-nav-item"
-              disabled>
+            <button class="dashboard-nav-item" disabled>
               My Profile
             </button>
 
-            <button class="dashboard-nav-item" disabled>Certificates</button>
+            <button class="dashboard-nav-item" disabled>
+              Certificates
+            </button>
 
-            <button
-              class="dashboard-nav-item"
-              disabled>
+            <button class="dashboard-nav-item" disabled>
               Resources
             </button>
 
-            <button
-              class="dashboard-nav-item"
-              disabled>
+            <button class="dashboard-nav-item" disabled>
               Help
             </button>
 
@@ -32428,94 +32544,152 @@ NEXIVRA RUNTIME RULES
               \u25CF NEXIVRA Core Online
             </div>
 
-            <div class="powered-by"><span data-client-name>Client Organization</span><br>Training powered by NEXIVRA</div>
+            <div class="powered-by">
+              <span data-client-name>
+                Client Organization
+              </span>
+              <br>
+              Training powered by NEXIVRA
+            </div>
 
           </aside>
 
 
-          <div class="learner-hero" id="learnerHero"><h1 id="learnerHeroGreeting">Welcome back.</h1><p>Keep learning. Keep making a difference.</p></div>
+          <main class="final-dashboard-main">
 
-          <div
-            class="learner-name-strip"
-            id="learnerNameStrip">
-            Learner
-          </div>
-
-          <div class="learner-momentum" id="learnerMomentum">
-            <div class="learner-momentum-line">
-              <span id="learnerMomentumFirstName">Learner</span>,
-              <strong>let's keep learning.</strong>
-            </div>
-            <div class="learner-momentum-copy">
-              Every interaction is an opportunity to create a better experience.
-            </div>
-          </div>
-
-          <div class="unified-eyebrow">
-            MY LEARNING
-          </div>
-
-          <h1
-            class="unified-title"
-            id="unifiedWelcome">
-            Welcome back.
-          </h1>
-
-          <p class="unified-intro">
-            Your assigned learning,
-            progress, and active NEXIVRA
-            sessions are here.
-          </p>
-
-          <div class="unified-metrics">
-
-            <div class="unified-metric">
-              <span>ASSIGNED</span>
-              <strong id="unifiedAssignedCount">0</strong>
+            <div
+              class="learner-hero"
+              id="learnerHero">
             </div>
 
-            <div class="unified-metric">
-              <span>ACTIVE</span>
-              <strong id="unifiedActiveCount">0</strong>
-            </div>
+            <div class="learner-momentum">
 
-            <div class="unified-metric">
-              <span>COMPLETED</span>
-              <strong id="unifiedCompletedCount">0</strong>
-            </div>
-
-          </div>
-
-          <div class="unified-list">
-
-            <div class="unified-list-heading">
-              My Training
-            </div>
-
-            <div id="unifiedAssignmentList">
-              <div class="unified-empty">
-                Connecting to NEXIVRA...
+              <div class="learner-momentum-line">
+                <span id="learnerMomentumFirstName">
+                  Learner
+                </span>,
+                <strong>let's keep learning.</strong>
               </div>
+
+              <div class="learner-momentum-copy">
+                Every interaction is an opportunity to create a better experience.
+              </div>
+
             </div>
 
-          </div>
 
-        
-          <div
-              id="courseBrandVisual"
-              class="course-brand-visual">
-            </div>
+            <section class="final-current-training">
+
+              <div class="final-section-heading">
+                My Current Training
+              </div>
+
+              <div id="unifiedAssignmentList">
+
+                <div class="unified-empty">
+                  Connecting to NEXIVRA...
+                </div>
+
+              </div>
+
+            </section>
+
 
             <div class="dashboard-lower-grid">
-            <section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">My Skills</h3><p class="learner-panel-subtitle">Skills NEXIVRA has observed and is helping you develop.</p><div id="learnerSkillsList"></div></div></section>
-            <section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">My Journey</h3><div class="journey-metrics"><div class="journey-metric"><div class="journey-label">Courses Started</div><div class="journey-value" id="journeyCourses">0</div></div><div class="journey-metric"><div class="journey-label">Time in Training</div><div class="journey-value" id="journeyTime">\u2014</div></div><div class="journey-metric"><div class="journey-label">Last Activity</div><div class="journey-value" id="journeyLastActivity">\u2014</div></div></div></div><img id="journeyBrandImage" class="journey-image" alt="" hidden>
-              <div id="communityBrandImage" class="community-banner">
-                <div class="community-banner-copy">
-                  Great experiences build stronger communities.
+
+              <section class="learner-panel">
+
+                <div class="learner-panel-inner">
+
+                  <h3 class="learner-panel-title">
+                    My Skills
+                  </h3>
+
+                  <p class="learner-panel-subtitle">
+                    Skills NEXIVRA has observed and is helping you develop.
+                  </p>
+
+                  <div id="learnerSkillsList">
+                  </div>
+
                 </div>
-              </div></section>
-          </div>
-</section>
+
+              </section>
+
+
+              <section class="learner-panel">
+
+                <div class="learner-panel-inner">
+
+                  <h3 class="learner-panel-title">
+                    My Journey
+                  </h3>
+
+                  <p class="learner-panel-subtitle">
+                    Your learning activity and milestones.
+                  </p>
+
+                  <div class="journey-metrics">
+
+                    <div class="journey-metric">
+
+                      <div class="journey-label">
+                        Courses Started
+                      </div>
+
+                      <div
+                        class="journey-value"
+                        id="journeyCourses">
+                        0
+                      </div>
+
+                    </div>
+
+                    <div class="journey-metric">
+
+                      <div class="journey-label">
+                        Time in Training
+                      </div>
+
+                      <div
+                        class="journey-value"
+                        id="journeyTime">
+                        \u2014
+                      </div>
+
+                    </div>
+
+                    <div class="journey-metric">
+
+                      <div class="journey-label">
+                        Last Activity
+                      </div>
+
+                      <div
+                        class="journey-value"
+                        id="journeyLastActivity">
+                        \u2014
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <img
+                  id="journeyBrandImage"
+                  class="journey-image"
+                  alt=""
+                  hidden>
+
+              </section>
+
+            </div>
+
+          </main>
+
+        </section>
 
 
         <section id="unifiedTrainingView">
