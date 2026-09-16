@@ -32950,7 +32950,9 @@ NEXIVRA RUNTIME RULES
       "universalLogoutButton"
     );
     if (universalLogoutButton) {
-      universalLogoutButton.onclick = () => {
+      universalLogoutButton.onclick = (event) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
         this.dispatchRuntimeEvent(
           "nexivra-logout",
           {
