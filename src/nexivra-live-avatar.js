@@ -1367,44 +1367,24 @@ NEXIVRA RUNTIME RULES
     this.renderLearnerSkills();
   }
 
-  buildResumeBriefing() {
-    const state =
-      this.runtimeContext?.session?.state ||
-      {};
-    const resume =
-      state.resumeState ||
-      {};
-    const history =
-      Array.isArray(state.messageHistory)
-        ? state.messageHistory
-        : [];
+  buildStartupBriefing() {
+    const firstSession =
+      this.getAttribute("first-session") === "true";
+    const firstName =
+      this.runtimeContext?.learner?.firstName || "there";
 
-    if (!history.length && !resume.savedAt) {
-      return "";
+    if(firstSession){
+      return [
+        "FIRST SESSION:",
+        `This is ${firstName}'s first NEXIVRA training session.`,
+        "Introduce yourself naturally as the learner's NEXIVRA instructor before teaching course content.",
+        "Briefly explain that the experience is conversational and adaptive.",
+        "Begin learning about the learner before moving into course teaching.",
+        "Do not act as though prior training history exists."
+      ].join("\n\n");
     }
 
-    const recent =
-      history.slice(-8)
-        .map(
-          item =>
-            `${item.role}: ${item.text}`
-        )
-        .join("\n");
-
-    return [
-      "RESUME CONTINUITY:",
-      "This learner is resuming an existing training session.",
-      "Do not restart the lesson or repeat the opening unless the learner explicitly asks.",
-      `Resume stage: ${resume.stage || state.trainingStage || state.stage || "teaching"}.`,
-      `Last learner message: ${resume.lastLearnerMessage || "not available"}.`,
-      `Last coach message: ${resume.lastCoachMessage || "not available"}.`,
-      recent
-        ? `Recent conversation:\n${recent}`
-        : "",
-      "Continue naturally from the learner's last meaningful point."
-    ]
-      .filter(Boolean)
-      .join("\n\n");
+    return this.buildResumeBriefing();
   }
 
 
@@ -1907,16 +1887,7 @@ NEXIVRA RUNTIME RULES
     if(!list)return;
     const skills=Array.isArray(this.dashboardData?.learnerSkills) ? this.dashboardData.learnerSkills.filter(x=>x?.learnerVisible===true) : [];
     if(!skills.length){
-      list.innerHTML=`
-        <div class="skill-row">
-          <div class="skill-icon developing">●</div>
-          <div>
-            <div class="skill-name">Name Use</div>
-            <div class="skill-note">NEXIVRA is continuing to observe how naturally and consistently you use the guest's name.</div>
-          </div>
-          <div class="skill-status developing">In Progress</div>
-        </div>
-      `;
+      list.innerHTML=`<div class="skill-empty"><strong>NEXIVRA is learning how you work.</strong><span>Skills will appear here once there is meaningful evidence to share.</span></div>`;
       return;
     }
     list.innerHTML=skills.map(skill=>{
