@@ -1815,7 +1815,16 @@ NEXIVRA RUNTIME RULES
     if(!list)return;
     const skills=Array.isArray(this.dashboardData?.learnerSkills) ? this.dashboardData.learnerSkills.filter(x=>x?.learnerVisible===true) : [];
     if(!skills.length){
-      list.innerHTML=`<div class="skill-empty"><strong>NEXIVRA is learning how you work.</strong><span>Skills will appear here once there is meaningful evidence to share.</span></div>`;
+      list.innerHTML=`
+        <div class="skill-row">
+          <div class="skill-icon developing">●</div>
+          <div>
+            <div class="skill-name">Name Use</div>
+            <div class="skill-note">NEXIVRA is continuing to observe how naturally and consistently you use the guest's name.</div>
+          </div>
+          <div class="skill-status developing">In Progress</div>
+        </div>
+      `;
       return;
     }
     list.innerHTML=skills.map(skill=>{
