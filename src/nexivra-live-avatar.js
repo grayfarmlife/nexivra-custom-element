@@ -3650,7 +3650,11 @@ NEXIVRA RUNTIME RULES
 
     if (universalLogoutButton) {
       universalLogoutButton.onclick =
-        () => {
+        event => {
+
+          event?.preventDefault?.();
+          event?.stopPropagation?.();
+
           this.dispatchRuntimeEvent(
             "nexivra-logout",
             {
