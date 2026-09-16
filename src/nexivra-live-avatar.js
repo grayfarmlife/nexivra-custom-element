@@ -1285,31 +1285,82 @@ NEXIVRA RUNTIME RULES
           ?.trainingSeconds ||
         data.journey
           ?.elapsedSeconds ||
+        this.runtimeContext
+          ?.session
+          ?.state
+          ?.elapsedSeconds ||
         0
       );
 
 
+    const journeyMinutes =
+      journeySeconds > 0
+        ? Math.max(
+            1,
+            Math.round(
+              journeySeconds /
+              60
+            )
+          )
+        : 0;
+
+
     this.setUnifiedText(
       "journeyTime",
-      journeySeconds > 0
-        ? `${
-            Math.max(
-              1,
-              Math.round(
-                journeySeconds /
-                60
-              )
-            )
-          }m`
+      journeyMinutes > 0
+        ? `${journeyMinutes} min`
         : "—"
     );
+
+
+    const lastCheckpointReason =
+      String(
+        data.journey
+          ?.lastActivityType ||
+        this.runtimeContext
+          ?.session
+          ?.state
+          ?.checkpointReason ||
+        ""
+      );
+
+
+    const activityLabels = {
+      session_started:
+        "Training Started",
+
+      learner_turn:
+        "Training Conversation",
+
+      learner_voice_turn:
+        "Training Conversation",
+
+      coach_turn_completed:
+        "Training Conversation",
+
+      periodic:
+        "Training Session",
+
+      navigation_exit:
+        "Training Session",
+
+      session_end:
+        "Training Session"
+    };
 
 
     this.setUnifiedText(
       "journeyLastActivity",
       data.journey
         ?.lastActivityLabel ||
-      "—"
+      activityLabels[
+        lastCheckpointReason
+      ] ||
+      (
+        journeySeconds > 0
+          ? "Training Session"
+          : "—"
+      )
     );
 
 
@@ -4106,6 +4157,47 @@ NEXIVRA RUNTIME RULES
             )
           )
         : 0;
+
+
+    /*
+     * Keep the learner-facing Journey panel current immediately.
+     * Backend persistence still remains the source of truth.
+     */
+    if (
+      this.runtimeContext &&
+      typeof this.runtimeContext ===
+        "object"
+    ) {
+
+      this.runtimeContext.session =
+        this.runtimeContext.session ||
+        {};
+
+      this.runtimeContext.session.state =
+        this.runtimeContext.session.state ||
+        {};
+
+      this.runtimeContext
+        .session
+        .state
+        .elapsedSeconds =
+          elapsedSeconds;
+
+      this.runtimeContext
+        .session
+        .state
+        .checkpointReason =
+          reason;
+
+      this.runtimeContext
+        .session
+        .state
+        .lastCheckpointAt =
+          new Date(
+            now
+          ).toISOString();
+    }
+
 
     this.dispatchRuntimeEvent(
       "nexivra-progress-checkpoint",
