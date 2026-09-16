@@ -30866,6 +30866,28 @@ NEXIVRA RUNTIME RULES
     );
     this.renderLearnerSkills();
   }
+  buildResumeBriefing() {
+    const state = this.runtimeContext?.session?.state || {};
+    const resume = state.resumeState || {};
+    const history = Array.isArray(state.messageHistory) ? state.messageHistory : [];
+    if (!history.length && !resume.savedAt) {
+      return "";
+    }
+    const recent = history.slice(-8).map(
+      (item) => `${item.role}: ${item.text}`
+    ).join("\n");
+    return [
+      "RESUME CONTINUITY:",
+      "This learner is resuming an existing training session.",
+      "Do not restart the lesson or repeat the opening unless the learner explicitly asks.",
+      `Resume stage: ${resume.stage || state.trainingStage || state.stage || "teaching"}.`,
+      `Last learner message: ${resume.lastLearnerMessage || "not available"}.`,
+      `Last coach message: ${resume.lastCoachMessage || "not available"}.`,
+      recent ? `Recent conversation:
+${recent}` : "",
+      "Continue naturally from the learner's last meaningful point."
+    ].filter(Boolean).join("\n\n");
+  }
   renderUnifiedTrainingContext() {
     const adaptiveTrainingTopbar = this.shadowRoot?.querySelector(
       ".unified-topbar"
@@ -32453,10 +32475,32 @@ NEXIVRA RUNTIME RULES
           }
         }
 
-      </style>
+      
+        .nexivra-universal-logout {
+          position:fixed;
+          top:18px;
+          right:18px;
+          z-index:9999;
+          min-height:38px;
+          padding:0 15px;
+          border:1px solid #2b617b;
+          border-radius:9px;
+          background:#061522;
+          color:#eef8ff;
+          font:700 11px/1 Arial,sans-serif;
+          cursor:pointer;
+        }
+</style>
 
 
-      <div class="unified-shell">
+      <button
+          id="universalLogoutButton"
+          class="nexivra-universal-logout"
+          type="button">
+          Log out
+        </button>
+
+        <div class="unified-shell">
 
         <div class="unified-topbar">
 
@@ -32918,6 +32962,19 @@ NEXIVRA RUNTIME RULES
 
       </div>
     `;
+    const universalLogoutButton = this.shadowRoot?.getElementById(
+      "universalLogoutButton"
+    );
+    if (universalLogoutButton) {
+      universalLogoutButton.onclick = () => {
+        this.dispatchRuntimeEvent(
+          "nexivra-logout",
+          {
+            sessionId: this.runtimeSessionId || ""
+          }
+        );
+      };
+    }
   }
   bindControls() {
     const sendButton = this.shadowRoot.getElementById(
