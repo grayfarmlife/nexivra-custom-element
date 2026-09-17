@@ -843,6 +843,64 @@ NEXIVRA RUNTIME RULES
 
 
 
+  emitCompetencyEvidence(
+    observation
+  ) {
+    if (
+      !observation ||
+      typeof observation !==
+        "object"
+    ) {
+      return;
+    }
+
+    const competencyId =
+      observation.competencyId ||
+      observation.skillId ||
+      observation.competency ||
+      "";
+
+    const competencyName =
+      observation.competencyName ||
+      observation.skillName ||
+      observation.skill ||
+      "";
+
+    const evidence =
+      observation.evidence ||
+      observation.observation ||
+      observation.reason ||
+      "";
+
+    if (
+      !competencyId ||
+      !competencyName ||
+      !evidence
+    ) {
+      return;
+    }
+
+    this.dispatchRuntimeEvent(
+      "nexivra-competency-evidence",
+      {
+        sessionId:
+          this.runtimeSessionId ||
+          "",
+        competencyId,
+        competencyName,
+        status:
+          observation.status ||
+          observation.learnerStatus ||
+          "in_progress",
+        evidence,
+        learnerNote:
+          observation.learnerNote ||
+          ""
+      }
+    );
+  }
+
+
   dispatchRuntimeEvent(
     name,
     detail = {}
