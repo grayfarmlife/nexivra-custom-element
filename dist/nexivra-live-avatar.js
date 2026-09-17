@@ -30581,6 +30581,21 @@ NEXIVRA RUNTIME RULES
     );
     return true;
   }
+  runPackage2CompletionTest() {
+    const assignmentId = this.activeAssignmentId || this.runtimeContext?.assignment?.id || "";
+    if (!assignmentId) {
+      console.error(
+        "NEXIVRA completion test: no active assignment."
+      );
+      return;
+    }
+    this.dispatchRuntimeEvent(
+      "nexivra-package2-complete-test",
+      {
+        assignmentId
+      }
+    );
+  }
   dispatchRuntimeEvent(name, detail = {}) {
     this.dispatchEvent(
       new CustomEvent(
