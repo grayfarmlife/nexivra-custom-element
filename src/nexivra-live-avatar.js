@@ -27,7 +27,8 @@ class NexivraLiveAvatar extends HTMLElement {
       "client-tagline",
       "client-hero-image-url",
       "client-course-image-url",
-      "client-journey-image-url"];
+      "client-journey-image-url",
+        'assignment-id'];
   }
 
 
@@ -836,10 +837,15 @@ NEXIVRA RUNTIME RULES
 
   runPackage2CompletionTest() {
     const assignmentId =
+      this.getAttribute(
+        "assignment-id"
+      ) ||
       this.activeAssignmentId ||
       this.runtimeContext
         ?.assignment
         ?.id ||
+      this.runtimeContext
+        ?.assignmentId ||
       "";
 
     if (!assignmentId) {
@@ -849,6 +855,11 @@ NEXIVRA RUNTIME RULES
       return;
     }
 
+    console.log(
+      "NEXIVRA completion test assignment:",
+      assignmentId
+    );
+
     this.dispatchRuntimeEvent(
       "nexivra-package2-complete-test",
       {
@@ -856,6 +867,7 @@ NEXIVRA RUNTIME RULES
       }
     );
   }
+
 
 
   dispatchRuntimeEvent(
