@@ -78,6 +78,7 @@
                                                             this.resumeSummaryTurnObserved = false;
                                                             this.resumeLockMessageSent = false;
                                                             this.resumeSummaryArmed = false;
+                                                            this.resumeSummarySpeechStarted = false;
 
                                                                                                         this.rolePlayActive = false;
 
@@ -526,6 +527,17 @@ The returning-session recap has just been spoken. Do not produce another recap a
                           console.log("NEXIVRA INSTRUCTOR IDENTITY LOCK SENT:",{name:"Elenora",platform:"NEXIVRA"});
                   console.log("NEXIVRA LIVEAVATAR TRANSPORT GUARDED:",{label,bytes});
                           console.log("NEXIVRA DETERMINISTIC RESUME SENT:",this.resumeCheckpoint||"NO_CHECKPOINT");
+                          if(
+                            this.resumeContinuationState==="SUMMARY_PENDING" &&
+                            this.isReturningInstructionalSession()
+                          ){
+                            this.resumeSummaryArmed=true;
+                            this.resumeSummarySpeechStarted=false;
+                            console.log("NEXIVRA RESUME SUMMARY DISPATCHED:",{
+                              state:this.resumeContinuationState,
+                              source:this.resumeCheckpoint?"CHECKPOINT":"RUNTIME_INSTRUCTIONAL_LEDGER"
+                            });
+                          }
               console.log("NEXIVRA RESUME OPENING MODE:","SUMMARY_THEN_NEXT_COMPLETE_THOUGHT");
                               return true;
                             }catch(error){console.error("NEXIVRA LIVEAVATAR MESSAGE ERROR:",{label,error});return false;}
@@ -535,7 +547,7 @@ The returning-session recap has just been spoken. Do not produce another recap a
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B1R2-SUMMARY-TRIGGER-FIX"
+                                                                                                              "PACKAGE3-M5B1R3-DISPATCH-BOUND-RESUME-LOCK"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -5007,6 +5019,18 @@ The returning-session recap has just been spoken. Do not produce another recap a
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar started speaking"
                                                                                                                   );
+
+                                                                                                                  if (
+                                                                                                                    this.resumeContinuationState==="SUMMARY_PENDING" &&
+                                                                                                                    this.resumeSummaryArmed===true &&
+                                                                                                                    this.resumeSummarySpeechStarted===false &&
+                                                                                                                    this.isReturningInstructionalSession()
+                                                                                                                  ) {
+                                                                                                                    this.resumeSummarySpeechStarted=true;
+                                                                                                                    console.log(
+                                                                                                                      "NEXIVRA RESUME SUMMARY SPEAKING"
+                                                                                                                    );
+                                                                                                                  }
                                                                                                                 }
                                                                                                               );
 
@@ -5024,10 +5048,11 @@ The returning-session recap has just been spoken. Do not produce another recap a
                                                                                                                   if (
                                                                                                                     this.resumeContinuationState==="SUMMARY_PENDING" &&
                                                                                                                     this.resumeSummaryArmed===true &&
-                                                                                                                    this.sessionActive===true &&
+                                                                                                                    this.resumeSummarySpeechStarted===true &&
                                                                                                                     this.isReturningInstructionalSession()
                                                                                                                   ) {
                                                                                                                     this.resumeSummaryArmed=false;
+                                                                                                                    this.resumeSummarySpeechStarted=false;
                                                                                                                     console.log(
                                                                                                                       "NEXIVRA RESUME SUMMARY TURN COMPLETE"
                                                                                                                     );
@@ -5914,20 +5939,6 @@ The returning-session recap has just been spoken. Do not produce another recap a
 
                                                                                                               this.sessionActive =
                                                                                                                 true;
-
-                                                                                                              if (
-                                                                                                                this.resumeContinuationState === "SUMMARY_PENDING" &&
-                                                                                                                this.isReturningInstructionalSession()
-                                                                                                              ) {
-                                                                                                                this.resumeSummaryArmed = true;
-                                                                                                                console.log(
-                                                                                                                  "NEXIVRA RESUME SUMMARY ARMED:",
-                                                                                                                  {
-                                                                                                                    sessionActive: true,
-                                                                                                                    state: this.resumeContinuationState
-                                                                                                                  }
-                                                                                                                );
-                                                                                                              }
 
                                                                                                               this.startLearnerTranscriptCapture();
 
