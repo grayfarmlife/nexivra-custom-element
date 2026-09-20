@@ -332,6 +332,8 @@ INTERACTION INTEGRITY:
 - If you ask the learner to do or answer something, wait for real learner input before evaluating or continuing.
 - Silence is not an answer.
 - A system/context message is not a learner answer.
+- UI actions such as Start Session, Pause, Resume, camera controls, navigation, and button clicks are CONTROL EVENTS only. They are never learner speech and never evidence of an answer.
+- After asking a learner question or activity prompt, remain waiting until an actual learner utterance/transcript is received.
 
 The next instructor response must teach, practice, check understanding, or transition forward from this persisted position.`;
           }
@@ -350,52 +352,22 @@ The next instructor response must teach, practice, check understanding, or trans
             });
 
             console.log(
-              "NEXIVRA POST-SUMMARY RESUME LOCK DEFERRED — WAITING FOR START SESSION"
+              "NEXIVRA RESUME INTERACTION GATE ARMED — WAITING FOR START SESSION"
             );
 
             return true;
           }
 
-          sendDeferredPostSummaryResumeLock() {
+          releaseDeferredResumeInteractionGate() {
             if(!this.resumeLockDeferred)return false;
-            if(this.resumeLockMessageSent)return true;
-            if(!this.session)return false;
 
-            this.resumeLockMessageSent=true;
             this.resumeLockDeferred=false;
 
-            const directive=`${this.buildInstructorIdentityLock()}
+            console.log(
+              "NEXIVRA RESUME INTERACTION GATE RELEASED — LISTENING FOR REAL LEARNER INPUT"
+            );
 
-${this.buildResumeLockedDirective()}
-
-SYSTEM TRANSITION:
-The returning-session recap was already spoken before the learner started the live session.
-Do not produce another recap.
-Do not return to startup material.
-Do not invent or infer anything the learner did not actually say.
-The learner has now explicitly started the session. Continue forward from the persisted learning position and wait for real learner input whenever a response is required.`;
-
-            try{
-              const safe=this.compactForLiveAvatar(directive,12000);
-              const result=this.session.message(safe);
-
-              if(result?.catch){
-                result.catch(error=>{
-                  console.error("NEXIVRA DEFERRED RESUME LOCK ERROR:",error);
-                  this.resumeLockMessageSent=false;
-                  this.resumeLockDeferred=true;
-                });
-              }
-
-              console.log("NEXIVRA DEFERRED RESUME LOCK SENT");
-              return true;
-
-            }catch(error){
-              this.resumeLockMessageSent=false;
-              this.resumeLockDeferred=true;
-              console.error("NEXIVRA DEFERRED RESUME LOCK ERROR:",error);
-              return false;
-            }
+            return true;
           }
 
 
@@ -581,7 +553,7 @@ The learner has now explicitly started the session. Continue forward from the pe
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B1R5-DEFERRED-RESUME-INTERACTION-GATE"
+                                                                                                              "PACKAGE3-M5B1R6-REAL-LEARNER-INPUT-GATE"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -6133,9 +6105,9 @@ The learner has now explicitly started the session. Continue forward from the pe
                                                                                                                 this.resumeLockDeferred === true
                                                                                                               ) {
                                                                                                                 console.log(
-                                                                                                                  "NEXIVRA LEARNER START CONFIRMED — RELEASING DEFERRED RESUME LOCK"
+                                                                                                                  "NEXIVRA LEARNER START CONFIRMED — CONTROL EVENT ONLY"
                                                                                                                 );
-                                                                                                                this.sendDeferredPostSummaryResumeLock();
+                                                                                                                this.releaseDeferredResumeInteractionGate();
                                                                                                               }
 
                                                                                                               this.startLearnerTranscriptCapture();
