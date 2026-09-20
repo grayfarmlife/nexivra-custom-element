@@ -30113,6 +30113,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.dashboardData = null;
     this.avatarStarted = false;
     this.attachTimer = null;
+    this.runtimeLifecycleState = "IDLE";
+    this.runtimeLifecycleToken = null;
+    this.runtimeStartPromise = null;
     this.sessionActive = false;
     this.sessionEnding = false;
     this.trainingState = "READY";
@@ -30472,7 +30475,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B1R3-DISPATCH-BOUND-RESUME-LOCK"
+      "PACKAGE3-M5B1R4-SINGLE-FLIGHT-RUNTIME-GUARD"
     );
     this.render();
     this.bindControls();
@@ -30550,6 +30553,17 @@ ${tail}`;
       const previousToken = this.sessionToken;
       this.sessionToken = newValue;
       if (this.isConnected && previousToken && previousToken !== newValue) {
+        if (this.runtimeLifecycleState === "STARTING" || this.runtimeLifecycleState === "ACTIVE") {
+          console.warn(
+            "NEXIVRA TOKEN CHANGE IGNORED \u2014 RUNTIME SINGLE-FLIGHT:",
+            {
+              state: this.runtimeLifecycleState,
+              existingRuntimeProtected: true
+            }
+          );
+          this.sessionToken = previousToken;
+          return;
+        }
         this.resetLiveAvatarRuntime().then(() => {
           this.hardReleaseLocalMedia("runtime_reset");
           this.sessionToken = newValue;
@@ -31598,13 +31612,23 @@ ${tail}`;
 
                                                                                                                             </div>
 
-                                                                                                                            <button
-                                                                                                                              class="unified-start-assignment final-resume-button"
-                                                                                                                              data-assignment-id="${this.escapeUnifiedHtml(
+                                                                                                                            <div class="final-assignment-action">
+                                                                                                                              <button
+                                                                                                                                class="unified-start-assignment final-resume-button"
+                                                                                                                                data-assignment-id="${this.escapeUnifiedHtml(
               assignment.id || ""
             )}">
-                                                                                                                              ${actionLabel} \u2192
-                                                                                                                            </button>
+                                                                                                                                ${actionLabel} \u2192
+                                                                                                                              </button>
+                                                                                                                              <div
+                                                                                                                                class="assignment-loading-status"
+                                                                                                                                data-assignment-loading="${this.escapeUnifiedHtml(
+              assignment.id || ""
+            )}"
+                                                                                                                                hidden>
+                                                                                                                                Loading your training...
+                                                                                                                              </div>
+                                                                                                                            </div>
 
                                                                                                                           </div>
                                                                                                                         `;
@@ -31633,9 +31657,46 @@ ${tail}`;
                 const assignmentId = button.getAttribute(
                   "data-assignment-id"
                 );
+                if (!assignmentId || button.dataset.loading === "true") {
+                  return;
+                }
+                button.dataset.loading = "true";
+                button.disabled = true;
+                button.setAttribute(
+                  "aria-busy",
+                  "true"
+                );
+                const originalLabel = button.textContent;
+                button.textContent = "Loading...";
+                const loadingStatus = this.shadowRoot.querySelector(
+                  `[data-assignment-loading="${assignmentId}"]`
+                );
+                if (loadingStatus) {
+                  loadingStatus.hidden = false;
+                }
+                console.log(
+                  "NEXIVRA ASSIGNMENT START REQUESTED:",
+                  {
+                    assignmentId,
+                    duplicateProtected: true
+                  }
+                );
                 this.requestAssignmentStart(
                   assignmentId
                 );
+                setTimeout(() => {
+                  if (this.isConnected && button.dataset.loading === "true" && this.runtimeLifecycleState === "IDLE") {
+                    button.dataset.loading = "false";
+                    button.disabled = false;
+                    button.removeAttribute(
+                      "aria-busy"
+                    );
+                    button.textContent = originalLabel;
+                    if (loadingStatus) {
+                      loadingStatus.hidden = true;
+                    }
+                  }
+                }, 1e4);
               }
             );
           }
@@ -33234,6 +33295,25 @@ ${tail}`;
                                                                                                                   box-shadow:0 0 10px rgba(20,200,255,.45);
                                                                                                                 }
 
+                                                                                                                .final-assignment-action {
+                                                                                                                  display: flex;
+                                                                                                                  flex-direction: column;
+                                                                                                                  align-items: flex-end;
+                                                                                                                  gap: 8px;
+                                                                                                                }
+
+                                                                                                                .assignment-loading-status {
+                                                                                                                  font-size: 12px;
+                                                                                                                  line-height: 1.2;
+                                                                                                                  opacity: 0.72;
+                                                                                                                  white-space: nowrap;
+                                                                                                                }
+
+                                                                                                                .final-resume-button:disabled {
+                                                                                                                  cursor: wait;
+                                                                                                                  opacity: 0.7;
+                                                                                                                }
+
                                                                                                                 .final-resume-button {
                                                                                                                   width:100%;
                                                                                                                   min-height:48px;
@@ -34002,6 +34082,9 @@ ${tail}`;
     this.session = null;
     this.sessionToken = null;
     this.avatarStarted = false;
+    this.runtimeLifecycleState = "IDLE";
+    this.runtimeLifecycleToken = null;
+    this.runtimeStartPromise = null;
     this.runtimeContextInjected = false;
     this.runtimeContextInjectionPending = false;
     const avatarVideo = this.shadowRoot?.getElementById(
@@ -34020,74 +34103,107 @@ ${tail}`;
    * =========================================================
    */
   async startNexivra() {
-    if (this.avatarStarted || !this.sessionToken) {
+    if (!this.sessionToken) {
       return;
     }
-    this.avatarStarted = true;
-    try {
-      this.setStatus(
-        "Starting NEXIVRA Core..."
+    if (this.runtimeLifecycleState === "STARTING") {
+      console.log(
+        "NEXIVRA START IGNORED \u2014 RUNTIME ALREADY STARTING"
       );
-      this.session = new LiveAvatarSession(
-        this.sessionToken,
-        {
-          voiceChat: false
-        }
-      );
-      this.session.on(
-        AgentEventsEnum.AVATAR_SPEAK_STARTED,
-        () => {
-          this.avatarSpeaking = true;
-          console.log(
-            "NEXIVRA SPEECH EVENT: avatar started speaking"
-          );
-          if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === false && this.isReturningInstructionalSession()) {
-            this.resumeSummarySpeechStarted = true;
-            console.log(
-              "NEXIVRA RESUME SUMMARY SPEAKING"
-            );
-          }
-        }
-      );
-      this.session.on(
-        AgentEventsEnum.AVATAR_SPEAK_ENDED,
-        () => {
-          this.avatarSpeaking = false;
-          console.log(
-            "NEXIVRA SPEECH EVENT: avatar stopped speaking"
-          );
-          if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === true && this.isReturningInstructionalSession()) {
-            this.resumeSummaryArmed = false;
-            this.resumeSummarySpeechStarted = false;
-            console.log(
-              "NEXIVRA RESUME SUMMARY TURN COMPLETE"
-            );
-            this.activatePostSummaryResumeLock();
-          }
-          if (this.sessionActive) {
-            this.coachVoiceTurnCount += 1;
-            this.emitProgressCheckpoint(
-              "coach_turn_completed"
-            );
-            this.maybeStartAdaptiveRolePlay(
-              "coach_turn_completed"
-            );
-          }
-        }
-      );
-      await this.session.start();
-      await this.injectRuntimeContext();
-      this.waitForAvatarVideo();
-    } catch (error) {
-      this.avatarStarted = false;
-      console.error(
-        "NEXIVRA SESSION ERROR:",
-        error
-      );
-      this.setStatus(
-        "Unable to start NEXIVRA: " + (error?.message || String(error))
-      );
+      return this.runtimeStartPromise;
     }
+    if (this.runtimeLifecycleState === "ACTIVE" || this.avatarStarted) {
+      console.log(
+        "NEXIVRA START IGNORED \u2014 RUNTIME ALREADY ACTIVE"
+      );
+      return;
+    }
+    this.runtimeLifecycleState = "STARTING";
+    this.runtimeLifecycleToken = this.sessionToken;
+    this.avatarStarted = true;
+    console.log(
+      "NEXIVRA RUNTIME LIFECYCLE:",
+      "IDLE \u2192 STARTING"
+    );
+    const startPromise = (async () => {
+      try {
+        this.setStatus(
+          "Starting NEXIVRA Core..."
+        );
+        this.session = new LiveAvatarSession(
+          this.sessionToken,
+          {
+            voiceChat: false
+          }
+        );
+        this.session.on(
+          AgentEventsEnum.AVATAR_SPEAK_STARTED,
+          () => {
+            this.avatarSpeaking = true;
+            console.log(
+              "NEXIVRA SPEECH EVENT: avatar started speaking"
+            );
+            if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === false && this.isReturningInstructionalSession()) {
+              this.resumeSummarySpeechStarted = true;
+              console.log(
+                "NEXIVRA RESUME SUMMARY SPEAKING"
+              );
+            }
+          }
+        );
+        this.session.on(
+          AgentEventsEnum.AVATAR_SPEAK_ENDED,
+          () => {
+            this.avatarSpeaking = false;
+            console.log(
+              "NEXIVRA SPEECH EVENT: avatar stopped speaking"
+            );
+            if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === true && this.isReturningInstructionalSession()) {
+              this.resumeSummaryArmed = false;
+              this.resumeSummarySpeechStarted = false;
+              console.log(
+                "NEXIVRA RESUME SUMMARY TURN COMPLETE"
+              );
+              this.activatePostSummaryResumeLock();
+            }
+            if (this.sessionActive) {
+              this.coachVoiceTurnCount += 1;
+              this.emitProgressCheckpoint(
+                "coach_turn_completed"
+              );
+              this.maybeStartAdaptiveRolePlay(
+                "coach_turn_completed"
+              );
+            }
+          }
+        );
+        await this.session.start();
+        await this.injectRuntimeContext();
+        this.waitForAvatarVideo();
+        this.runtimeLifecycleState = "ACTIVE";
+        console.log(
+          "NEXIVRA RUNTIME LIFECYCLE:",
+          "STARTING \u2192 ACTIVE"
+        );
+      } catch (error) {
+        this.avatarStarted = false;
+        this.runtimeLifecycleState = "IDLE";
+        this.runtimeLifecycleToken = null;
+        console.error(
+          "NEXIVRA SESSION ERROR:",
+          error
+        );
+        this.setStatus(
+          "Unable to start NEXIVRA: " + (error?.message || String(error))
+        );
+      } finally {
+        if (this.runtimeLifecycleState !== "STARTING") {
+          this.runtimeStartPromise = null;
+        }
+      }
+    })();
+    this.runtimeStartPromise = startPromise;
+    return startPromise;
   }
   async startGuestInfrastructureTest() {
     if (!this.guestSessionToken) return;
