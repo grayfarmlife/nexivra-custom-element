@@ -30254,37 +30254,7 @@ ${tail}`;
       return false;
     }
   }
-  handleResumeTrainingClick() {
-    console.log("NEXIVRA RESUME TRAINING CLICKED");
-    this.dispatchRuntimeEvent("nexivra-resume-training", { requestedAt: (/* @__PURE__ */ new Date()).toISOString() });
-    try {
-      this.showUnifiedTraining();
-      if (this.sessionActive) {
-        console.log("NEXIVRA RESUME TRAINING \u2014 SESSION ALREADY ACTIVE");
-        return;
-      }
-      if (typeof this.startNexivra === "function") {
-        Promise.resolve(this.startNexivra()).catch((error) => console.error("NEXIVRA RESUME TRAINING START ERROR:", error));
-        console.log("NEXIVRA RESUME TRAINING \u2014 START DIRECT");
-      }
-    } catch (error) {
-      console.error("NEXIVRA RESUME TRAINING ERROR:", error);
-    }
-  }
   connectedCallback() {
-    if (!this._resumeTrainingDelegated) {
-      this._resumeTrainingDelegated = true;
-      this.shadowRoot?.addEventListener("click", (event) => {
-        const target = event.target?.closest?.("button,[data-action='resume-training'],#resumeTrainingButton,#resume-training");
-        if (!target) return;
-        const label = String(target.textContent || target.getAttribute?.("aria-label") || "").trim().toLowerCase();
-        const isResume = target.id === "resumeTrainingButton" || target.id === "resume-training" || target.dataset?.action === "resume-training" || label === "resume training";
-        if (!isResume) return;
-        event.preventDefault();
-        event.stopPropagation();
-        this.handleResumeTrainingClick();
-      });
-    }
     this.render();
     this.bindControls();
     this.sessionToken = this.getAttribute("session-token");
