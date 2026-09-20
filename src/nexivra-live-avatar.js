@@ -72,6 +72,12 @@
                                                                     this.rolePlayGatewayRearmAt = 0;
                                                                     this.awaitingGuestNameAnswer = false;
                                                             this.resumeCheckpoint = null;
+
+                                                            // Package 3 M5B-1R — deterministic post-summary resume lock.
+                                                            this.resumeContinuationState = "UNINITIALIZED";
+                                                            this.resumeSummaryTurnObserved = false;
+                                                            this.resumeLockMessageSent = false;
+
                                                                                                         this.rolePlayActive = false;
 
                                                                                                     this.adaptiveGuidance = null;
@@ -251,7 +257,120 @@
           }
 
 
+          isReturningInstructionalSession() {
+            const firstSession=this.getAttribute("first-session")==="true";
+            const cp=this.resumeCheckpoint;
+            const ledger=this.runtimeContext?.session?.state?.instructionalLedger||{};
+
+            if(cp&&cp.isResumable!==false)return true;
+            if(firstSession)return false;
+
+            return Boolean(
+              ledger.currentObjectiveSummary||
+              ledger.currentObjective||
+              ledger.lastActivitySummary||
+              ledger.lastMeaningfulActivity||
+              ledger.nextObjectiveSummary||
+              ledger.nextObjective||
+              this.runtimeContext?.session?.state?.elapsedSeconds||
+              this.runtimeContext?.session?.state?.learnerVoiceTurnCount||
+              this.runtimeContext?.session?.state?.coachVoiceTurnCount
+            ) || !firstSession;
+          }
+
+          buildResumeLockedDirective() {
+            const ledger=this.runtimeContext?.session?.state?.instructionalLedger||{};
+            const cp=this.resumeCheckpoint;
+
+            const nextObjective=this.cleanResumeText(
+              cp?.nextObjective||
+              ledger.nextObjectiveSummary||
+              ledger.nextObjective||
+              ledger.nextInstructionalAction||
+              "",
+              320
+            );
+
+            const currentObjective=this.cleanResumeText(
+              cp?.instructionalPosition||
+              cp?.objectiveId||
+              ledger.currentObjectiveSummary||
+              ledger.currentObjective||
+              "",
+              320
+            );
+
+            return `SESSION_POSITION — RESUME_LOCKED — AUTHORITATIVE
+This learner has already received the returning-session recap in THIS session.
+
+HARD CONTINUATION STATE:
+- The resume summary is COMPLETE.
+- The original course opening is now INELIGIBLE.
+- Do NOT introduce yourself again unless the learner directly asks your name.
+- Do NOT welcome the learner to the course.
+- Do NOT explain what the course is about.
+- Do NOT present the course overview.
+- Do NOT say "let's begin," "let's get started," or any equivalent opening sequence.
+- Do NOT replay completed opening material.
+- Do NOT move backward merely because older course instructions remain in context.
+- Continue FORWARD from persisted learner progress only.
+- Move backward only if the learner explicitly asks to review, repeat, redo, or restart.
+
+Current persisted learning focus: ${currentObjective||"continue the current unfinished objective"}
+Next persisted learning action: ${nextObjective||"continue with the next unfinished instructional objective"}
+
+The next instructor response must teach, practice, check understanding, or transition forward from this persisted position.`;
+          }
+
+          activatePostSummaryResumeLock() {
+            if(this.resumeContinuationState==="RESUME_LOCKED")return false;
+            if(!this.isReturningInstructionalSession())return false;
+            if(!this.session)return false;
+
+            this.resumeContinuationState="RESUME_LOCKED";
+            this.resumeSummaryTurnObserved=true;
+
+            console.log("NEXIVRA RESUME STATE TRANSITION:",{
+              from:"SUMMARY_PENDING",
+              to:"RESUME_LOCKED"
+            });
+
+            if(this.resumeLockMessageSent)return true;
+            this.resumeLockMessageSent=true;
+
+            const directive=`${this.buildInstructorIdentityLock()}
+
+${this.buildResumeLockedDirective()}
+
+SYSTEM TRANSITION:
+The returning-session recap has just been spoken. Do not produce another recap and do not return to startup material. Continue now with the next complete instructional thought from the persisted learning position.`;
+
+            try{
+              const safe=this.compactForLiveAvatar(directive,12000);
+              const result=this.session.message(safe);
+              if(result?.catch){
+                result.catch(error=>{
+                  console.error("NEXIVRA POST-SUMMARY RESUME LOCK ERROR:",error);
+                  this.resumeLockMessageSent=false;
+                });
+              }
+              console.log("NEXIVRA POST-SUMMARY RESUME LOCK SENT");
+              return true;
+            }catch(error){
+              this.resumeLockMessageSent=false;
+              console.error("NEXIVRA POST-SUMMARY RESUME LOCK ERROR:",error);
+              return false;
+            }
+          }
+
+
           buildDeterministicResumeDirective() {
+            if(this.resumeContinuationState==="RESUME_LOCKED"){
+              console.log("NEXIVRA RESUME SOURCE:","POST_SUMMARY_RESUME_LOCK");
+              console.log("NEXIVRA RESUME BOUNDARY:","FORWARD_ONLY");
+              return this.buildResumeLockedDirective();
+            }
+
             const cp=this.resumeCheckpoint;
             const firstSession=this.getAttribute("first-session")==="true";
             const ledger=this.runtimeContext?.session?.state?.instructionalLedger||{};
@@ -287,6 +406,14 @@
               lastActivity,
               nextObjective
             });
+
+            if(
+              this.resumeContinuationState==="UNINITIALIZED" &&
+              this.isReturningInstructionalSession()
+            ){
+              this.resumeContinuationState="SUMMARY_PENDING";
+              console.log("NEXIVRA RESUME STATE:","SUMMARY_PENDING");
+            }
 
             if(cp&&cp.isResumable!==false){
               console.log("NEXIVRA RESUME SOURCE:","DETERMINISTIC_CHECKPOINT");
@@ -405,6 +532,10 @@
 
 
                           connectedCallback() {
+                                                                                                            console.log(
+                                                                                                              "NEXIVRA BUILD:",
+                                                                                                              "PACKAGE3-M5B1R-HARD-RESUME-LOCK"
+                                                                                                            );
                                                                                                             this.render();
                                                                                                             this.bindControls();
 
@@ -4888,6 +5019,13 @@
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar stopped speaking"
                                                                                                                   );
+
+                                                                                                                  if (
+                                                                                                                    this.resumeContinuationState==="SUMMARY_PENDING" &&
+                                                                                                                    this.isReturningInstructionalSession()
+                                                                                                                  ) {
+                                                                                                                    this.activatePostSummaryResumeLock();
+                                                                                                                  }
 
 
                                                                                                                   if (this.sessionActive) {
