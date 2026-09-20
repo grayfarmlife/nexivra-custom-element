@@ -30062,6 +30062,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
       "formal-role-play-command",
       "guest-session-token",
       "guest-avatar-id",
+      "role-play-guest-response",
       "client-name",
       "client-logo-url",
       "client-tagline",
@@ -30084,6 +30085,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.guestInfrastructureReady = false;
     this.m5b2RolePlayStageActive = false;
     this.m5b2GuestStartRequested = false;
+    this.m5b2GuestResponseQueue = [];
+    this.m5b2GuestSpeaking = false;
+    this.m5b2ElenoraVoiceSuspended = false;
     this.subjectId = null;
     this.lessonId = null;
     this.runtimeSessionId = null;
@@ -30474,7 +30478,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2A-MULTI-AVATAR-STAGE-HANDOFF"
+      "PACKAGE3-M5B2B-GUEST-CONVERSATION-ROUTING"
     );
     this.render();
     this.bindControls();
@@ -30541,6 +30545,20 @@ ${tail}`;
     }
     if (name === "guest-avatar-id") {
       this.guestAvatarId = newValue;
+      return;
+    }
+    if (name === "role-play-guest-response") {
+      if (!newValue) return;
+      try {
+        const p3 = JSON.parse(newValue), t3 = String(p3?.text || "").trim(), sid = String(p3?.rolePlaySessionId || "");
+        if (!t3 || !this.rolePlayActive || sid !== String(this.formalRolePlaySessionId || "")) {
+          console.warn("NEXIVRA M5B-2B GUEST RESPONSE IGNORED:", { sid, active: this.formalRolePlaySessionId || "" });
+          return;
+        }
+        this.queuePedroGuestResponse(t3);
+      } catch (error) {
+        console.error("NEXIVRA M5B-2B GUEST RESPONSE PARSE ERROR:", error);
+      }
       return;
     }
     if (name === "guest-session-token") {
@@ -30793,6 +30811,10 @@ ${tail}`;
     };
   }
   async injectRuntimeContext() {
+    if (this.rolePlayActive && this.m5b2RolePlayStageActive && this.m5b2ElenoraVoiceSuspended) {
+      console.log("NEXIVRA M5B-2B ELENORA RUNTIME MESSAGE BLOCKED DURING ROLE PLAY");
+      return true;
+    }
     if (!this.session || !this.runtimeContext || this.runtimeContextInjected || this.runtimeContextInjectionPending) {
       return;
     }
@@ -31352,12 +31374,65 @@ ${tail}`;
     this.dispatchRuntimeEvent("nexivra-guest-identity-discovered", { rolePlaySessionId: this.formalRolePlaySessionId, guestName });
     console.log("NEXIVRA GUEST IDENTITY DISCOVERED:", { rolePlaySessionId: this.formalRolePlaySessionId, guestName });
   }
+  async suspendElenoraForM5B2RolePlay() {
+    if (this.m5b2ElenoraVoiceSuspended) return;
+    this.m5b2ElenoraVoiceSuspended = true;
+    try {
+      if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") await this.session.voiceChat.stop();
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2B ELENORA VOICE STOP WARNING:", error);
+    }
+    try {
+      if (typeof this.session?.interrupt === "function") await this.session.interrupt();
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2B ELENORA INTERRUPT WARNING:", error);
+    }
+    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION BLOCKED \u2014 OBSERVER VIDEO ONLY");
+  }
+  async restoreElenoraVoiceAfterM5B2RolePlay() {
+    if (!this.m5b2ElenoraVoiceSuspended) return;
+    this.m5b2ElenoraVoiceSuspended = false;
+    try {
+      if (this.session?.voiceChat && typeof this.session.voiceChat.start === "function" && this.sessionActive) await this.session.voiceChat.start();
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2B ELENORA VOICE RESTORE WARNING:", error);
+    }
+    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION RESTORED");
+  }
+  queuePedroGuestResponse(text) {
+    const v3 = String(text || "").trim();
+    if (!v3) return;
+    this.m5b2GuestResponseQueue.push(v3);
+    console.log("NEXIVRA M5B-2B PEDRO RESPONSE QUEUED:", { chars: v3.length, queueDepth: this.m5b2GuestResponseQueue.length });
+    this.flushPedroGuestResponseQueue();
+  }
+  async flushPedroGuestResponseQueue() {
+    if (this.m5b2GuestSpeaking || !this.rolePlayActive || !this.m5b2RolePlayStageActive || !this.guestInfrastructureReady || !this.guestSession || !this.m5b2GuestResponseQueue.length) return;
+    const t3 = this.m5b2GuestResponseQueue.shift();
+    this.m5b2GuestSpeaking = true;
+    try {
+      if (typeof this.guestSession.repeat !== "function") throw new Error("LIVEAVATAR_LITE_REPEAT_UNAVAILABLE");
+      console.log("NEXIVRA M5B-2B PEDRO SPEAK START:", { rolePlaySessionId: this.formalRolePlaySessionId || "", chars: t3.length });
+      await this.guestSession.repeat(t3);
+      this.rolePlayConversation.push({ speaker: "guest", text: t3, at: (/* @__PURE__ */ new Date()).toISOString() });
+      console.log("NEXIVRA M5B-2B PEDRO SPEAK COMMAND SENT");
+      const ms2 = Math.max(1600, Math.min(12e3, t3.split(/\s+/).filter(Boolean).length * 390));
+      setTimeout(() => {
+        this.m5b2GuestSpeaking = false;
+        this.flushPedroGuestResponseQueue();
+      }, ms2);
+    } catch (error) {
+      this.m5b2GuestSpeaking = false;
+      console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:", error);
+    }
+  }
   enterM5B2RolePlayStage(command = {}) {
     if (this.m5b2RolePlayStageActive) return;
     const wrap = this.shadowRoot?.querySelector(".wrap");
     if (!wrap) return;
     this.m5b2RolePlayStageActive = true;
     this.m5b2GuestStartRequested = true;
+    this.suspendElenoraForM5B2RolePlay();
     wrap.classList.add("m5b2-roleplay-stage");
     const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
     if (stageBadge) stageBadge.textContent = "ROLE-PLAY";
@@ -31387,6 +31462,7 @@ ${tail}`;
     await this.stopGuestInfrastructureTest(
       `m5b2_${reason}`
     );
+    await this.restoreElenoraVoiceAfterM5B2RolePlay();
     console.log("NEXIVRA M5B-2 STAGE RETURN:", {
       main: "ELENORA",
       guest: "PEDRO_EXITED",
@@ -34749,7 +34825,7 @@ ${tail}`;
             }
           }
           if (this.rolePlayActive && this.formalRolePlaySessionId) {
-            this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", { rolePlaySessionId: this.formalRolePlaySessionId, speaker: "learner", text });
+            this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", { rolePlaySessionId: this.formalRolePlaySessionId, speaker: "learner", text, scenario: this.activeRolePlayScenario || {} });
           }
           this.dispatchRuntimeEvent("nexivra-learner-transcript", { sessionId: this.runtimeSessionId || "", text, observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null });
         }
