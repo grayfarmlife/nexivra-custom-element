@@ -30060,6 +30060,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
       "adaptive-guidance",
       "app-command",
       "formal-role-play-command",
+      "guest-session-token",
+      "guest-avatar-id",
       "client-name",
       "client-logo-url",
       "client-tagline",
@@ -30074,6 +30076,12 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.session = null;
     this.sessionToken = null;
+    this.guestSession = null;
+    this.guestSessionToken = null;
+    this.guestAvatarId = null;
+    this.guestAttachTimer = null;
+    this.guestAutoStopTimer = null;
+    this.guestInfrastructureReady = false;
     this.subjectId = null;
     this.lessonId = null;
     this.runtimeSessionId = null;
@@ -30366,6 +30374,8 @@ ${tail}`;
     this.render();
     this.bindControls();
     this.sessionToken = this.getAttribute("session-token");
+    this.guestSessionToken = this.getAttribute("guest-session-token");
+    this.guestAvatarId = this.getAttribute("guest-avatar-id");
     this.subjectId = this.getAttribute("subject-id") || null;
     this.lessonId = this.getAttribute("lesson-id") || null;
     this.runtimeSessionId = this.getAttribute("runtime-session-id") || null;
@@ -30405,6 +30415,9 @@ ${tail}`;
     if (this.sessionToken) {
       this.startNexivra();
     }
+    if (this.guestSessionToken) {
+      this.startGuestInfrastructureTest();
+    }
   }
   attributeChangedCallback(name, oldValue, newValue) {
     if (name === "resume-checkpoint") {
@@ -30417,6 +30430,17 @@ ${tail}`;
       }
     }
     if (!newValue || newValue === oldValue) {
+      return;
+    }
+    if (name === "guest-avatar-id") {
+      this.guestAvatarId = newValue;
+      return;
+    }
+    if (name === "guest-session-token") {
+      this.guestSessionToken = newValue;
+      if (this.isConnected) {
+        this.startGuestInfrastructureTest();
+      }
       return;
     }
     if (name === "session-token") {
@@ -31917,6 +31941,8 @@ ${tail}`;
                                                                                                                 }
 
                                                                                                                 .wrap {
+                                                                                                                    /* M5B guest diagnostic anchor */
+                                                                                                                    position: relative;
                                                                                                                   position: relative;
                                                                                                                   width: 100%;
                                                                                                                   height: 100%;
@@ -33570,6 +33596,25 @@ ${tail}`;
                                                                                                                 </video>
 
 
+                                                                                                                <!-- Package 3 M5B-1 diagnostic guest surface.
+                                                                                                                     Temporary: removed/reworked when M5B-2
+                                                                                                                     performs the real Elenora -> Guest handoff. -->
+                                                                                                                <div
+                                                                                                                  id="guestInfraPanel"
+                                                                                                                  style="display:none; position:absolute; right:18px; bottom:92px; width:min(34%,360px); aspect-ratio:16/9; background:#111; border:2px solid rgba(255,255,255,.88); border-radius:14px; overflow:hidden; box-shadow:0 12px 34px rgba(0,0,0,.35); z-index:15;">
+                                                                                                                  <video
+                                                                                                                    id="guestAvatarVideo"
+                                                                                                                    autoplay
+                                                                                                                    playsinline
+                                                                                                                    muted
+                                                                                                                    style="width:100%; height:100%; object-fit:cover; background:#111;">
+                                                                                                                  </video>
+                                                                                                                  <div style="position:absolute; left:10px; bottom:8px; padding:5px 9px; border-radius:8px; background:rgba(0,0,0,.72); color:white; font:700 11px/1.1 Arial,sans-serif; letter-spacing:.04em;">
+                                                                                                                    M5B GUEST TEST \u2014 PEDRO
+                                                                                                                  </div>
+                                                                                                                </div>
+
+
                                                                                                                 <div
                                                                                                                   class="learner-preview"
                                                                                                                   id="learnerPreview">
@@ -33926,6 +33971,132 @@ ${tail}`;
         "Unable to start NEXIVRA: " + (error?.message || String(error))
       );
     }
+  }
+  async startGuestInfrastructureTest() {
+    if (!this.guestSessionToken) return;
+    if (this.guestSession) {
+      console.log("NEXIVRA M5B GUEST SESSION ALREADY ACTIVE");
+      return;
+    }
+    const panel = this.shadowRoot.getElementById("guestInfraPanel");
+    const video = this.shadowRoot.getElementById("guestAvatarVideo");
+    if (!panel || !video) {
+      console.error("NEXIVRA M5B GUEST SURFACE MISSING");
+      return;
+    }
+    try {
+      console.log("NEXIVRA M5B GUEST AVATAR CONFIGURED:", {
+        avatarId: this.guestAvatarId || "7001c332-8101-4e5a-b695-eac2a72d9568",
+        mode: "LITE",
+        sandbox: true
+      });
+      this.guestSession = new LiveAvatarSession(
+        this.guestSessionToken
+      );
+      console.log("NEXIVRA M5B GUEST AVATAR SESSION CREATED");
+      await this.guestSession.start();
+      panel.style.display = "block";
+      let attempts = 0;
+      if (this.guestAttachTimer) clearInterval(this.guestAttachTimer);
+      this.guestAttachTimer = setInterval(() => {
+        attempts++;
+        try {
+          this.guestSession.attach(video);
+          const tracks = video.srcObject?.getTracks?.() || [];
+          if (tracks.length > 0) {
+            clearInterval(this.guestAttachTimer);
+            this.guestAttachTimer = null;
+            this.guestInfrastructureReady = true;
+            video.play().catch(() => {
+            });
+            console.log("NEXIVRA M5B GUEST AVATAR READY:", {
+              avatarId: this.guestAvatarId,
+              tracks: tracks.length,
+              sandbox: true
+            });
+            console.log("NEXIVRA M5B ELENORA SESSION STILL HEALTHY:", {
+              sessionExists: Boolean(this.session),
+              instructorTracks: this.shadowRoot.getElementById("avatarVideo")?.srcObject?.getTracks?.().length || 0
+            });
+            this.dispatchRuntimeEvent(
+              "nexivra-m5b-guest-infrastructure-ready",
+              {
+                sessionId: this.runtimeSessionId,
+                avatarId: this.guestAvatarId,
+                sandbox: true,
+                mode: "LITE"
+              }
+            );
+            if (this.guestAutoStopTimer) {
+              clearTimeout(this.guestAutoStopTimer);
+            }
+            this.guestAutoStopTimer = setTimeout(() => {
+              this.stopGuestInfrastructureTest("m5b1_auto_complete");
+            }, 12e3);
+          }
+        } catch (error) {
+          if (attempts === 1 || attempts % 5 === 0) {
+            console.log("NEXIVRA M5B WAITING FOR GUEST STREAM...", attempts);
+          }
+        }
+        if (attempts >= 30 && this.guestAttachTimer) {
+          clearInterval(this.guestAttachTimer);
+          this.guestAttachTimer = null;
+          console.error("NEXIVRA M5B GUEST AVATAR STREAM TIMEOUT");
+        }
+      }, 500);
+    } catch (error) {
+      console.error("NEXIVRA M5B GUEST AVATAR START ERROR:", error);
+      await this.stopGuestInfrastructureTest("start_error");
+    }
+  }
+  async stopGuestInfrastructureTest(reason = "manual") {
+    if (this.guestAutoStopTimer) {
+      clearTimeout(this.guestAutoStopTimer);
+      this.guestAutoStopTimer = null;
+    }
+    if (this.guestAttachTimer) {
+      clearInterval(this.guestAttachTimer);
+      this.guestAttachTimer = null;
+    }
+    const panel = this.shadowRoot.getElementById("guestInfraPanel");
+    const video = this.shadowRoot.getElementById("guestAvatarVideo");
+    console.log("NEXIVRA M5B GUEST AVATAR STOP START:", reason);
+    try {
+      if (this.guestSession?.stop) {
+        await this.guestSession.stop();
+      }
+    } catch (error) {
+      console.warn("NEXIVRA M5B GUEST SESSION STOP WARNING:", error);
+    }
+    try {
+      const stream = video?.srcObject;
+      stream?.getTracks?.().forEach((track) => {
+        try {
+          track.enabled = false;
+          track.stop();
+        } catch (error) {
+        }
+      });
+      if (video) video.srcObject = null;
+    } catch (error) {
+    }
+    if (panel) panel.style.display = "none";
+    this.guestSession = null;
+    this.guestInfrastructureReady = false;
+    console.log("NEXIVRA M5B GUEST MEDIA RELEASED:", reason);
+    console.log("NEXIVRA M5B ELENORA SESSION STILL HEALTHY:", {
+      sessionExists: Boolean(this.session),
+      instructorTracks: this.shadowRoot.getElementById("avatarVideo")?.srcObject?.getTracks?.().length || 0
+    });
+    this.dispatchRuntimeEvent(
+      "nexivra-m5b-guest-infrastructure-stopped",
+      {
+        sessionId: this.runtimeSessionId,
+        avatarId: this.guestAvatarId,
+        reason
+      }
+    );
   }
   waitForAvatarVideo() {
     const video = this.shadowRoot.getElementById(
@@ -35517,6 +35688,8 @@ ${tail}`;
     );
   }
   disconnectedCallback() {
+    this.stopGuestInfrastructureTest("element_disconnected").catch(() => {
+    });
     if (this.attachTimer) {
       clearInterval(
         this.attachTimer
