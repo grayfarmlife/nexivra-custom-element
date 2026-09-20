@@ -30082,6 +30082,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.guestAttachTimer = null;
     this.guestAutoStopTimer = null;
     this.guestInfrastructureReady = false;
+    this.m5b2RolePlayStageActive = false;
+    this.m5b2GuestStartRequested = false;
     this.subjectId = null;
     this.lessonId = null;
     this.runtimeSessionId = null;
@@ -30472,7 +30474,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B1R6-REAL-LEARNER-INPUT-GATE"
+      "PACKAGE3-M5B2A-MULTI-AVATAR-STAGE-HANDOFF"
     );
     this.render();
     this.bindControls();
@@ -30519,7 +30521,9 @@ ${tail}`;
       this.startNexivra();
     }
     if (this.guestSessionToken) {
-      this.startGuestInfrastructureTest();
+      console.log(
+        "NEXIVRA M5B-2 GUEST TOKEN STAGED \u2014 WAITING FOR ROLE PLAY"
+      );
     }
   }
   attributeChangedCallback(name, oldValue, newValue) {
@@ -30541,7 +30545,14 @@ ${tail}`;
     }
     if (name === "guest-session-token") {
       this.guestSessionToken = newValue;
-      if (this.isConnected) {
+      console.log(
+        "NEXIVRA M5B-2 GUEST TOKEN STAGED:",
+        {
+          tokenPresent: Boolean(newValue),
+          rolePlayActive: this.rolePlayActive
+        }
+      );
+      if (this.isConnected && this.rolePlayActive && this.m5b2RolePlayStageActive) {
         this.startGuestInfrastructureTest();
       }
       return;
@@ -31313,6 +31324,7 @@ ${tail}`;
     this.formalRolePlaySessionId = "";
     this.formalRolePlayGuestId = "";
     this.rolePlayActive = false;
+    this.restoreElenoraInstructorMode("role_play_complete");
   }
   requestFormalRolePlayWithGuest(guestId, guestName = "") {
     const normalized = String(guestId || "").trim().toLowerCase().replaceAll(" ", "_");
@@ -31340,6 +31352,47 @@ ${tail}`;
     this.dispatchRuntimeEvent("nexivra-guest-identity-discovered", { rolePlaySessionId: this.formalRolePlaySessionId, guestName });
     console.log("NEXIVRA GUEST IDENTITY DISCOVERED:", { rolePlaySessionId: this.formalRolePlaySessionId, guestName });
   }
+  enterM5B2RolePlayStage(command = {}) {
+    if (this.m5b2RolePlayStageActive) return;
+    const wrap = this.shadowRoot?.querySelector(".wrap");
+    if (!wrap) return;
+    this.m5b2RolePlayStageActive = true;
+    this.m5b2GuestStartRequested = true;
+    wrap.classList.add("m5b2-roleplay-stage");
+    const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
+    if (stageBadge) stageBadge.textContent = "ROLE-PLAY";
+    console.log("NEXIVRA M5B-2 STAGE HANDOFF:", {
+      main: "PEDRO",
+      observer: "ELENORA",
+      rolePlaySessionId: String(command.rolePlaySessionId || "")
+    });
+    if (this.guestSessionToken) {
+      this.startGuestInfrastructureTest();
+    } else {
+      console.warn(
+        "NEXIVRA M5B-2 GUEST TOKEN NOT READY \u2014 STAGE WAITING"
+      );
+    }
+  }
+  async exitM5B2RolePlayStage(reason = "role_play_complete") {
+    if (!this.m5b2RolePlayStageActive) {
+      return;
+    }
+    this.m5b2RolePlayStageActive = false;
+    this.m5b2GuestStartRequested = false;
+    const wrap = this.shadowRoot?.querySelector(".wrap");
+    if (wrap) wrap.classList.remove("m5b2-roleplay-stage");
+    const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
+    if (stageBadge) stageBadge.textContent = "TEACHING";
+    await this.stopGuestInfrastructureTest(
+      `m5b2_${reason}`
+    );
+    console.log("NEXIVRA M5B-2 STAGE RETURN:", {
+      main: "ELENORA",
+      guest: "PEDRO_EXITED",
+      reason
+    });
+  }
   activateFormalGuestMode(command = {}) {
     const id = String(command.rolePlaySessionId || "");
     if (!id) return;
@@ -31355,6 +31408,7 @@ ${tail}`;
     this.rolePlayGatewayLocked = false;
     this.rolePlayConversation = [];
     this.awaitingGuestNameAnswer = false;
+    this.enterM5B2RolePlayStage(command);
     this._identityPromotionKey = "";
     const guestPrompt = `NEXIVRA HARD RUNTIME MODE: FORMAL ROLE PLAY ACTIVE
                                         ACTIVE GUEST: ${command.guestName || command.guestId || "Guest"}
@@ -31374,6 +31428,9 @@ ${tail}`;
     console.log("NEXIVRA ELENORA OBSERVER MODE ACTIVE:", id);
   }
   restoreElenoraInstructorMode(reason = "role_play_complete") {
+    this.exitM5B2RolePlayStage(reason).catch((error) => {
+      console.error("NEXIVRA M5B-2 STAGE RETURN ERROR:", error);
+    });
     if (reason === "role_play_complete") {
       this.rolePlayGatewayLocked = true;
       this.rolePlayGatewayRearmAt = Date.now() + 4e3;
@@ -32119,6 +32176,72 @@ ${tail}`;
                                                                                                                   min-height: 500px;
                                                                                                                   object-fit: contain;
                                                                                                                   background: #111;
+                                                                                                                  display: block;
+                                                                                                                }
+
+                                                                                                                /* Package 3 M5B-2 role-play stage.
+                                                                                                                   Pedro owns the main stage. Elenora becomes
+                                                                                                                   a silent picture-in-picture observer. */
+                                                                                                                .wrap.m5b2-roleplay-stage #guestInfraPanel {
+                                                                                                                  display: block !important;
+                                                                                                                  position: absolute !important;
+                                                                                                                  inset: 0 !important;
+                                                                                                                  width: 100% !important;
+                                                                                                                  height: 100% !important;
+                                                                                                                  aspect-ratio: auto !important;
+                                                                                                                  border: 0 !important;
+                                                                                                                  border-radius: 0 !important;
+                                                                                                                  box-shadow: none !important;
+                                                                                                                  z-index: 20 !important;
+                                                                                                                  background: #111 !important;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage #guestAvatarVideo {
+                                                                                                                  width: 100% !important;
+                                                                                                                  height: 100% !important;
+                                                                                                                  object-fit: cover !important;
+                                                                                                                  background: #111 !important;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage #avatarVideo {
+                                                                                                                  position: absolute !important;
+                                                                                                                  right: 18px !important;
+                                                                                                                  bottom: 18px !important;
+                                                                                                                  width: min(29%, 330px) !important;
+                                                                                                                  height: auto !important;
+                                                                                                                  min-height: 0 !important;
+                                                                                                                  aspect-ratio: 16 / 9 !important;
+                                                                                                                  object-fit: cover !important;
+                                                                                                                  border: 2px solid rgba(255,255,255,.92) !important;
+                                                                                                                  border-radius: 14px !important;
+                                                                                                                  box-shadow: 0 12px 34px rgba(0,0,0,.42) !important;
+                                                                                                                  z-index: 40 !important;
+                                                                                                                  background: #111 !important;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage .instructor-label {
+                                                                                                                  position: absolute;
+                                                                                                                  right: 30px;
+                                                                                                                  bottom: 30px;
+                                                                                                                  z-index: 45;
+                                                                                                                  pointer-events: none;
+                                                                                                                }
+
+                                                                                                                .m5b2-guest-label {
+                                                                                                                  position: absolute;
+                                                                                                                  left: 18px;
+                                                                                                                  top: 18px;
+                                                                                                                  z-index: 35;
+                                                                                                                  padding: 7px 11px;
+                                                                                                                  border-radius: 9px;
+                                                                                                                  background: rgba(0,0,0,.72);
+                                                                                                                  color: #fff;
+                                                                                                                  font: 700 12px/1.1 Arial,sans-serif;
+                                                                                                                  letter-spacing: .04em;
+                                                                                                                  display: none;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage .m5b2-guest-label {
                                                                                                                   display: block;
                                                                                                                 }
 
@@ -33776,22 +33899,22 @@ ${tail}`;
                                                                                                                 </video>
 
 
-                                                                                                                <!-- Package 3 M5B-1 diagnostic guest surface.
-                                                                                                                     Temporary: removed/reworked when M5B-2
-                                                                                                                     performs the real Elenora -> Guest handoff. -->
+                                                                                                                <!-- Package 3 M5B-2 role-play guest stage.
+                                                                                                                     Hidden during instruction. Pedro becomes
+                                                                                                                     the main stage only during formal role-play. -->
                                                                                                                 <div
                                                                                                                   id="guestInfraPanel"
-                                                                                                                  style="display:none; position:absolute; right:18px; bottom:92px; width:min(34%,360px); aspect-ratio:16/9; background:#111; border:2px solid rgba(255,255,255,.88); border-radius:14px; overflow:hidden; box-shadow:0 12px 34px rgba(0,0,0,.35); z-index:15;">
+                                                                                                                  style="display:none; position:absolute; inset:0; background:#111; overflow:hidden; z-index:20;">
                                                                                                                   <video
                                                                                                                     id="guestAvatarVideo"
                                                                                                                     autoplay
                                                                                                                     playsinline
-                                                                                                                    muted
                                                                                                                     style="width:100%; height:100%; object-fit:cover; background:#111;">
                                                                                                                   </video>
-                                                                                                                  <div style="position:absolute; left:10px; bottom:8px; padding:5px 9px; border-radius:8px; background:rgba(0,0,0,.72); color:white; font:700 11px/1.1 Arial,sans-serif; letter-spacing:.04em;">
-                                                                                                                    M5B GUEST TEST \u2014 PEDRO
-                                                                                                                  </div>
+                                                                                                                </div>
+
+                                                                                                                <div class="m5b2-guest-label">
+                                                                                                                  ROLE-PLAY GUEST
                                                                                                                 </div>
 
 
@@ -34253,16 +34376,22 @@ ${tail}`;
               {
                 sessionId: this.runtimeSessionId,
                 avatarId: this.guestAvatarId,
-                sandbox: true,
+                sandbox: false,
                 mode: "LITE"
               }
             );
             if (this.guestAutoStopTimer) {
               clearTimeout(this.guestAutoStopTimer);
+              this.guestAutoStopTimer = null;
             }
-            this.guestAutoStopTimer = setTimeout(() => {
-              this.stopGuestInfrastructureTest("m5b1_auto_complete");
-            }, 12e3);
+            if (!this.rolePlayActive) {
+              console.warn(
+                "NEXIVRA M5B-2 GUEST READY OUTSIDE ROLE PLAY \u2014 STOPPING"
+              );
+              this.stopGuestInfrastructureTest(
+                "m5b2_no_active_role_play"
+              );
+            }
           }
         } catch (error) {
           if (attempts === 1 || attempts % 5 === 0) {
