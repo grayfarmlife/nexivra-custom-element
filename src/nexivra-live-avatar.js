@@ -24,7 +24,8 @@
                                                                                                               "app-command",
                                                                                                               "formal-role-play-command",
                                                                                                               "guest-session-token",
-                                                                                                              "guest-avatar-id"
+                                                                                                              "guest-avatar-id",
+                                                                                                              "role-play-guest-response"
                                                                                                             ,
                                                                                                               "client-name",
                                                                                                               "client-logo-url",
@@ -55,6 +56,9 @@
                                                                                                             // Package 3 M5B-2 — real multi-avatar stage handoff.
                                                                                                             this.m5b2RolePlayStageActive = false;
                                                                                                             this.m5b2GuestStartRequested = false;
+                                                                                                            this.m5b2GuestResponseQueue = [];
+                                                                                                            this.m5b2GuestSpeaking = false;
+                                                                                                            this.m5b2ElenoraVoiceSuspended = false;
 
                                                                                                             this.subjectId = null;
                                                                                                             this.lessonId = null;
@@ -557,7 +561,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2A-MULTI-AVATAR-STAGE-HANDOFF"
+                                                                                                              "PACKAGE3-M5B2B-GUEST-CONVERSATION-ROUTING"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -660,6 +664,16 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                             if (name === "guest-avatar-id") {
                                                                                                               this.guestAvatarId = newValue;
+                                                                                                              return;
+                                                                                                            }
+
+                                                                                                            if(name==="role-play-guest-response"){
+                                                                                                              if(!newValue)return;
+                                                                                                              try{
+                                                                                                                const p=JSON.parse(newValue),t=String(p?.text||"").trim(),sid=String(p?.rolePlaySessionId||"");
+                                                                                                                if(!t||!this.rolePlayActive||sid!==String(this.formalRolePlaySessionId||"")){console.warn("NEXIVRA M5B-2B GUEST RESPONSE IGNORED:",{sid,active:this.formalRolePlaySessionId||""});return;}
+                                                                                                                this.queuePedroGuestResponse(t);
+                                                                                                              }catch(error){console.error("NEXIVRA M5B-2B GUEST RESPONSE PARSE ERROR:",error);}
                                                                                                               return;
                                                                                                             }
 
@@ -1076,6 +1090,11 @@ The next instructor response must teach, practice, check understanding, or trans
 
 
                                                                                                           async injectRuntimeContext() {
+                                                                                                            if(this.rolePlayActive&&this.m5b2RolePlayStageActive&&this.m5b2ElenoraVoiceSuspended){
+                                                                                                              console.log("NEXIVRA M5B-2B ELENORA RUNTIME MESSAGE BLOCKED DURING ROLE PLAY");
+                                                                                                              return true;
+                                                                                                            }
+
 
                                                                                                             if (
                                                                                                               !this.session ||
@@ -1793,6 +1812,34 @@ The next instructor response must teach, practice, check understanding, or trans
                                   }
 
 
+                                  async suspendElenoraForM5B2RolePlay(){
+                                    if(this.m5b2ElenoraVoiceSuspended)return;this.m5b2ElenoraVoiceSuspended=true;
+                                    try{if(this.session?.voiceChat&&typeof this.session.voiceChat.stop==="function")await this.session.voiceChat.stop();}catch(error){console.warn("NEXIVRA M5B-2B ELENORA VOICE STOP WARNING:",error);}
+                                    try{if(typeof this.session?.interrupt==="function")await this.session.interrupt();}catch(error){console.warn("NEXIVRA M5B-2B ELENORA INTERRUPT WARNING:",error);}
+                                    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION BLOCKED — OBSERVER VIDEO ONLY");
+                                  }
+                                  async restoreElenoraVoiceAfterM5B2RolePlay(){
+                                    if(!this.m5b2ElenoraVoiceSuspended)return;this.m5b2ElenoraVoiceSuspended=false;
+                                    try{if(this.session?.voiceChat&&typeof this.session.voiceChat.start==="function"&&this.sessionActive)await this.session.voiceChat.start();}catch(error){console.warn("NEXIVRA M5B-2B ELENORA VOICE RESTORE WARNING:",error);}
+                                    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION RESTORED");
+                                  }
+                                  queuePedroGuestResponse(text){
+                                    const v=String(text||"").trim();if(!v)return;this.m5b2GuestResponseQueue.push(v);
+                                    console.log("NEXIVRA M5B-2B PEDRO RESPONSE QUEUED:",{chars:v.length,queueDepth:this.m5b2GuestResponseQueue.length});this.flushPedroGuestResponseQueue();
+                                  }
+                                  async flushPedroGuestResponseQueue(){
+                                    if(this.m5b2GuestSpeaking||!this.rolePlayActive||!this.m5b2RolePlayStageActive||!this.guestInfrastructureReady||!this.guestSession||!this.m5b2GuestResponseQueue.length)return;
+                                    const t=this.m5b2GuestResponseQueue.shift();this.m5b2GuestSpeaking=true;
+                                    try{
+                                      if(typeof this.guestSession.repeat!=="function")throw new Error("LIVEAVATAR_LITE_REPEAT_UNAVAILABLE");
+                                      console.log("NEXIVRA M5B-2B PEDRO SPEAK START:",{rolePlaySessionId:this.formalRolePlaySessionId||"",chars:t.length});
+                                      await this.guestSession.repeat(t);this.rolePlayConversation.push({speaker:"guest",text:t,at:new Date().toISOString()});
+                                      console.log("NEXIVRA M5B-2B PEDRO SPEAK COMMAND SENT");
+                                      const ms=Math.max(1600,Math.min(12000,t.split(/\s+/).filter(Boolean).length*390));
+                                      setTimeout(()=>{this.m5b2GuestSpeaking=false;this.flushPedroGuestResponseQueue();},ms);
+                                    }catch(error){this.m5b2GuestSpeaking=false;console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:",error);}
+                                  }
+
                                   enterM5B2RolePlayStage(command={}) {
                                     if(this.m5b2RolePlayStageActive)return;
 
@@ -1801,6 +1848,7 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                     this.m5b2RolePlayStageActive=true;
                                     this.m5b2GuestStartRequested=true;
+                                    this.suspendElenoraForM5B2RolePlay();
                                     wrap.classList.add("m5b2-roleplay-stage");
 
                                     const stageBadge=this.shadowRoot?.getElementById("unifiedTrainingStage");
@@ -1838,6 +1886,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                     await this.stopGuestInfrastructureTest(
                                       `m5b2_${reason}`
                                     );
+                                    await this.restoreElenoraVoiceAfterM5B2RolePlay();
 
                                     console.log("NEXIVRA M5B-2 STAGE RETURN:",{
                                       main:"ELENORA",
@@ -6057,7 +6106,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                               const match=String(text||"").match(/\b(?:hello|hi|hey|thanks|thank you|all right|alright|welcome|goodbye|bye)\s+([A-Z][a-z]{1,30})\b/i);
                                               if(match?.[1])this.promoteActiveGuestIdentity(match[1]);
                                             }
-                                          }if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{rolePlaySessionId:this.formalRolePlaySessionId,speaker:"learner",text});}this.dispatchRuntimeEvent("nexivra-learner-transcript",{sessionId:this.runtimeSessionId||"",text,observation:this.observationTimeline.length?this.observationTimeline[this.observationTimeline.length-1]:null});}};
+                                          }if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{rolePlaySessionId:this.formalRolePlaySessionId,speaker:"learner",text,scenario:this.activeRolePlayScenario||{}});}this.dispatchRuntimeEvent("nexivra-learner-transcript",{sessionId:this.runtimeSessionId||"",text,observation:this.observationTimeline.length?this.observationTimeline[this.observationTimeline.length-1]:null});}};
                                                                                                               recognition.onerror=event=>{const error=String(event?.error||"");if(!["no-speech","aborted"].includes(error))console.warn("NEXIVRA TRANSCRIPT ERROR:",error);};
                                                                                                               recognition.onend=()=>{if(this.speechRecognitionActive&&this.sessionActive){try{recognition.start();}catch(error){}}};
                                                                                                               this.speechRecognition=recognition;this.speechRecognitionActive=true;recognition.start();console.log("NEXIVRA TRANSCRIPT CAPTURE ACTIVE");
