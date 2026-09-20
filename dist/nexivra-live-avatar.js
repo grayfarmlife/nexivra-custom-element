@@ -30102,6 +30102,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.resumeContinuationState = "UNINITIALIZED";
     this.resumeSummaryTurnObserved = false;
     this.resumeLockMessageSent = false;
+    this.resumeLockDeferred = false;
     this.resumeSummaryArmed = false;
     this.resumeSummarySpeechStarted = false;
     this.rolePlayActive = false;
@@ -30275,40 +30276,61 @@ HARD CONTINUATION STATE:
 Current persisted learning focus: ${currentObjective || "continue the current unfinished objective"}
 Next persisted learning action: ${nextObjective || "continue with the next unfinished instructional objective"}
 
+INTERACTION INTEGRITY:
+- Never invent, simulate, infer, or paraphrase a learner response that was not actually received.
+- If you ask the learner to do or answer something, wait for real learner input before evaluating or continuing.
+- Silence is not an answer.
+- A system/context message is not a learner answer.
+
 The next instructor response must teach, practice, check understanding, or transition forward from this persisted position.`;
   }
   activatePostSummaryResumeLock() {
     if (this.resumeContinuationState === "RESUME_LOCKED") return false;
     if (!this.isReturningInstructionalSession()) return false;
-    if (!this.session) return false;
     this.resumeContinuationState = "RESUME_LOCKED";
     this.resumeSummaryTurnObserved = true;
+    this.resumeLockDeferred = true;
     console.log("NEXIVRA RESUME STATE TRANSITION:", {
       from: "SUMMARY_PENDING",
       to: "RESUME_LOCKED"
     });
+    console.log(
+      "NEXIVRA POST-SUMMARY RESUME LOCK DEFERRED \u2014 WAITING FOR START SESSION"
+    );
+    return true;
+  }
+  sendDeferredPostSummaryResumeLock() {
+    if (!this.resumeLockDeferred) return false;
     if (this.resumeLockMessageSent) return true;
+    if (!this.session) return false;
     this.resumeLockMessageSent = true;
+    this.resumeLockDeferred = false;
     const directive = `${this.buildInstructorIdentityLock()}
 
 ${this.buildResumeLockedDirective()}
 
 SYSTEM TRANSITION:
-The returning-session recap has just been spoken. Do not produce another recap and do not return to startup material. Continue now with the next complete instructional thought from the persisted learning position.`;
+The returning-session recap was already spoken before the learner started the live session.
+Do not produce another recap.
+Do not return to startup material.
+Do not invent or infer anything the learner did not actually say.
+The learner has now explicitly started the session. Continue forward from the persisted learning position and wait for real learner input whenever a response is required.`;
     try {
       const safe = this.compactForLiveAvatar(directive, 12e3);
       const result = this.session.message(safe);
       if (result?.catch) {
         result.catch((error) => {
-          console.error("NEXIVRA POST-SUMMARY RESUME LOCK ERROR:", error);
+          console.error("NEXIVRA DEFERRED RESUME LOCK ERROR:", error);
           this.resumeLockMessageSent = false;
+          this.resumeLockDeferred = true;
         });
       }
-      console.log("NEXIVRA POST-SUMMARY RESUME LOCK SENT");
+      console.log("NEXIVRA DEFERRED RESUME LOCK SENT");
       return true;
     } catch (error) {
       this.resumeLockMessageSent = false;
-      console.error("NEXIVRA POST-SUMMARY RESUME LOCK ERROR:", error);
+      this.resumeLockDeferred = true;
+      console.error("NEXIVRA DEFERRED RESUME LOCK ERROR:", error);
       return false;
     }
   }
@@ -30475,7 +30497,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B1R4-SINGLE-FLIGHT-RUNTIME-GUARD"
+      "PACKAGE3-M5B1R5-DEFERRED-RESUME-INTERACTION-GATE"
     );
     this.render();
     this.bindControls();
@@ -34747,6 +34769,12 @@ ${tail}`;
       await this.session.voiceChat.start();
       this.sessionStartupStage = "active";
       this.sessionActive = true;
+      if (this.resumeLockDeferred === true) {
+        console.log(
+          "NEXIVRA LEARNER START CONFIRMED \u2014 RELEASING DEFERRED RESUME LOCK"
+        );
+        this.sendDeferredPostSummaryResumeLock();
+      }
       this.startLearnerTranscriptCapture();
       this.resetLiveState();
       this.setTrainingState(
