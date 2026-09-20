@@ -561,7 +561,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2B-GUEST-CONVERSATION-ROUTING"
+                                                                                                              "PACKAGE3-M5B2C-PEDRO-FULL-MODE-TRANSPORT"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -1831,7 +1831,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                     if(this.m5b2GuestSpeaking||!this.rolePlayActive||!this.m5b2RolePlayStageActive||!this.guestInfrastructureReady||!this.guestSession||!this.m5b2GuestResponseQueue.length)return;
                                     const t=this.m5b2GuestResponseQueue.shift();this.m5b2GuestSpeaking=true;
                                     try{
-                                      if(typeof this.guestSession.repeat!=="function")throw new Error("LIVEAVATAR_LITE_REPEAT_UNAVAILABLE");
+                                      if(typeof this.guestSession.repeat!=="function")throw new Error("LIVEAVATAR_FULL_REPEAT_UNAVAILABLE");
                                       console.log("NEXIVRA M5B-2B PEDRO SPEAK START:",{rolePlaySessionId:this.formalRolePlaySessionId||"",chars:t.length});
                                       await this.guestSession.repeat(t);this.rolePlayConversation.push({speaker:"guest",text:t,at:new Date().toISOString()});
                                       console.log("NEXIVRA M5B-2B PEDRO SPEAK COMMAND SENT");
@@ -3179,6 +3179,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   height: 100% !important;
                                                                                                                   object-fit: cover !important;
                                                                                                                   background: #111 !important;
+                                                                                                                  opacity: 1 !important;
+                                                                                                                  filter: none !important;
+                                                                                                                  mix-blend-mode: normal !important;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #avatarVideo {
@@ -5482,8 +5485,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             try {
                                                                                                               console.log("NEXIVRA M5B GUEST AVATAR CONFIGURED:", {
                                                                                                                 avatarId: this.guestAvatarId || "7001c332-8101-4e5a-b695-eac2a72d9568",
-                                                                                                                mode: "LITE",
-                                                                                                                sandbox: true
+                                                                                                                mode: "FULL",
+                                                                                                                sandbox: false
                                                                                                               });
 
                                                                                                               this.guestSession = new LiveAvatarSession(
@@ -5513,7 +5516,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                     console.log("NEXIVRA M5B GUEST AVATAR READY:", {
                                                                                                                       avatarId: this.guestAvatarId,
                                                                                                                       tracks: tracks.length,
-                                                                                                                      sandbox: true
+                                                                                                                      sandbox: false
                                                                                                                     });
 
                                                                                                                     console.log("NEXIVRA M5B ELENORA SESSION STILL HEALTHY:", {
@@ -5530,7 +5533,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                         sessionId: this.runtimeSessionId,
                                                                                                                         avatarId: this.guestAvatarId,
                                                                                                                         sandbox: false,
-                                                                                                                        mode: "LITE"
+                                                                                                                        mode: "FULL"
                                                                                                                       }
                                                                                                                     );
 
