@@ -30103,6 +30103,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.resumeSummaryTurnObserved = false;
     this.resumeLockMessageSent = false;
     this.resumeSummaryArmed = false;
+    this.resumeSummarySpeechStarted = false;
     this.rolePlayActive = false;
     this.adaptiveGuidance = null;
     this.rolePlayRecommended = false;
@@ -30453,6 +30454,14 @@ ${tail}`;
       console.log("NEXIVRA INSTRUCTOR IDENTITY LOCK SENT:", { name: "Elenora", platform: "NEXIVRA" });
       console.log("NEXIVRA LIVEAVATAR TRANSPORT GUARDED:", { label, bytes });
       console.log("NEXIVRA DETERMINISTIC RESUME SENT:", this.resumeCheckpoint || "NO_CHECKPOINT");
+      if (this.resumeContinuationState === "SUMMARY_PENDING" && this.isReturningInstructionalSession()) {
+        this.resumeSummaryArmed = true;
+        this.resumeSummarySpeechStarted = false;
+        console.log("NEXIVRA RESUME SUMMARY DISPATCHED:", {
+          state: this.resumeContinuationState,
+          source: this.resumeCheckpoint ? "CHECKPOINT" : "RUNTIME_INSTRUCTIONAL_LEDGER"
+        });
+      }
       console.log("NEXIVRA RESUME OPENING MODE:", "SUMMARY_THEN_NEXT_COMPLETE_THOUGHT");
       return true;
     } catch (error) {
@@ -30463,7 +30472,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B1R2-SUMMARY-TRIGGER-FIX"
+      "PACKAGE3-M5B1R3-DISPATCH-BOUND-RESUME-LOCK"
     );
     this.render();
     this.bindControls();
@@ -34032,6 +34041,12 @@ ${tail}`;
           console.log(
             "NEXIVRA SPEECH EVENT: avatar started speaking"
           );
+          if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === false && this.isReturningInstructionalSession()) {
+            this.resumeSummarySpeechStarted = true;
+            console.log(
+              "NEXIVRA RESUME SUMMARY SPEAKING"
+            );
+          }
         }
       );
       this.session.on(
@@ -34041,8 +34056,9 @@ ${tail}`;
           console.log(
             "NEXIVRA SPEECH EVENT: avatar stopped speaking"
           );
-          if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.sessionActive === true && this.isReturningInstructionalSession()) {
+          if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === true && this.isReturningInstructionalSession()) {
             this.resumeSummaryArmed = false;
+            this.resumeSummarySpeechStarted = false;
             console.log(
               "NEXIVRA RESUME SUMMARY TURN COMPLETE"
             );
@@ -34615,16 +34631,6 @@ ${tail}`;
       await this.session.voiceChat.start();
       this.sessionStartupStage = "active";
       this.sessionActive = true;
-      if (this.resumeContinuationState === "SUMMARY_PENDING" && this.isReturningInstructionalSession()) {
-        this.resumeSummaryArmed = true;
-        console.log(
-          "NEXIVRA RESUME SUMMARY ARMED:",
-          {
-            sessionActive: true,
-            state: this.resumeContinuationState
-          }
-        );
-      }
       this.startLearnerTranscriptCapture();
       this.resetLiveState();
       this.setTrainingState(
