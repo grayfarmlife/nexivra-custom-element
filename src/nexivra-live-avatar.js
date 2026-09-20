@@ -94,6 +94,11 @@
                                                                                                             this.avatarStarted = false;
                                                                                                             this.attachTimer = null;
 
+                                                                                                            // Package 3 M5B-1R4 — single-flight instructor runtime.
+                                                                                                            this.runtimeLifecycleState = "IDLE";
+                                                                                                            this.runtimeLifecycleToken = null;
+                                                                                                            this.runtimeStartPromise = null;
+
                                                                                                             // Learner session
                                                                                                             this.sessionActive = false;
                                                                                                             this.sessionEnding = false;
@@ -547,7 +552,7 @@ The returning-session recap has just been spoken. Do not produce another recap a
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B1R3-DISPATCH-BOUND-RESUME-LOCK"
+                                                                                                              "PACKAGE3-M5B1R4-SINGLE-FLIGHT-RUNTIME-GUARD"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -673,9 +678,26 @@ The returning-session recap has just been spoken. Do not produce another recap a
                                                                                                                 previousToken !== newValue
                                                                                                               ) {
 
+                                                                                                                if (
+                                                                                                                  this.runtimeLifecycleState === "STARTING" ||
+                                                                                                                  this.runtimeLifecycleState === "ACTIVE"
+                                                                                                                ) {
+                                                                                                                  console.warn(
+                                                                                                                    "NEXIVRA TOKEN CHANGE IGNORED — RUNTIME SINGLE-FLIGHT:",
+                                                                                                                    {
+                                                                                                                      state: this.runtimeLifecycleState,
+                                                                                                                      existingRuntimeProtected: true
+                                                                                                                    }
+                                                                                                                  );
+
+                                                                                                                  this.sessionToken =
+                                                                                                                    previousToken;
+                                                                                                                  return;
+                                                                                                                }
+
                                                                                                                 this.resetLiveAvatarRuntime()
                                                                                                                   .then(() => {
-                                                                                                        this.hardReleaseLocalMedia("runtime_reset");
+                                                                                                                    this.hardReleaseLocalMedia("runtime_reset");
 
                                                                                                                     this.sessionToken =
                                                                                                                       newValue;
@@ -2185,14 +2207,25 @@ The returning-session recap has just been spoken. Do not produce another recap a
 
                                                                                                                             </div>
 
-                                                                                                                            <button
-                                                                                                                              class="unified-start-assignment final-resume-button"
-                                                                                                                              data-assignment-id="${this.escapeUnifiedHtml(
-                                                                                                                                assignment.id ||
-                                                                                                                                ""
-                                                                                                                              )}">
-                                                                                                                              ${actionLabel} →
-                                                                                                                            </button>
+                                                                                                                            <div class="final-assignment-action">
+                                                                                                                              <button
+                                                                                                                                class="unified-start-assignment final-resume-button"
+                                                                                                                                data-assignment-id="${this.escapeUnifiedHtml(
+                                                                                                                                  assignment.id ||
+                                                                                                                                  ""
+                                                                                                                                )}">
+                                                                                                                                ${actionLabel} →
+                                                                                                                              </button>
+                                                                                                                              <div
+                                                                                                                                class="assignment-loading-status"
+                                                                                                                                data-assignment-loading="${this.escapeUnifiedHtml(
+                                                                                                                                  assignment.id ||
+                                                                                                                                  ""
+                                                                                                                                )}"
+                                                                                                                                hidden>
+                                                                                                                                Loading your training...
+                                                                                                                              </div>
+                                                                                                                            </div>
 
                                                                                                                           </div>
                                                                                                                         `;
@@ -2245,9 +2278,65 @@ The returning-session recap has just been spoken. Do not produce another recap a
                                                                                                                               "data-assignment-id"
                                                                                                                             );
 
+                                                                                                                          if (
+                                                                                                                            !assignmentId ||
+                                                                                                                            button.dataset.loading === "true"
+                                                                                                                          ) {
+                                                                                                                            return;
+                                                                                                                          }
+
+                                                                                                                          button.dataset.loading = "true";
+                                                                                                                          button.disabled = true;
+                                                                                                                          button.setAttribute(
+                                                                                                                            "aria-busy",
+                                                                                                                            "true"
+                                                                                                                          );
+
+                                                                                                                          const originalLabel =
+                                                                                                                            button.textContent;
+
+                                                                                                                          button.textContent =
+                                                                                                                            "Loading...";
+
+                                                                                                                          const loadingStatus =
+                                                                                                                            this.shadowRoot.querySelector(
+                                                                                                                              `[data-assignment-loading="${assignmentId}"]`
+                                                                                                                            );
+
+                                                                                                                          if (loadingStatus) {
+                                                                                                                            loadingStatus.hidden = false;
+                                                                                                                          }
+
+                                                                                                                          console.log(
+                                                                                                                            "NEXIVRA ASSIGNMENT START REQUESTED:",
+                                                                                                                            {
+                                                                                                                              assignmentId,
+                                                                                                                              duplicateProtected: true
+                                                                                                                            }
+                                                                                                                          );
+
                                                                                                                           this.requestAssignmentStart(
                                                                                                                             assignmentId
                                                                                                                           );
+
+                                                                                                                          setTimeout(() => {
+                                                                                                                            if (
+                                                                                                                              this.isConnected &&
+                                                                                                                              button.dataset.loading === "true" &&
+                                                                                                                              this.runtimeLifecycleState === "IDLE"
+                                                                                                                            ) {
+                                                                                                                              button.dataset.loading = "false";
+                                                                                                                              button.disabled = false;
+                                                                                                                              button.removeAttribute(
+                                                                                                                                "aria-busy"
+                                                                                                                              );
+                                                                                                                              button.textContent =
+                                                                                                                                originalLabel;
+                                                                                                                              if (loadingStatus) {
+                                                                                                                                loadingStatus.hidden = true;
+                                                                                                                              }
+                                                                                                                            }
+                                                                                                                          }, 10000);
                                                                                                                         }
                                                                                                                       );
                                                                                                                     }
@@ -4111,6 +4200,25 @@ The returning-session recap has just been spoken. Do not produce another recap a
                                                                                                                   box-shadow:0 0 10px rgba(20,200,255,.45);
                                                                                                                 }
 
+                                                                                                                .final-assignment-action {
+                                                                                                                  display: flex;
+                                                                                                                  flex-direction: column;
+                                                                                                                  align-items: flex-end;
+                                                                                                                  gap: 8px;
+                                                                                                                }
+
+                                                                                                                .assignment-loading-status {
+                                                                                                                  font-size: 12px;
+                                                                                                                  line-height: 1.2;
+                                                                                                                  opacity: 0.72;
+                                                                                                                  white-space: nowrap;
+                                                                                                                }
+
+                                                                                                                .final-resume-button:disabled {
+                                                                                                                  cursor: wait;
+                                                                                                                  opacity: 0.7;
+                                                                                                                }
+
                                                                                                                 .final-resume-button {
                                                                                                                   width:100%;
                                                                                                                   min-height:48px;
@@ -4950,6 +5058,9 @@ The returning-session recap has just been spoken. Do not produce another recap a
                                                                                                             this.session = null;
                                                                                                             this.sessionToken = null;
                                                                                                             this.avatarStarted = false;
+                                                                                                            this.runtimeLifecycleState = "IDLE";
+                                                                                                            this.runtimeLifecycleToken = null;
+                                                                                                            this.runtimeStartPromise = null;
                                                                                                             this.runtimeContextInjected = false;
                                                                                                             this.runtimeContextInjectionPending = false;
 
@@ -4977,16 +5088,39 @@ The returning-session recap has just been spoken. Do not produce another recap a
 
                                                                                                           async startNexivra() {
 
-                                                                                                            if (
-                                                                                                              this.avatarStarted ||
-                                                                                                              !this.sessionToken
-                                                                                                            ) {
+                                                                                                            if (!this.sessionToken) {
                                                                                                               return;
                                                                                                             }
 
+                                                                                                            if (
+                                                                                                              this.runtimeLifecycleState === "STARTING"
+                                                                                                            ) {
+                                                                                                              console.log(
+                                                                                                                "NEXIVRA START IGNORED — RUNTIME ALREADY STARTING"
+                                                                                                              );
+                                                                                                              return this.runtimeStartPromise;
+                                                                                                            }
 
+                                                                                                            if (
+                                                                                                              this.runtimeLifecycleState === "ACTIVE" ||
+                                                                                                              this.avatarStarted
+                                                                                                            ) {
+                                                                                                              console.log(
+                                                                                                                "NEXIVRA START IGNORED — RUNTIME ALREADY ACTIVE"
+                                                                                                              );
+                                                                                                              return;
+                                                                                                            }
+
+                                                                                                            this.runtimeLifecycleState = "STARTING";
+                                                                                                            this.runtimeLifecycleToken = this.sessionToken;
                                                                                                             this.avatarStarted = true;
 
+                                                                                                            console.log(
+                                                                                                              "NEXIVRA RUNTIME LIFECYCLE:",
+                                                                                                              "IDLE → STARTING"
+                                                                                                            );
+
+                                                                                                            const startPromise = (async () => {
 
                                                                                                             try {
 
@@ -5088,10 +5222,22 @@ The returning-session recap has just been spoken. Do not produce another recap a
 
                                                                                                               this.waitForAvatarVideo();
 
+                                                                                                              this.runtimeLifecycleState =
+                                                                                                                "ACTIVE";
+
+                                                                                                              console.log(
+                                                                                                                "NEXIVRA RUNTIME LIFECYCLE:",
+                                                                                                                "STARTING → ACTIVE"
+                                                                                                              );
+
 
                                                                                                             } catch (error) {
 
                                                                                                               this.avatarStarted = false;
+                                                                                                              this.runtimeLifecycleState =
+                                                                                                                "IDLE";
+                                                                                                              this.runtimeLifecycleToken =
+                                                                                                                null;
 
                                                                                                               console.error(
                                                                                                                 "NEXIVRA SESSION ERROR:",
@@ -5105,7 +5251,21 @@ The returning-session recap has just been spoken. Do not produce another recap a
                                                                                                                   String(error)
                                                                                                                 )
                                                                                                               );
+                                                                                                            } finally {
+                                                                                                              if (
+                                                                                                                this.runtimeLifecycleState !==
+                                                                                                                "STARTING"
+                                                                                                              ) {
+                                                                                                                this.runtimeStartPromise =
+                                                                                                                  null;
+                                                                                                              }
                                                                                                             }
+                                                                                                            })();
+
+                                                                                                            this.runtimeStartPromise =
+                                                                                                              startPromise;
+
+                                                                                                            return startPromise;
                                                                                                           }
 
 
