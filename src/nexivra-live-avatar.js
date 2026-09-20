@@ -77,6 +77,7 @@
                                                             this.resumeContinuationState = "UNINITIALIZED";
                                                             this.resumeSummaryTurnObserved = false;
                                                             this.resumeLockMessageSent = false;
+                                                            this.resumeSummaryArmed = false;
 
                                                                                                         this.rolePlayActive = false;
 
@@ -534,7 +535,7 @@ The returning-session recap has just been spoken. Do not produce another recap a
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B1R-HARD-RESUME-LOCK"
+                                                                                                              "PACKAGE3-M5B1R2-SUMMARY-TRIGGER-FIX"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -5022,8 +5023,14 @@ The returning-session recap has just been spoken. Do not produce another recap a
 
                                                                                                                   if (
                                                                                                                     this.resumeContinuationState==="SUMMARY_PENDING" &&
+                                                                                                                    this.resumeSummaryArmed===true &&
+                                                                                                                    this.sessionActive===true &&
                                                                                                                     this.isReturningInstructionalSession()
                                                                                                                   ) {
+                                                                                                                    this.resumeSummaryArmed=false;
+                                                                                                                    console.log(
+                                                                                                                      "NEXIVRA RESUME SUMMARY TURN COMPLETE"
+                                                                                                                    );
                                                                                                                     this.activatePostSummaryResumeLock();
                                                                                                                   }
 
@@ -5907,6 +5914,20 @@ The returning-session recap has just been spoken. Do not produce another recap a
 
                                                                                                               this.sessionActive =
                                                                                                                 true;
+
+                                                                                                              if (
+                                                                                                                this.resumeContinuationState === "SUMMARY_PENDING" &&
+                                                                                                                this.isReturningInstructionalSession()
+                                                                                                              ) {
+                                                                                                                this.resumeSummaryArmed = true;
+                                                                                                                console.log(
+                                                                                                                  "NEXIVRA RESUME SUMMARY ARMED:",
+                                                                                                                  {
+                                                                                                                    sessionActive: true,
+                                                                                                                    state: this.resumeContinuationState
+                                                                                                                  }
+                                                                                                                );
+                                                                                                              }
 
                                                                                                               this.startLearnerTranscriptCapture();
 
