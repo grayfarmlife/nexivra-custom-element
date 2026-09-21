@@ -30088,6 +30088,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2GuestResponseQueue = [];
     this.m5b2GuestSpeaking = false;
     this.m5b2ElenoraVoiceSuspended = false;
+    this.m5b2FloorOwner = "ELENORA";
+    this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
     this.runtimeSessionId = null;
@@ -30446,6 +30448,13 @@ ${tail}`;
     return text;
   }
   sendLiveAvatarMessageSafely(message, label = "runtime") {
+    if (this.m5b2FloorOwner === "PEDRO" && this.rolePlayActive && this.m5b2RolePlayStageActive) {
+      console.log(
+        "NEXIVRA M5B-2D ELENORA SPEECH BLOCKED \u2014 PEDRO OWNS FLOOR:",
+        label
+      );
+      return false;
+    }
     const authoritative = this.enforceIdentityAndResume(message);
     const safe = this.compactForLiveAvatar(authoritative, 48e3);
     const bytes = this.utf8ByteLength(safe);
@@ -30478,7 +30487,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2C-PEDRO-FULL-MODE-TRANSPORT"
+      "PACKAGE3-M5B2D-GUEST-STABILITY-HARD-SHUTDOWN"
     );
     this.render();
     this.bindControls();
@@ -31432,6 +31441,8 @@ ${tail}`;
     if (!wrap) return;
     this.m5b2RolePlayStageActive = true;
     this.m5b2GuestStartRequested = true;
+    this.m5b2FloorOwner = "PEDRO";
+    console.log("NEXIVRA M5B-2D FLOOR OWNER: PEDRO");
     this.suspendElenoraForM5B2RolePlay();
     wrap.classList.add("m5b2-roleplay-stage");
     const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
@@ -31455,6 +31466,8 @@ ${tail}`;
     }
     this.m5b2RolePlayStageActive = false;
     this.m5b2GuestStartRequested = false;
+    this.m5b2FloorOwner = "ELENORA";
+    console.log("NEXIVRA M5B-2D FLOOR OWNER: ELENORA");
     const wrap = this.shadowRoot?.querySelector(".wrap");
     if (wrap) wrap.classList.remove("m5b2-roleplay-stage");
     const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
@@ -32278,7 +32291,7 @@ ${tail}`;
                                                                                                                   object-fit: cover !important;
                                                                                                                   background: #111 !important;
                                                                                                                   opacity: 1 !important;
-                                                                                                                  filter: none !important;
+                                                                                                                  filter: brightness(1.38) saturate(1.08) contrast(.96) !important;
                                                                                                                   mix-blend-mode: normal !important;
                                                                                                                 }
 
@@ -34427,6 +34440,19 @@ ${tail}`;
       );
       console.log("NEXIVRA M5B GUEST AVATAR SESSION CREATED");
       await this.guestSession.start();
+      try {
+        if (this.guestSession?.voiceChat && typeof this.guestSession.voiceChat.stop === "function") {
+          await this.guestSession.voiceChat.stop();
+        }
+      } catch (error) {
+        console.warn(
+          "NEXIVRA M5B-2D PEDRO AUTONOMOUS VOICE STOP WARNING:",
+          error
+        );
+      }
+      console.log(
+        "NEXIVRA M5B-2D PEDRO AUTONOMOUS LISTENING DISABLED"
+      );
       panel.style.display = "block";
       let attempts = 0;
       if (this.guestAttachTimer) clearInterval(this.guestAttachTimer);
@@ -34500,6 +34526,16 @@ ${tail}`;
     const panel = this.shadowRoot.getElementById("guestInfraPanel");
     const video = this.shadowRoot.getElementById("guestAvatarVideo");
     console.log("NEXIVRA M5B GUEST AVATAR STOP START:", reason);
+    try {
+      if (this.guestSession?.voiceChat && typeof this.guestSession.voiceChat.stop === "function") {
+        await this.guestSession.voiceChat.stop();
+      }
+    } catch (error) {
+      console.warn(
+        "NEXIVRA M5B-2D PEDRO VOICE STOP WARNING:",
+        error
+      );
+    }
     try {
       if (this.guestSession?.stop) {
         await this.guestSession.stop();
@@ -35020,80 +35056,140 @@ ${tail}`;
       );
     }
   }
-  async endSession() {
-    if (this.sessionEnding) {
-      return;
+  async hardEndAllNexivraMedia(reason = "end_session") {
+    if (this.m5b2HardShutdownActive) return;
+    this.m5b2HardShutdownActive = true;
+    console.log("NEXIVRA M5B-2D HARD SHUTDOWN START:", reason);
+    this.m5b2FloorOwner = "NONE";
+    this.rolePlayActive = false;
+    this.rolePlayPaused = false;
+    this.m5b2RolePlayStageActive = false;
+    this.m5b2GuestStartRequested = false;
+    this.m5b2GuestResponseQueue = [];
+    this.m5b2GuestSpeaking = false;
+    this.elenoraObserverMode = false;
+    this.formalRolePlayActivationConfirmed = false;
+    if (this.guestAutoStopTimer) {
+      clearTimeout(this.guestAutoStopTimer);
+      this.guestAutoStopTimer = null;
     }
-    this.sessionEnding = true;
-    const sessionButton = this.shadowRoot.getElementById(
-      "sessionButton"
-    );
-    sessionButton.disabled = true;
-    this.setTrainingState(
-      "ENDING"
-    );
-    try {
-      this.stopVisualAnalysis();
-      const summary = this.buildVisualSummary();
-      this.setStatus(
-        "NEXIVRA is reviewing your practice..."
-      );
-      this.sendLiveAvatarMessageSafely(summary, "runtime");
-      await this.delay(
-        800
-      );
-      this.sendLiveAvatarMessageSafely(this.buildFinalFeedbackPrompt(), "runtime");
-      this.setStatus(
-        "NEXIVRA is preparing your coaching feedback..."
-      );
-      await this.delay(
-        18e3
-      );
-    } catch (error) {
-      console.error(
-        "NEXIVRA FINAL FEEDBACK ERROR:",
-        error
-      );
+    if (this.guestAttachTimer) {
+      clearInterval(this.guestAttachTimer);
+      this.guestAttachTimer = null;
     }
+    if (this.attachTimer) {
+      clearInterval(this.attachTimer);
+      this.attachTimer = null;
+    }
+    this.stopProgressCheckpoints();
+    this.stopVisualAnalysis();
+    this.stopLearnerTranscriptCapture();
     this.stopLearnerAudioMonitor();
-    this.stopCamera();
+    try {
+      if (this.guestSession?.voiceChat && typeof this.guestSession.voiceChat.stop === "function") {
+        await this.guestSession.voiceChat.stop();
+      }
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2D PEDRO HARD VOICE STOP WARNING:", error);
+    }
+    try {
+      if (this.guestSession?.stop) {
+        await this.guestSession.stop();
+      }
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2D PEDRO HARD SESSION STOP WARNING:", error);
+    }
     try {
       if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") {
         await this.session.voiceChat.stop();
       }
     } catch (error) {
-      console.warn(
-        "VOICE STOP WARNING:",
-        error
-      );
+      console.warn("NEXIVRA M5B-2D ELENORA HARD VOICE STOP WARNING:", error);
     }
+    try {
+      if (typeof this.session?.interrupt === "function") {
+        await this.session.interrupt();
+      }
+    } catch (error) {
+    }
+    try {
+      if (this.session?.stop) {
+        await this.session.stop();
+      }
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2D ELENORA HARD SESSION STOP WARNING:", error);
+    }
+    this.hardReleaseLocalMedia(reason);
+    this.stopCamera();
+    const guestPanel = this.shadowRoot?.getElementById("guestInfraPanel");
+    const guestVideo = this.shadowRoot?.getElementById("guestAvatarVideo");
+    const instructorVideo = this.shadowRoot?.getElementById("avatarVideo");
+    try {
+      if (guestVideo) {
+        guestVideo.pause?.();
+        guestVideo.srcObject = null;
+      }
+    } catch (error) {
+    }
+    try {
+      if (instructorVideo) {
+        instructorVideo.pause?.();
+        instructorVideo.srcObject = null;
+      }
+    } catch (error) {
+    }
+    if (guestPanel) guestPanel.style.display = "none";
+    const wrap = this.shadowRoot?.querySelector(".wrap");
+    if (wrap) wrap.classList.remove("m5b2-roleplay-stage");
+    this.guestSession = null;
+    this.guestInfrastructureReady = false;
+    this.session = null;
+    this.avatarStarted = false;
     this.sessionActive = false;
-    this.sessionEnding = false;
+    this.m5b2ElenoraVoiceSuspended = false;
+    console.log("NEXIVRA M5B-2D HARD SHUTDOWN COMPLETE:", {
+      reason,
+      pedroSession: false,
+      elenoraSession: false,
+      transcriptActive: this.speechRecognitionActive,
+      cameraActive: Boolean(this.cameraStream)
+    });
+    this.m5b2HardShutdownActive = false;
+  }
+  async endSession() {
+    if (this.sessionEnding) return;
+    this.sessionEnding = true;
+    const sessionButton = this.shadowRoot?.getElementById("sessionButton");
+    if (sessionButton) sessionButton.disabled = true;
+    this.setTrainingState("ENDING");
+    this.setStatus("Ending session...");
+    try {
+      this.emitProgressCheckpoint("session_end");
+    } catch (error) {
+    }
+    await this.hardEndAllNexivraMedia("end_session_button");
     this.resetLiveState();
-    this.setTrainingState(
-      "READY"
-    );
-    sessionButton.disabled = false;
-    sessionButton.textContent = "Start Session";
-    sessionButton.classList.remove(
-      "session-active"
-    );
-    this.setStatus(
-      "Practice session complete."
-    );
+    this.setTrainingState("READY");
+    if (sessionButton) {
+      sessionButton.disabled = false;
+      sessionButton.textContent = "Start Session";
+      sessionButton.classList.remove("session-active");
+    }
+    this.setStatus("Session ended.");
     this.dispatchRuntimeEvent(
       "nexivra-session-ended",
       {
         sessionId: this.runtimeSessionId,
         courseId: this.subjectId,
         moduleId: this.lessonId,
-        observations: [
-          ...this.observationTimeline
-        ],
-        visualSummary: this.buildVisualSummary()
+        observations: [...this.observationTimeline],
+        visualSummary: this.buildVisualSummary(),
+        hardShutdown: true
       }
     );
     this.requestDashboardRefresh();
+    this.showUnifiedDashboard();
+    this.sessionEnding = false;
   }
   resetLiveState() {
     this.absentSince = null;
