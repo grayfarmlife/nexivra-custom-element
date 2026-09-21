@@ -30108,6 +30108,10 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2nLearnerFloorOpenedAtMs = 0;
     this.m5b2nLearnerSpeechStartedAtMs = 0;
     this.m5b2nLearnerAudioStoppedAtMs = 0;
+    this.m5b2oLatestInterimText = "";
+    this.m5b2oLatestInterimAtMs = 0;
+    this.m5b2oFastTurnTimer = null;
+    this.m5b2oFastTurnGraceMs = 300;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30506,7 +30510,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2N-CONVERSATION-POLISH"
+      "PACKAGE3-M5B2O-FAST-TURN-CAPTURE"
     );
     this.render();
     this.bindControls();
@@ -34613,6 +34617,9 @@ ${tail}`;
             this.m5b2jPedroSpeaking = true;
             this.cancelM5B2JLearnerTurnTimer();
             this.m5b2jPendingLearnerFragments = [];
+            this.cancelM5B2OFastTurnTimer();
+            this.m5b2oLatestInterimText = "";
+            this.m5b2oLatestInterimAtMs = 0;
             this.m5b2nLearnerTurnArmed = false;
             this.m5b2nLearnerSpeechStartedAtMs = 0;
             console.log("NEXIVRA M5B-2N PEDRO SPEAKING \u2014 LEARNER FLOOR CLOSED");
@@ -35026,6 +35033,7 @@ ${tail}`;
     }
     this.m5b2jLastFlushedText = text;
     this.m5b2jLastFlushedAt = now;
+    this.cancelM5B2OFastTurnTimer();
     this.m5b2nLearnerTurnArmed = false;
     console.log("NEXIVRA M5B-2N COMPLETE LEARNER TURN:", {
       text,
@@ -35048,6 +35056,33 @@ ${tail}`;
       observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null
     });
   }
+  cancelM5B2OFastTurnTimer() {
+    if (this.m5b2oFastTurnTimer) {
+      clearTimeout(this.m5b2oFastTurnTimer);
+      this.m5b2oFastTurnTimer = null;
+    }
+  }
+  scheduleM5B2OFastInterimFlush() {
+    this.cancelM5B2OFastTurnTimer();
+    if (!this.rolePlayActive || !this.formalRolePlaySessionId) return;
+    if (!this.m5b2nLearnerTurnArmed || this.m5b2jPedroSpeaking) return;
+    this.m5b2oFastTurnTimer = setTimeout(() => {
+      this.m5b2oFastTurnTimer = null;
+      if (!this.rolePlayActive || !this.formalRolePlaySessionId || !this.m5b2nLearnerTurnArmed || this.m5b2jPedroSpeaking || this.learnerMicSpeaking || this.learnerSpeaking) return;
+      const interim = String(this.m5b2oLatestInterimText || "").trim();
+      if (!interim) return;
+      console.log("NEXIVRA M5B-2O FAST INTERIM TURN USED:", {
+        text: interim,
+        audioStopToFastTurnMs: this.m5b2nLearnerAudioStoppedAtMs ? Date.now() - this.m5b2nLearnerAudioStoppedAtMs : null,
+        interimAgeMs: this.m5b2oLatestInterimAtMs ? Date.now() - this.m5b2oLatestInterimAtMs : null
+      });
+      this.m5b2jPendingLearnerFragments = [];
+      this.queueM5B2JLearnerFragment(interim);
+      this.flushM5B2JLearnerTurn("fast_interim_after_audio_stop");
+      this.m5b2oLatestInterimText = "";
+      this.m5b2oLatestInterimAtMs = 0;
+    }, Number(this.m5b2oFastTurnGraceMs || 300));
+  }
   startLearnerTranscriptCapture() {
     if (this.speechRecognitionActive) return;
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -35058,14 +35093,20 @@ ${tail}`;
     try {
       const recognition = new Recognition();
       recognition.continuous = true;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.lang = "en-US";
       recognition.onresult = (event) => {
         for (let i3 = event.resultIndex; i3 < event.results.length; i3++) {
           const result = event.results[i3];
-          if (!result?.isFinal) continue;
-          const text = String(result[0]?.transcript || "").trim();
+          const text = String(result?.[0]?.transcript || "").trim();
           if (!text) continue;
+          if (!result?.isFinal) {
+            if (this.rolePlayActive && this.m5b2nLearnerTurnArmed && !this.m5b2jPedroSpeaking) {
+              this.m5b2oLatestInterimText = text;
+              this.m5b2oLatestInterimAtMs = Date.now();
+            }
+            continue;
+          }
           const now = Date.now();
           if (text === this.lastLearnerTranscript && now - this.lastLearnerTranscriptAt < 5e3) continue;
           this.lastLearnerTranscript = text;
@@ -35080,9 +35121,12 @@ ${tail}`;
               continue;
             }
             if (!this.m5b2nLearnerTurnArmed) {
-              console.log("NEXIVRA M5B-2N STALE TRANSCRIPT DISCARDED \u2014 NO POST-PEDRO SPEECH START:", text);
+              console.log("NEXIVRA M5B-2O LATE FINAL TRANSCRIPT DISCARDED \u2014 TURN ALREADY CLOSED:", text);
               continue;
             }
+            this.cancelM5B2OFastTurnTimer();
+            this.m5b2oLatestInterimText = "";
+            this.m5b2oLatestInterimAtMs = 0;
             this.queueM5B2JLearnerFragment(text);
             continue;
           }
@@ -35399,6 +35443,9 @@ ${tail}`;
     this.m5b2nLearnerFloorOpenedAtMs = 0;
     this.m5b2nLearnerSpeechStartedAtMs = 0;
     this.m5b2nLearnerAudioStoppedAtMs = 0;
+    this.cancelM5B2OFastTurnTimer?.();
+    this.m5b2oLatestInterimText = "";
+    this.m5b2oLatestInterimAtMs = 0;
     this.elenoraObserverMode = false;
     this.formalRolePlayActivationConfirmed = false;
     if (this.guestAutoStopTimer) {
@@ -36222,7 +36269,12 @@ ${tail}`;
                 );
                 if (this.rolePlayActive) {
                   this.cancelM5B2JLearnerTurnTimer();
+                  this.cancelM5B2OFastTurnTimer();
                   if (!this.m5b2jPedroSpeaking) {
+                    if (!this.m5b2nLearnerTurnArmed) {
+                      this.m5b2oLatestInterimText = "";
+                      this.m5b2oLatestInterimAtMs = 0;
+                    }
                     this.m5b2nLearnerTurnArmed = true;
                     this.m5b2nLearnerSpeechStartedAtMs = Date.now();
                     console.log("NEXIVRA M5B-2N LEARNER TURN ARMED \u2014 POST-PEDRO SPEECH START:", {
@@ -36251,7 +36303,11 @@ ${tail}`;
               );
               if (this.rolePlayActive && this.m5b2nLearnerTurnArmed && !this.m5b2jPedroSpeaking) {
                 this.m5b2nLearnerAudioStoppedAtMs = Date.now();
-                this.scheduleM5B2JLearnerTurnFlush("learner_silence");
+                if (String(this.m5b2oLatestInterimText || "").trim()) {
+                  this.scheduleM5B2OFastInterimFlush();
+                } else {
+                  this.scheduleM5B2JLearnerTurnFlush("learner_silence");
+                }
               }
               if (this.sessionActive) {
                 this.learnerVoiceTurnCount += 1;
