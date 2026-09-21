@@ -30098,12 +30098,16 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2hWaitingForGuestReady = false;
     this.m5b2jPendingLearnerFragments = [];
     this.m5b2jLearnerTurnTimer = null;
-    this.m5b2jLearnerTurnSilenceMs = 900;
+    this.m5b2jLearnerTurnSilenceMs = 650;
     this.m5b2jPedroSpeaking = false;
     this.m5b2jLastFlushedText = "";
     this.m5b2jLastFlushedAt = 0;
     this.m5b2mCompleteAfterPedroSpeaks = false;
     this.m5b2mCompletionReason = "";
+    this.m5b2nLearnerTurnArmed = false;
+    this.m5b2nLearnerFloorOpenedAtMs = 0;
+    this.m5b2nLearnerSpeechStartedAtMs = 0;
+    this.m5b2nLearnerAudioStoppedAtMs = 0;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30502,7 +30506,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2M-STABLE-ROLEPLAY-BASELINE"
+      "PACKAGE3-M5B2N-CONVERSATION-POLISH"
     );
     this.render();
     this.bindControls();
@@ -31539,7 +31543,7 @@ ${tail}`;
     if (item?.completeAfterSpeak) {
       this.m5b2mCompleteAfterPedroSpeaks = true;
       this.m5b2mCompletionReason = String(item?.completionReason || "explicit_close");
-      console.log("NEXIVRA M5B-2M EXPLICIT CLOSE ARMED:", this.m5b2mCompletionReason);
+      console.log("NEXIVRA M5B-2N EXPLICIT CLOSE ARMED:", this.m5b2mCompletionReason);
     }
     const repeatStartedAtMs = Date.now();
     this.m5b2GuestSpeaking = true;
@@ -31668,7 +31672,7 @@ ${tail}`;
     if (reason === "role_play_complete" && this.sessionActive) {
       const debrief = `The hotel role-play is complete. Give the learner a brief debrief based only on what actually happened: one or two strengths, at most one useful improvement, then continue the course from the next appropriate point. Do not restart the course and do not speak as Pedro.`;
       this.sendLiveAvatarMessageSafely(debrief, "m5b2m-role-play-debrief");
-      console.log("NEXIVRA M5B-2M ELENORA DEBRIEF DISPATCHED");
+      console.log("NEXIVRA M5B-2N ELENORA DEBRIEF DISPATCHED");
     }
   }
   applyAdaptiveGuidance(guidance = {}) {
@@ -34608,7 +34612,10 @@ ${tail}`;
           () => {
             this.m5b2jPedroSpeaking = true;
             this.cancelM5B2JLearnerTurnTimer();
-            console.log("NEXIVRA M5B-2J PEDRO SPEAKING \u2014 LEARNER TURN HELD");
+            this.m5b2jPendingLearnerFragments = [];
+            this.m5b2nLearnerTurnArmed = false;
+            this.m5b2nLearnerSpeechStartedAtMs = 0;
+            console.log("NEXIVRA M5B-2N PEDRO SPEAKING \u2014 LEARNER FLOOR CLOSED");
           }
         );
         this.guestSession.on(
@@ -34617,11 +34624,14 @@ ${tail}`;
             this.m5b2jPedroSpeaking = false;
             this.cancelM5B2JLearnerTurnTimer();
             this.m5b2jPendingLearnerFragments = [];
+            this.m5b2nLearnerTurnArmed = false;
+            this.m5b2nLearnerFloorOpenedAtMs = Date.now();
+            this.m5b2nLearnerSpeechStartedAtMs = 0;
             if (this.m5b2mCompleteAfterPedroSpeaks && this.rolePlayActive) {
               const completionReason = this.m5b2mCompletionReason || "explicit_close";
               this.m5b2mCompleteAfterPedroSpeaks = false;
               this.m5b2mCompletionReason = "";
-              console.log("NEXIVRA M5B-2M PEDRO FINAL CLOSE COMPLETE \u2014 RETURNING TO ELENORA:", completionReason);
+              console.log("NEXIVRA M5B-2N PEDRO FINAL CLOSE COMPLETE \u2014 RETURNING TO ELENORA:", completionReason);
               this.completeAdaptiveRolePlay({
                 outcome: "completed",
                 needsAnotherAttempt: false,
@@ -34630,7 +34640,7 @@ ${tail}`;
               });
               return;
             }
-            console.log("NEXIVRA M5B-2M PEDRO FINISHED \u2014 CLEAN LEARNER FLOOR OPEN");
+            console.log("NEXIVRA M5B-2N PEDRO FINISHED \u2014 FRESH LEARNER FLOOR OPEN");
           }
         );
       } catch (error) {
@@ -34977,17 +34987,19 @@ ${tail}`;
     const fragment = String(text || "").trim();
     if (!fragment) return;
     this.m5b2jPendingLearnerFragments.push(fragment);
-    console.log("NEXIVRA M5B-2J LEARNER FRAGMENT HELD:", {
+    console.log("NEXIVRA M5B-2N LEARNER FRAGMENT HELD:", {
       fragment,
       fragmentCount: this.m5b2jPendingLearnerFragments.length,
       learnerSpeaking: Boolean(this.learnerMicSpeaking || this.learnerSpeaking),
-      pedroSpeaking: Boolean(this.m5b2jPedroSpeaking)
+      pedroSpeaking: Boolean(this.m5b2jPedroSpeaking),
+      speechStartToFragmentMs: this.m5b2nLearnerSpeechStartedAtMs ? Date.now() - this.m5b2nLearnerSpeechStartedAtMs : null
     });
     this.scheduleM5B2JLearnerTurnFlush("transcript_fragment");
   }
   scheduleM5B2JLearnerTurnFlush(reason = "silence") {
     this.cancelM5B2JLearnerTurnTimer();
     if (!this.rolePlayActive || !this.formalRolePlaySessionId) return;
+    if (!this.m5b2nLearnerTurnArmed) return;
     if (!this.m5b2jPendingLearnerFragments.length) return;
     if (this.m5b2jPedroSpeaking) return;
     if (this.learnerMicSpeaking || this.learnerSpeaking) return;
@@ -35002,6 +35014,7 @@ ${tail}`;
   }
   flushM5B2JLearnerTurn(reason = "silence_complete") {
     if (!this.rolePlayActive || !this.formalRolePlaySessionId) return;
+    if (!this.m5b2nLearnerTurnArmed) return;
     if (this.m5b2jPedroSpeaking || this.learnerMicSpeaking || this.learnerSpeaking) return;
     const fragments = this.m5b2jPendingLearnerFragments.splice(0);
     const text = fragments.join(" ").replace(/\s+/g, " ").trim();
@@ -35013,10 +35026,13 @@ ${tail}`;
     }
     this.m5b2jLastFlushedText = text;
     this.m5b2jLastFlushedAt = now;
-    console.log("NEXIVRA M5B-2J COMPLETE LEARNER TURN:", {
+    this.m5b2nLearnerTurnArmed = false;
+    console.log("NEXIVRA M5B-2N COMPLETE LEARNER TURN:", {
       text,
       fragments: fragments.length,
-      reason
+      reason,
+      silenceSettleMs: this.m5b2nLearnerAudioStoppedAtMs ? now - this.m5b2nLearnerAudioStoppedAtMs : null,
+      speechStartToTurnMs: this.m5b2nLearnerSpeechStartedAtMs ? now - this.m5b2nLearnerSpeechStartedAtMs : null
     });
     this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
     this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", {
@@ -35060,7 +35076,11 @@ ${tail}`;
           const isRolePlayControl = /^(pause|just pause|pause role[- ]?play|pause the role[- ]?play|resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText) || /\b(restart|repeat|start over|do over|redo|end|finish|complete|cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText);
           if (this.rolePlayActive && !isRolePlayControl) {
             if (this.m5b2jPedroSpeaking) {
-              console.log("NEXIVRA M5B-2M TRANSCRIPT DISCARDED \u2014 PEDRO OWNS FLOOR:", text);
+              console.log("NEXIVRA M5B-2N TRANSCRIPT DISCARDED \u2014 PEDRO OWNS FLOOR:", text);
+              continue;
+            }
+            if (!this.m5b2nLearnerTurnArmed) {
+              console.log("NEXIVRA M5B-2N STALE TRANSCRIPT DISCARDED \u2014 NO POST-PEDRO SPEECH START:", text);
               continue;
             }
             this.queueM5B2JLearnerFragment(text);
@@ -35375,6 +35395,10 @@ ${tail}`;
     this.m5b2jPedroSpeaking = false;
     this.m5b2mCompleteAfterPedroSpeaks = false;
     this.m5b2mCompletionReason = "";
+    this.m5b2nLearnerTurnArmed = false;
+    this.m5b2nLearnerFloorOpenedAtMs = 0;
+    this.m5b2nLearnerSpeechStartedAtMs = 0;
+    this.m5b2nLearnerAudioStoppedAtMs = 0;
     this.elenoraObserverMode = false;
     this.formalRolePlayActivationConfirmed = false;
     if (this.guestAutoStopTimer) {
@@ -36198,7 +36222,13 @@ ${tail}`;
                 );
                 if (this.rolePlayActive) {
                   this.cancelM5B2JLearnerTurnTimer();
-                  console.log("NEXIVRA M5B-2J LEARNER FLOOR ACTIVE \u2014 PEDRO MUST LISTEN");
+                  if (!this.m5b2jPedroSpeaking) {
+                    this.m5b2nLearnerTurnArmed = true;
+                    this.m5b2nLearnerSpeechStartedAtMs = Date.now();
+                    console.log("NEXIVRA M5B-2N LEARNER TURN ARMED \u2014 POST-PEDRO SPEECH START:", {
+                      floorOpenToSpeechMs: this.m5b2nLearnerFloorOpenedAtMs ? Date.now() - this.m5b2nLearnerFloorOpenedAtMs : null
+                    });
+                  }
                 }
                 this.startSpeechOverlapCandidate();
               }
@@ -36219,7 +36249,8 @@ ${tail}`;
               console.log(
                 "NEXIVRA LEARNER AUDIO: speaking stopped"
               );
-              if (this.rolePlayActive) {
+              if (this.rolePlayActive && this.m5b2nLearnerTurnArmed && !this.m5b2jPedroSpeaking) {
+                this.m5b2nLearnerAudioStoppedAtMs = Date.now();
                 this.scheduleM5B2JLearnerTurnFlush("learner_silence");
               }
               if (this.sessionActive) {
