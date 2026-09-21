@@ -575,7 +575,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2D-GUEST-STABILITY-HARD-SHUTDOWN"
+                                                                                                              "PACKAGE3-M5B2E-GUEST-SELECTION-LATENCY-VISUAL"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -686,7 +686,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               try{
                                                                                                                 const p=JSON.parse(newValue),t=String(p?.text||"").trim(),sid=String(p?.rolePlaySessionId||"");
                                                                                                                 if(!t||!this.rolePlayActive||sid!==String(this.formalRolePlaySessionId||"")){console.warn("NEXIVRA M5B-2B GUEST RESPONSE IGNORED:",{sid,active:this.formalRolePlaySessionId||""});return;}
-                                                                                                                this.queuePedroGuestResponse(t);
+                                                                                                                this.queuePedroGuestResponse(t,p?.latency||{});
                                                                                                               }catch(error){console.error("NEXIVRA M5B-2B GUEST RESPONSE PARSE ERROR:",error);}
                                                                                                               return;
                                                                                                             }
@@ -1623,10 +1623,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                           }
 
 
-                                                                                                          requestAdaptiveRolePlay() {
+                                                                                                          requestAdaptiveRolePlay(options = {}) {
                                                                             this.dispatchRuntimeEvent(
                                                                               "nexivra-request-role-play",
-                                                                              { sessionId: this.runtimeSessionId || "" }
+                                                                              {
+                                                                                sessionId: this.runtimeSessionId || "",
+                                                                                requestedGuestType:String(options?.requestedGuestType||"")
+                                                                              }
                                                                             );
                                                                           
                                                                                                             setTimeout(
@@ -1837,18 +1840,34 @@ The next instructor response must teach, practice, check understanding, or trans
                                     try{if(this.session?.voiceChat&&typeof this.session.voiceChat.start==="function"&&this.sessionActive)await this.session.voiceChat.start();}catch(error){console.warn("NEXIVRA M5B-2B ELENORA VOICE RESTORE WARNING:",error);}
                                     console.log("NEXIVRA M5B-2B ELENORA CONVERSATION RESTORED");
                                   }
-                                  queuePedroGuestResponse(text){
-                                    const v=String(text||"").trim();if(!v)return;this.m5b2GuestResponseQueue.push(v);
-                                    console.log("NEXIVRA M5B-2B PEDRO RESPONSE QUEUED:",{chars:v.length,queueDepth:this.m5b2GuestResponseQueue.length});this.flushPedroGuestResponseQueue();
+                                  queuePedroGuestResponse(text,latency={}){
+                                    const v=String(text||"").trim();if(!v)return;
+                                    const queuedAtMs=Date.now();
+                                    this.m5b2GuestResponseQueue.push({text:v,latency:latency||{},queuedAtMs});
+                                    console.log("NEXIVRA M5B-2E PEDRO RESPONSE QUEUED:",{
+                                      chars:v.length,
+                                      queueDepth:this.m5b2GuestResponseQueue.length,
+                                      transcriptToQueueMs:Number(latency?.clientCapturedAtMs||0)?queuedAtMs-Number(latency.clientCapturedAtMs):null
+                                    });
+                                    this.flushPedroGuestResponseQueue();
                                   }
                                   async flushPedroGuestResponseQueue(){
                                     if(this.m5b2GuestSpeaking||!this.rolePlayActive||!this.m5b2RolePlayStageActive||!this.guestInfrastructureReady||!this.guestSession||!this.m5b2GuestResponseQueue.length)return;
-                                    const t=this.m5b2GuestResponseQueue.shift();this.m5b2GuestSpeaking=true;
+                                    const item=this.m5b2GuestResponseQueue.shift();
+                                    const t=String(item?.text||"").trim();
+                                    const latency=item?.latency||{};
+                                    const repeatStartedAtMs=Date.now();
+                                    this.m5b2GuestSpeaking=true;
                                     try{
                                       if(typeof this.guestSession.repeat!=="function")throw new Error("LIVEAVATAR_FULL_REPEAT_UNAVAILABLE");
-                                      console.log("NEXIVRA M5B-2B PEDRO SPEAK START:",{rolePlaySessionId:this.formalRolePlaySessionId||"",chars:t.length});
+                                      console.log("NEXIVRA M5B-2E PEDRO SPEAK START:",{
+                                        rolePlaySessionId:this.formalRolePlaySessionId||"",
+                                        chars:t.length,
+                                        queueWaitMs:repeatStartedAtMs-Number(item?.queuedAtMs||repeatStartedAtMs),
+                                        transcriptToRepeatMs:Number(latency?.clientCapturedAtMs||0)?repeatStartedAtMs-Number(latency.clientCapturedAtMs):null
+                                      });
                                       await this.guestSession.repeat(t);this.rolePlayConversation.push({speaker:"guest",text:t,at:new Date().toISOString()});
-                                      console.log("NEXIVRA M5B-2B PEDRO SPEAK COMMAND SENT");
+                                      console.log("NEXIVRA M5B-2E PEDRO SPEAK COMMAND SENT");
                                       const ms=Math.max(1600,Math.min(12000,t.split(/\s+/).filter(Boolean).length*390));
                                       setTimeout(()=>{this.m5b2GuestSpeaking=false;this.flushPedroGuestResponseQueue();},ms);
                                     }catch(error){this.m5b2GuestSpeaking=false;console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:",error);}
@@ -3189,17 +3208,32 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   border-radius: 0 !important;
                                                                                                                   box-shadow: none !important;
                                                                                                                   z-index: 20 !important;
-                                                                                                                  background: #111 !important;
+                                                                                                                  background: #000 !important;
+                                                                                                                  opacity: 1 !important;
+                                                                                                                  filter: none !important;
+                                                                                                                  -webkit-filter: none !important;
+                                                                                                                  backdrop-filter: none !important;
+                                                                                                                  mix-blend-mode: normal !important;
+                                                                                                                  isolation: isolate !important;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage #guestInfraPanel::before,
+                                                                                                                .wrap.m5b2-roleplay-stage #guestInfraPanel::after {
+                                                                                                                  content: none !important;
+                                                                                                                  display: none !important;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #guestAvatarVideo {
                                                                                                                   width: 100% !important;
                                                                                                                   height: 100% !important;
                                                                                                                   object-fit: cover !important;
-                                                                                                                  background: #111 !important;
+                                                                                                                  background: #000 !important;
                                                                                                                   opacity: 1 !important;
-                                                                                                                  filter: brightness(1.38) saturate(1.08) contrast(.96) !important;
+                                                                                                                  filter: none !important;
+                                                                                                                  -webkit-filter: none !important;
+                                                                                                                  backdrop-filter: none !important;
                                                                                                                   mix-blend-mode: normal !important;
+                                                                                                                  isolation: isolate !important;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #avatarVideo {
@@ -5558,6 +5592,30 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                       sandbox: false
                                                                                                                     });
 
+                                                                                                                    try {
+                                                                                                                      const videoStyle=getComputedStyle(video);
+                                                                                                                      const panelStyle=getComputedStyle(panel);
+                                                                                                                      console.log("NEXIVRA M5B-2E PEDRO VISUAL DIAGNOSTIC:",{
+                                                                                                                        video:{
+                                                                                                                          opacity:videoStyle.opacity,
+                                                                                                                          filter:videoStyle.filter,
+                                                                                                                          mixBlendMode:videoStyle.mixBlendMode,
+                                                                                                                          visibility:videoStyle.visibility
+                                                                                                                        },
+                                                                                                                        panel:{
+                                                                                                                          opacity:panelStyle.opacity,
+                                                                                                                          filter:panelStyle.filter,
+                                                                                                                          mixBlendMode:panelStyle.mixBlendMode,
+                                                                                                                          backgroundColor:panelStyle.backgroundColor
+                                                                                                                        },
+                                                                                                                        videoTrackSettings:tracks
+                                                                                                                          .filter(track=>track.kind==="video")
+                                                                                                                          .map(track=>track.getSettings?.()||{})
+                                                                                                                      });
+                                                                                                                    } catch(error) {
+                                                                                                                      console.warn("NEXIVRA M5B-2E PEDRO VISUAL DIAGNOSTIC ERROR:",error);
+                                                                                                                    }
+
                                                                                                                     console.log("NEXIVRA M5B ELENORA SESSION STILL HEALTHY:", {
                                                                                                                       sessionExists: Boolean(this.session),
                                                                                                                       instructorTracks:
@@ -6153,6 +6211,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                       if(!this.rolePlayActive&&!this.rolePlayGatewayLocked&&gatewayNow>=Number(this.rolePlayGatewayRearmAt||0)&&explicitRolePlayRequest){
                                         if(/\b(?:with\s+)?sally\b/.test(lowerText))this.requestFormalRolePlayWithGuest("sally","Sally");
                                         else if(/\b(?:with\s+)?ron\b/.test(lowerText))this.requestFormalRolePlayWithGuest("ron","Ron");
+                                        else if(/\b(?:new|first[- ]?time|unknown|someone new)\s+(?:guest|customer|client|person)\b/.test(lowerText)){
+                                          console.log("NEXIVRA M5B-2E EXPLICIT NEW GUEST REQUEST:",text);
+                                          this.requestAdaptiveRolePlay({requestedGuestType:"new_guest"});
+                                        }
                                         else this.requestAdaptiveRolePlay();
                                         this.rolePlayGatewayLocked=true;
                                         console.log("NEXIVRA FORMAL ROLE PLAY GATEWAY INTERCEPTED:",text);
@@ -6162,7 +6224,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                               const match=String(text||"").match(/\b(?:hello|hi|hey|thanks|thank you|all right|alright|welcome|goodbye|bye)\s+([A-Z][a-z]{1,30})\b/i);
                                               if(match?.[1])this.promoteActiveGuestIdentity(match[1]);
                                             }
-                                          }if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{rolePlaySessionId:this.formalRolePlaySessionId,speaker:"learner",text,scenario:this.activeRolePlayScenario||{}});}this.dispatchRuntimeEvent("nexivra-learner-transcript",{sessionId:this.runtimeSessionId||"",text,observation:this.observationTimeline.length?this.observationTimeline[this.observationTimeline.length-1]:null});}};
+                                          }if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{
+                                              rolePlaySessionId:this.formalRolePlaySessionId,
+                                              speaker:"learner",
+                                              text,
+                                              scenario:this.activeRolePlayScenario||{},
+                                              clientCapturedAtMs:Date.now()
+                                            });}this.dispatchRuntimeEvent("nexivra-learner-transcript",{sessionId:this.runtimeSessionId||"",text,observation:this.observationTimeline.length?this.observationTimeline[this.observationTimeline.length-1]:null});}};
                                                                                                               recognition.onerror=event=>{const error=String(event?.error||"");if(!["no-speech","aborted"].includes(error))console.warn("NEXIVRA TRANSCRIPT ERROR:",error);};
                                                                                                               recognition.onend=()=>{if(this.speechRecognitionActive&&this.sessionActive){try{recognition.start();}catch(error){}}};
                                                                                                               this.speechRecognition=recognition;this.speechRecognitionActive=true;recognition.start();console.log("NEXIVRA TRANSCRIPT CAPTURE ACTIVE");
