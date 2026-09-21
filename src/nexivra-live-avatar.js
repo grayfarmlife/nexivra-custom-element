@@ -64,6 +64,9 @@
                                                                                                             this.m5b2fPendingScenario = null;
                                                                                                             this.m5b2fSetupSpeechStarted = false;
                                                                                                             this.m5b2fPedroOpeningDelivered = false;
+                                                                                                            this.m5b2hSetupRequested = false;
+                                                                                                            this.m5b2hSetupSpeaking = false;
+                                                                                                            this.m5b2hWaitingForGuestReady = false;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -579,7 +582,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2G-CANONICAL-GUEST-PEDRO"
+                                                                                                              "PACKAGE3-M5B2H-HOTEL-PREWARM-HANDOFF"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -1656,14 +1659,53 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                             this.m5b2fPendingScenario=scenario||{};
                                                                             this.m5b2fSetupSpeechStarted=false;
                                                                             this.m5b2fPedroOpeningDelivered=false;
+                                                                            this.m5b2hSetupRequested=false;
+                                                                            this.m5b2hSetupSpeaking=false;
+                                                                            this.m5b2hWaitingForGuestReady=true;
                                                                             this.m5b2FloorOwner="ELENORA";
-                                                                            console.log("NEXIVRA M5B-2F ROLE PLAY PREPARING — ELENORA OWNS FLOOR:",{
+                                                                            console.log("NEXIVRA M5B-2H ROLE PLAY PREWARM — ELENORA OWNS FLOOR:",{
                                                                               scenarioId:scenario?.scenarioId||"",
-                                                                              guestId:scenario?.guestId||""
+                                                                              guestId:scenario?.guestId||"pedro"
                                                                             });
-                                                                            const setup=String(scenario?.learnerFacingSetup||"You are about to work with a guest. Handle the interaction naturally and determine what the guest needs.").trim();
-                                                                            const instruction=`Set up the role-play for the learner now. Say this naturally and briefly: "${setup}" Do not reveal hidden competencies or the guest's private facts. End exactly with: "Ready? Here comes the guest." Then stop speaking.`;
-                                                                            this.sendLiveAvatarMessageSafely(instruction,"m5b2f-role-play-setup");
+
+                                                                            // Prewarm Pedro invisibly. Do not interrupt Elenora and do not
+                                                                            // expose Pedro's stage until his FULL session is actually ready.
+                                                                            if(this.guestInfrastructureReady){
+                                                                              this.dispatchM5B2HInstructorSetup();
+                                                                            }else if(this.guestSessionToken){
+                                                                              this.startGuestInfrastructureTest();
+                                                                            }else{
+                                                                              console.warn("NEXIVRA M5B-2H WAITING FOR PEDRO TOKEN");
+                                                                            }
+                                                                          }
+
+                                                                          dispatchM5B2HInstructorSetup(){
+                                                                            if(!this.m5b2fRolePlayPreparing||this.m5b2hSetupRequested)return;
+                                                                            if(!this.guestInfrastructureReady){
+                                                                              this.m5b2hWaitingForGuestReady=true;
+                                                                              return;
+                                                                            }
+                                                                            if(this.avatarSpeaking){
+                                                                              setTimeout(()=>this.dispatchM5B2HInstructorSetup(),120);
+                                                                              return;
+                                                                            }
+                                                                            this.m5b2hWaitingForGuestReady=false;
+                                                                            this.m5b2hSetupRequested=true;
+                                                                            this.m5b2hSetupSpeaking=false;
+                                                                            const setup=String(this.m5b2fPendingScenario?.learnerFacingSetup||
+                                                                              "You are working at the hotel front desk. A guest you have not met before is approaching with a service concern. Welcome him and handle the situation naturally."
+                                                                            ).trim();
+                                                                            const spoken=`All right, let's do a hotel front-desk role-play. ${setup} Ready? Here comes the guest.`;
+                                                                            console.log("NEXIVRA M5B-2H ELENORA SETUP DISPATCHED");
+                                                                            try{
+                                                                              if(typeof this.session?.repeat==="function"){
+                                                                                this.session.repeat(spoken);
+                                                                              }else{
+                                                                                this.sendLiveAvatarMessageSafely(spoken,"m5b2h-role-play-setup");
+                                                                              }
+                                                                            }catch(error){
+                                                                              console.error("NEXIVRA M5B-2H SETUP DISPATCH ERROR:",error);
+                                                                            }
                                                                           }
 
                                                                           completeM5B2FHandoffAfterInstructorSetup() {
@@ -1671,9 +1713,11 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                             const scenario=this.m5b2fPendingScenario;
                                                                             this.m5b2fRolePlayPreparing=false;
                                                                             this.m5b2fSetupSpeechStarted=false;
-                                                                            console.log("NEXIVRA M5B-2F ELENORA SETUP COMPLETE — PEDRO MAY ENTER");
+                                                                            this.m5b2hSetupRequested=false;
+                                                                            this.m5b2hWaitingForGuestReady=false;
+                                                                            console.log("NEXIVRA M5B-2H ELENORA SETUP COMPLETE — PEDRO ENTERING READY");
                                                                             this.beginAdaptiveRolePlay(scenario);
-                                                                            const opening=String(scenario?.openingLine||"Hi. I was hoping you could help me with something.").trim();
+                                                                            const opening=String(scenario?.openingLine||"Hi. The air conditioning in my room stopped cooling this morning. I was hoping you could help me get it taken care of.").trim();
                                                                             if(opening&&!this.m5b2fPedroOpeningDelivered){
                                                                               this.m5b2fPedroOpeningDelivered=true;
                                                                               this.queuePedroGuestResponse(opening,{clientCapturedAtMs:Date.now()});
@@ -1918,6 +1962,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                     console.log("NEXIVRA M5B-2D FLOOR OWNER: PEDRO");
                                     this.suspendElenoraForM5B2RolePlay();
                                     wrap.classList.add("m5b2-roleplay-stage");
+                                    const readyGuestPanel=this.shadowRoot?.getElementById("guestInfraPanel");
+                                    if(readyGuestPanel&&this.guestInfrastructureReady)readyGuestPanel.style.display="block";
 
                                     const stageBadge=this.shadowRoot?.getElementById("unifiedTrainingStage");
                                     if(stageBadge)stageBadge.textContent="ROLE-PLAY";
@@ -5436,9 +5482,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar started speaking"
                                                                                                                   );
-                                                                                                                  if(this.m5b2fRolePlayPreparing){
+                                                                                                                  if(this.m5b2fRolePlayPreparing&&this.m5b2hSetupRequested){
                                                                                                                     this.m5b2fSetupSpeechStarted=true;
-                                                                                                                    console.log("NEXIVRA M5B-2F ELENORA SETUP SPEAKING");
+                                                                                                                    this.m5b2hSetupSpeaking=true;
+                                                                                                                    console.log("NEXIVRA M5B-2H ELENORA SETUP SPEAKING");
                                                                                                                   }
 
                                                                                                                   if (
@@ -5465,7 +5512,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar stopped speaking"
                                                                                                                   );
-                                                                                                                  if(this.m5b2fRolePlayPreparing&&this.m5b2fSetupSpeechStarted){
+                                                                                                                  if(this.m5b2fRolePlayPreparing&&this.m5b2hSetupRequested&&this.m5b2hSetupSpeaking){
+                                                                                                                    this.m5b2hSetupSpeaking=false;
                                                                                                                     this.completeM5B2FHandoffAfterInstructorSetup();
                                                                                                                   }
 
@@ -5610,7 +5658,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 "NEXIVRA M5B-2D PEDRO AUTONOMOUS LISTENING DISABLED"
                                                                                                               );
 
-                                                                                                              panel.style.display = "block";
+                                                                                                              panel.style.display = this.m5b2RolePlayStageActive ? "block" : "none";
 
                                                                                                               let attempts = 0;
                                                                                                               if (this.guestAttachTimer) clearInterval(this.guestAttachTimer);
@@ -5684,13 +5732,16 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                       this.guestAutoStopTimer = null;
                                                                                                                     }
 
-                                                                                                                    if (!this.rolePlayActive) {
+                                                                                                                    if (!this.rolePlayActive && !this.m5b2fRolePlayPreparing) {
                                                                                                                       console.warn(
                                                                                                                         "NEXIVRA M5B-2 GUEST READY OUTSIDE ROLE PLAY — STOPPING"
                                                                                                                       );
                                                                                                                       this.stopGuestInfrastructureTest(
                                                                                                                         "m5b2_no_active_role_play"
                                                                                                                       );
+                                                                                                                    } else if(this.m5b2fRolePlayPreparing) {
+                                                                                                                      console.log("NEXIVRA M5B-2H PEDRO PREWARM READY — STILL HIDDEN");
+                                                                                                                      this.dispatchM5B2HInstructorSetup();
                                                                                                                     }
                                                                                                                   }
                                                                                                                 } catch (error) {
