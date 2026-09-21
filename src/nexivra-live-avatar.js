@@ -60,6 +60,10 @@
                                                                                                             this.m5b2GuestSpeaking = false;
                                                                                                             this.m5b2ElenoraVoiceSuspended = false;
                                                                                                             this.m5b2FloorOwner = "ELENORA";
+                                                                                                            this.m5b2fRolePlayPreparing = false;
+                                                                                                            this.m5b2fPendingScenario = null;
+                                                                                                            this.m5b2fSetupSpeechStarted = false;
+                                                                                                            this.m5b2fPedroOpeningDelivered = false;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -575,7 +579,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2E-GUEST-SELECTION-LATENCY-VISUAL"
+                                                                                                              "PACKAGE3-M5B2F-ROLEPLAY-INTELLIGENCE-HANDOFF"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -888,7 +892,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               scenario
                                                                                                             );
 
-                                                                                                            this.beginAdaptiveRolePlay(
+                                                                                                            this.prepareM5B2FRolePlayHandoff(
                                                                                                               scenario
                                                                                                             );
                                                                                                           } catch(error) {
@@ -933,7 +937,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                       command.scenario
                                                                                                                     );
 
-                                                                                                                    this.beginAdaptiveRolePlay(
+                                                                                                                    this.prepareM5B2FRolePlayHandoff(
                                                                                                                       command.scenario
                                                                                                                     );
 
@@ -1646,6 +1650,36 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             );
                                                                 }
 
+                                                                          prepareM5B2FRolePlayHandoff(scenario = {}) {
+                                                                            if(this.m5b2fRolePlayPreparing||this.rolePlayActive)return;
+                                                                            this.m5b2fRolePlayPreparing=true;
+                                                                            this.m5b2fPendingScenario=scenario||{};
+                                                                            this.m5b2fSetupSpeechStarted=false;
+                                                                            this.m5b2fPedroOpeningDelivered=false;
+                                                                            this.m5b2FloorOwner="ELENORA";
+                                                                            console.log("NEXIVRA M5B-2F ROLE PLAY PREPARING — ELENORA OWNS FLOOR:",{
+                                                                              scenarioId:scenario?.scenarioId||"",
+                                                                              guestId:scenario?.guestId||""
+                                                                            });
+                                                                            const setup=String(scenario?.learnerFacingSetup||"You are about to work with a guest. Handle the interaction naturally and determine what the guest needs.").trim();
+                                                                            const instruction=`Set up the role-play for the learner now. Say this naturally and briefly: "${setup}" Do not reveal hidden competencies or the guest's private facts. End exactly with: "Ready? Here comes the guest." Then stop speaking.`;
+                                                                            this.sendLiveAvatarMessageSafely(instruction,"m5b2f-role-play-setup");
+                                                                          }
+
+                                                                          completeM5B2FHandoffAfterInstructorSetup() {
+                                                                            if(!this.m5b2fRolePlayPreparing||!this.m5b2fPendingScenario)return;
+                                                                            const scenario=this.m5b2fPendingScenario;
+                                                                            this.m5b2fRolePlayPreparing=false;
+                                                                            this.m5b2fSetupSpeechStarted=false;
+                                                                            console.log("NEXIVRA M5B-2F ELENORA SETUP COMPLETE — PEDRO MAY ENTER");
+                                                                            this.beginAdaptiveRolePlay(scenario);
+                                                                            const opening=String(scenario?.openingLine||"Hi. I was hoping you could help me with something.").trim();
+                                                                            if(opening&&!this.m5b2fPedroOpeningDelivered){
+                                                                              this.m5b2fPedroOpeningDelivered=true;
+                                                                              this.queuePedroGuestResponse(opening,{clientCapturedAtMs:Date.now()});
+                                                                            }
+                                                                          }
+
                                                                           beginAdaptiveRolePlay(scenario = {}) {
                                                                             const incomingScenarioId =
                                                                               String(
@@ -1868,8 +1902,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                       });
                                       await this.guestSession.repeat(t);this.rolePlayConversation.push({speaker:"guest",text:t,at:new Date().toISOString()});
                                       console.log("NEXIVRA M5B-2E PEDRO SPEAK COMMAND SENT");
-                                      const ms=Math.max(1600,Math.min(12000,t.split(/\s+/).filter(Boolean).length*390));
-                                      setTimeout(()=>{this.m5b2GuestSpeaking=false;this.flushPedroGuestResponseQueue();},ms);
+                                      setTimeout(()=>{this.m5b2GuestSpeaking=false;this.flushPedroGuestResponseQueue();},0);
                                     }catch(error){this.m5b2GuestSpeaking=false;console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:",error);}
                                   }
 
@@ -3237,6 +3270,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #avatarVideo {
+                                                                                                                  display: none !important;
                                                                                                                   position: absolute !important;
                                                                                                                   right: 18px !important;
                                                                                                                   bottom: 18px !important;
@@ -3253,6 +3287,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage .instructor-label {
+                                                                                                                  display: none !important;
                                                                                                                   position: absolute;
                                                                                                                   right: 30px;
                                                                                                                   bottom: 30px;
@@ -5401,6 +5436,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar started speaking"
                                                                                                                   );
+                                                                                                                  if(this.m5b2fRolePlayPreparing){
+                                                                                                                    this.m5b2fSetupSpeechStarted=true;
+                                                                                                                    console.log("NEXIVRA M5B-2F ELENORA SETUP SPEAKING");
+                                                                                                                  }
 
                                                                                                                   if (
                                                                                                                     this.resumeContinuationState==="SUMMARY_PENDING" &&
@@ -5426,6 +5465,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar stopped speaking"
                                                                                                                   );
+                                                                                                                  if(this.m5b2fRolePlayPreparing&&this.m5b2fSetupSpeechStarted){
+                                                                                                                    this.completeM5B2FHandoffAfterInstructorSetup();
+                                                                                                                  }
 
                                                                                                                   if (
                                                                                                                     this.resumeContinuationState==="SUMMARY_PENDING" &&
@@ -6219,12 +6261,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                         this.rolePlayGatewayLocked=true;
                                         console.log("NEXIVRA FORMAL ROLE PLAY GATEWAY INTERCEPTED:",text);
                                       }if(this.rolePlayActive){this.rolePlayConversation.push({speaker:"learner",text,at:new Date().toISOString()});}if(this.rolePlayActive){
-                                            const currentGuestId=String(this.formalRolePlayGuestId||this.activeRolePlayScenario?.guestId||"");
-                                            if(currentGuestId==="new_guest"||currentGuestId==="unknown_guest"||currentGuestId.startsWith("temporary_")){
-                                              const match=String(text||"").match(/\b(?:hello|hi|hey|thanks|thank you|all right|alright|welcome|goodbye|bye)\s+([A-Z][a-z]{1,30})\b/i);
-                                              if(match?.[1])this.promoteActiveGuestIdentity(match[1]);
-                                            }
-                                          }if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{
+                                            // M5B-2F: never infer guest identity from learner speech.
+                                          }}if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{
                                               rolePlaySessionId:this.formalRolePlaySessionId,
                                               speaker:"learner",
                                               text,
