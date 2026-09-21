@@ -30089,6 +30089,10 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2GuestSpeaking = false;
     this.m5b2ElenoraVoiceSuspended = false;
     this.m5b2FloorOwner = "ELENORA";
+    this.m5b2fRolePlayPreparing = false;
+    this.m5b2fPendingScenario = null;
+    this.m5b2fSetupSpeechStarted = false;
+    this.m5b2fPedroOpeningDelivered = false;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30487,7 +30491,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2E-GUEST-SELECTION-LATENCY-VISUAL"
+      "PACKAGE3-M5B2G-CANONICAL-GUEST-PEDRO"
     );
     this.render();
     this.bindControls();
@@ -30702,7 +30706,7 @@ ${tail}`;
           "NEXIVRA ADAPTIVE ROLE PLAY RECEIVED:",
           scenario
         );
-        this.beginAdaptiveRolePlay(
+        this.prepareM5B2FRolePlayHandoff(
           scenario
         );
       } catch (error) {
@@ -30732,7 +30736,7 @@ ${tail}`;
               "NEXIVRA ADAPTIVE ROLE PLAY COMMAND RECEIVED:",
               command.scenario
             );
-            this.beginAdaptiveRolePlay(
+            this.prepareM5B2FRolePlayHandoff(
               command.scenario
             );
             return;
@@ -31229,6 +31233,34 @@ ${tail}`;
       8e3
     );
   }
+  prepareM5B2FRolePlayHandoff(scenario = {}) {
+    if (this.m5b2fRolePlayPreparing || this.rolePlayActive) return;
+    this.m5b2fRolePlayPreparing = true;
+    this.m5b2fPendingScenario = scenario || {};
+    this.m5b2fSetupSpeechStarted = false;
+    this.m5b2fPedroOpeningDelivered = false;
+    this.m5b2FloorOwner = "ELENORA";
+    console.log("NEXIVRA M5B-2F ROLE PLAY PREPARING \u2014 ELENORA OWNS FLOOR:", {
+      scenarioId: scenario?.scenarioId || "",
+      guestId: scenario?.guestId || ""
+    });
+    const setup = String(scenario?.learnerFacingSetup || "You are about to work with a guest. Handle the interaction naturally and determine what the guest needs.").trim();
+    const instruction = `Set up the role-play for the learner now. Say this naturally and briefly: "${setup}" Do not reveal hidden competencies or the guest's private facts. End exactly with: "Ready? Here comes the guest." Then stop speaking.`;
+    this.sendLiveAvatarMessageSafely(instruction, "m5b2f-role-play-setup");
+  }
+  completeM5B2FHandoffAfterInstructorSetup() {
+    if (!this.m5b2fRolePlayPreparing || !this.m5b2fPendingScenario) return;
+    const scenario = this.m5b2fPendingScenario;
+    this.m5b2fRolePlayPreparing = false;
+    this.m5b2fSetupSpeechStarted = false;
+    console.log("NEXIVRA M5B-2F ELENORA SETUP COMPLETE \u2014 PEDRO MAY ENTER");
+    this.beginAdaptiveRolePlay(scenario);
+    const opening = String(scenario?.openingLine || "Hi. I was hoping you could help me with something.").trim();
+    if (opening && !this.m5b2fPedroOpeningDelivered) {
+      this.m5b2fPedroOpeningDelivered = true;
+      this.queuePedroGuestResponse(opening, { clientCapturedAtMs: Date.now() });
+    }
+  }
   beginAdaptiveRolePlay(scenario = {}) {
     const incomingScenarioId = String(
       scenario?.scenarioId || ""
@@ -31248,8 +31280,8 @@ ${tail}`;
       this.activateFormalGuestMode({
         type: "formal-role-play-started",
         rolePlaySessionId: scenario.rolePlaySessionId,
-        guestId: scenario.guestId || "",
-        guestName: scenario.guestName || "",
+        guestId: "pedro",
+        guestName: "Pedro",
         relationshipMemory: scenario.relationshipMemory || {}
       });
     } else {
@@ -31441,11 +31473,10 @@ ${tail}`;
       await this.guestSession.repeat(t3);
       this.rolePlayConversation.push({ speaker: "guest", text: t3, at: (/* @__PURE__ */ new Date()).toISOString() });
       console.log("NEXIVRA M5B-2E PEDRO SPEAK COMMAND SENT");
-      const ms2 = Math.max(1600, Math.min(12e3, t3.split(/\s+/).filter(Boolean).length * 390));
       setTimeout(() => {
         this.m5b2GuestSpeaking = false;
         this.flushPedroGuestResponseQueue();
-      }, ms2);
+      }, 0);
     } catch (error) {
       this.m5b2GuestSpeaking = false;
       console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:", error);
@@ -32327,6 +32358,7 @@ ${tail}`;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #avatarVideo {
+                                                                                                                  display: none !important;
                                                                                                                   position: absolute !important;
                                                                                                                   right: 18px !important;
                                                                                                                   bottom: 18px !important;
@@ -32343,6 +32375,7 @@ ${tail}`;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage .instructor-label {
+                                                                                                                  display: none !important;
                                                                                                                   position: absolute;
                                                                                                                   right: 30px;
                                                                                                                   bottom: 30px;
@@ -34386,6 +34419,10 @@ ${tail}`;
             console.log(
               "NEXIVRA SPEECH EVENT: avatar started speaking"
             );
+            if (this.m5b2fRolePlayPreparing) {
+              this.m5b2fSetupSpeechStarted = true;
+              console.log("NEXIVRA M5B-2F ELENORA SETUP SPEAKING");
+            }
             if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === false && this.isReturningInstructionalSession()) {
               this.resumeSummarySpeechStarted = true;
               console.log(
@@ -34401,6 +34438,9 @@ ${tail}`;
             console.log(
               "NEXIVRA SPEECH EVENT: avatar stopped speaking"
             );
+            if (this.m5b2fRolePlayPreparing && this.m5b2fSetupSpeechStarted) {
+              this.completeM5B2FHandoffAfterInstructorSetup();
+            }
             if (this.resumeContinuationState === "SUMMARY_PENDING" && this.resumeSummaryArmed === true && this.resumeSummarySpeechStarted === true && this.isReturningInstructionalSession()) {
               this.resumeSummaryArmed = false;
               this.resumeSummarySpeechStarted = false;
@@ -34912,11 +34952,6 @@ ${tail}`;
             this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
           }
           if (this.rolePlayActive) {
-            const currentGuestId = String(this.formalRolePlayGuestId || this.activeRolePlayScenario?.guestId || "");
-            if (currentGuestId === "new_guest" || currentGuestId === "unknown_guest" || currentGuestId.startsWith("temporary_")) {
-              const match = String(text || "").match(/\b(?:hello|hi|hey|thanks|thank you|all right|alright|welcome|goodbye|bye)\s+([A-Z][a-z]{1,30})\b/i);
-              if (match?.[1]) this.promoteActiveGuestIdentity(match[1]);
-            }
           }
           if (this.rolePlayActive && this.formalRolePlaySessionId) {
             this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", {
