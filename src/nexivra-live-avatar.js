@@ -67,6 +67,12 @@
                                                                                                             this.m5b2hSetupRequested = false;
                                                                                                             this.m5b2hSetupSpeaking = false;
                                                                                                             this.m5b2hWaitingForGuestReady = false;
+                                                                                                            this.m5b2jPendingLearnerFragments = [];
+                                                                                                            this.m5b2jLearnerTurnTimer = null;
+                                                                                                            this.m5b2jLearnerTurnSilenceMs = 900;
+                                                                                                            this.m5b2jPedroSpeaking = false;
+                                                                                                            this.m5b2jLastFlushedText = "";
+                                                                                                            this.m5b2jLastFlushedAt = 0;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -582,7 +588,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2I-HARD-HANDOFF-FAST-PEDRO"
+                                                                                                              "PACKAGE3-M5B2J-CONVERSATIONAL-TURN-OWNERSHIP"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -5659,6 +5665,26 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               );
 
                                                                                                               console.log("NEXIVRA M5B GUEST AVATAR SESSION CREATED");
+                                                                                                              try {
+                                                                                                                this.guestSession.on(
+                                                                                                                  AgentEventsEnum.AVATAR_SPEAK_STARTED,
+                                                                                                                  () => {
+                                                                                                                    this.m5b2jPedroSpeaking=true;
+                                                                                                                    this.cancelM5B2JLearnerTurnTimer();
+                                                                                                                    console.log("NEXIVRA M5B-2J PEDRO SPEAKING — LEARNER TURN HELD");
+                                                                                                                  }
+                                                                                                                );
+                                                                                                                this.guestSession.on(
+                                                                                                                  AgentEventsEnum.AVATAR_SPEAK_ENDED,
+                                                                                                                  () => {
+                                                                                                                    this.m5b2jPedroSpeaking=false;
+                                                                                                                    console.log("NEXIVRA M5B-2J PEDRO FINISHED — LEARNER FLOOR OPEN");
+                                                                                                                    this.scheduleM5B2JLearnerTurnFlush("pedro_finished");
+                                                                                                                  }
+                                                                                                                );
+                                                                                                              } catch(error) {
+                                                                                                                console.warn("NEXIVRA M5B-2J PEDRO SPEECH EVENT BIND WARNING:",error);
+                                                                                                              }
                                                                                                               await this.guestSession.start();
 
                                                                                                               // M5B-2D: Pedro is FULL mode for supported speech delivery,
@@ -6231,6 +6257,75 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                            * =========================================================
                                                                                                            */
 
+                                                                                                          cancelM5B2JLearnerTurnTimer() {
+                                                                                                            if(this.m5b2jLearnerTurnTimer){
+                                                                                                              clearTimeout(this.m5b2jLearnerTurnTimer);
+                                                                                                              this.m5b2jLearnerTurnTimer=null;
+                                                                                                            }
+                                                                                                          }
+
+                                                                                                          queueM5B2JLearnerFragment(text) {
+                                                                                                            const fragment=String(text||"").trim();
+                                                                                                            if(!fragment)return;
+                                                                                                            this.m5b2jPendingLearnerFragments.push(fragment);
+                                                                                                            console.log("NEXIVRA M5B-2J LEARNER FRAGMENT HELD:",{
+                                                                                                              fragment,
+                                                                                                              fragmentCount:this.m5b2jPendingLearnerFragments.length,
+                                                                                                              learnerSpeaking:Boolean(this.learnerMicSpeaking||this.learnerSpeaking),
+                                                                                                              pedroSpeaking:Boolean(this.m5b2jPedroSpeaking)
+                                                                                                            });
+                                                                                                            this.scheduleM5B2JLearnerTurnFlush("transcript_fragment");
+                                                                                                          }
+
+                                                                                                          scheduleM5B2JLearnerTurnFlush(reason="silence") {
+                                                                                                            this.cancelM5B2JLearnerTurnTimer();
+                                                                                                            if(!this.rolePlayActive||!this.formalRolePlaySessionId)return;
+                                                                                                            if(!this.m5b2jPendingLearnerFragments.length)return;
+                                                                                                            if(this.m5b2jPedroSpeaking)return;
+                                                                                                            if(this.learnerMicSpeaking||this.learnerSpeaking)return;
+                                                                                                            this.m5b2jLearnerTurnTimer=setTimeout(()=>{
+                                                                                                              this.m5b2jLearnerTurnTimer=null;
+                                                                                                              if(this.m5b2jPedroSpeaking||this.learnerMicSpeaking||this.learnerSpeaking){
+                                                                                                                this.scheduleM5B2JLearnerTurnFlush("still_busy");
+                                                                                                                return;
+                                                                                                              }
+                                                                                                              this.flushM5B2JLearnerTurn(reason);
+                                                                                                            },Number(this.m5b2jLearnerTurnSilenceMs||900));
+                                                                                                          }
+
+                                                                                                          flushM5B2JLearnerTurn(reason="silence_complete") {
+                                                                                                            if(!this.rolePlayActive||!this.formalRolePlaySessionId)return;
+                                                                                                            if(this.m5b2jPedroSpeaking||this.learnerMicSpeaking||this.learnerSpeaking)return;
+                                                                                                            const fragments=this.m5b2jPendingLearnerFragments.splice(0);
+                                                                                                            const text=fragments.join(" ").replace(/\s+/g," ").trim();
+                                                                                                            if(!text)return;
+                                                                                                            const now=Date.now();
+                                                                                                            if(text===this.m5b2jLastFlushedText&&now-Number(this.m5b2jLastFlushedAt||0)<5000){
+                                                                                                              console.log("NEXIVRA M5B-2J DUPLICATE COMPLETE TURN IGNORED:",text);
+                                                                                                              return;
+                                                                                                            }
+                                                                                                            this.m5b2jLastFlushedText=text;
+                                                                                                            this.m5b2jLastFlushedAt=now;
+                                                                                                            console.log("NEXIVRA M5B-2J COMPLETE LEARNER TURN:",{
+                                                                                                              text,
+                                                                                                              fragments:fragments.length,
+                                                                                                              reason
+                                                                                                            });
+                                                                                                            this.rolePlayConversation.push({speaker:"learner",text,at:new Date().toISOString()});
+                                                                                                            this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{
+                                                                                                              rolePlaySessionId:this.formalRolePlaySessionId,
+                                                                                                              speaker:"learner",
+                                                                                                              text,
+                                                                                                              scenario:this.activeRolePlayScenario||{},
+                                                                                                              clientCapturedAtMs:Date.now()
+                                                                                                            });
+                                                                                                            this.dispatchRuntimeEvent("nexivra-learner-transcript",{
+                                                                                                              sessionId:this.runtimeSessionId||"",
+                                                                                                              text,
+                                                                                                              observation:this.observationTimeline.length?this.observationTimeline[this.observationTimeline.length-1]:null
+                                                                                                            });
+                                                                                                          }
+
                                                                                                           startLearnerTranscriptCapture() {
                                                                                                             if(this.speechRecognitionActive)return;
                                                                                                             const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -6240,6 +6335,14 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               recognition.onresult=event=>{for(let i=event.resultIndex;i<event.results.length;i++){const result=event.results[i];if(!result?.isFinal)continue;const text=String(result[0]?.transcript||"").trim();if(!text)continue;const now=Date.now();if(text===this.lastLearnerTranscript&&now-this.lastLearnerTranscriptAt<5000)continue;this.lastLearnerTranscript=text;this.lastLearnerTranscriptAt=now;console.log("NEXIVRA LEARNER TRANSCRIPT CAPTURED:",text);
                                       this.captureGuestIdentityFromConversation(text);
                                               const rolePlayControlText=String(text||"").trim().toLowerCase();
+                                              const isRolePlayControl=
+                                                /^(pause|just pause|pause role[- ]?play|pause the role[- ]?play|resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText) ||
+                                                /\b(restart|repeat|start over|do over|redo|end|finish|complete|cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText);
+
+                                              if(this.rolePlayActive&&!isRolePlayControl){
+                                                this.queueM5B2JLearnerFragment(text);
+                                                continue;
+                                              }
 
                                               if(this.rolePlayActive){
                                                 if(/^(pause|just pause|pause role[- ]?play|pause the role[- ]?play)$/.test(rolePlayControlText)){
@@ -6711,6 +6814,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.m5b2GuestStartRequested=false;
                                                                                                             this.m5b2GuestResponseQueue=[];
                                                                                                             this.m5b2GuestSpeaking=false;
+                                                                                                            this.cancelM5B2JLearnerTurnTimer?.();
+                                                                                                            this.m5b2jPendingLearnerFragments=[];
+                                                                                                            this.m5b2jPedroSpeaking=false;
                                                                                                             this.elenoraObserverMode=false;
                                                                                                             this.formalRolePlayActivationConfirmed=false;
 
@@ -8419,6 +8525,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                             "NEXIVRA LEARNER AUDIO: speaking started"
                                                                                                                           );
 
+                                                                                                                          if(this.rolePlayActive){
+                                                                                                                            this.cancelM5B2JLearnerTurnTimer();
+                                                                                                                            console.log("NEXIVRA M5B-2J LEARNER FLOOR ACTIVE — PEDRO MUST LISTEN");
+                                                                                                                          }
 
                                                                                                                           this.startSpeechOverlapCandidate();
                                                                                                                         }
@@ -8475,6 +8585,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                           "NEXIVRA LEARNER AUDIO: speaking stopped"
                                                                                                                         );
 
+                                                                                                                        if(this.rolePlayActive){
+                                                                                                                          this.scheduleM5B2JLearnerTurnFlush("learner_silence");
+                                                                                                                        }
 
                                                                                                                         if (this.sessionActive) {
 
