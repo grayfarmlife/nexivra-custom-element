@@ -30502,7 +30502,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2K-FAST-TURN-ROLEPLAY-COMPLETION"
+      "PACKAGE3-M5B2L-SEMANTIC-COMPLETION-HYBRID-FAST-PEDRO"
     );
     this.render();
     this.bindControls();
@@ -30583,8 +30583,10 @@ ${tail}`;
           t3,
           p3?.latency || {},
           {
-            completeAfterSpeak: Boolean(p3?.rolePlayShouldComplete),
-            completionReason: String(p3?.completionReason || "")
+            interactionState: String(p3?.interactionState || "OPEN"),
+            completeAfterSpeak: String(p3?.interactionState || "OPEN") === "COMPLETE" && Boolean(p3?.rolePlayShouldComplete),
+            completionReason: String(p3?.completionReason || ""),
+            responseSource: String(p3?.responseSource || "")
           }
         );
       } catch (error) {
@@ -31525,8 +31527,10 @@ ${tail}`;
       text: v3,
       latency: latency || {},
       queuedAtMs,
+      interactionState: String(options?.interactionState || "OPEN"),
       completeAfterSpeak: Boolean(options?.completeAfterSpeak),
-      completionReason: String(options?.completionReason || "")
+      completionReason: String(options?.completionReason || ""),
+      responseSource: String(options?.responseSource || "")
     });
     console.log("NEXIVRA M5B-2E PEDRO RESPONSE QUEUED:", {
       chars: v3.length,
@@ -31540,10 +31544,14 @@ ${tail}`;
     const item = this.m5b2GuestResponseQueue.shift();
     const t3 = String(item?.text || "").trim();
     const latency = item?.latency || {};
+    console.log("NEXIVRA M5B-2L PEDRO TURN SOURCE:", {
+      source: item?.responseSource || "unknown",
+      interactionState: item?.interactionState || "OPEN"
+    });
     if (item?.completeAfterSpeak) {
       this.m5b2kCompleteAfterPedroSpeaks = true;
       this.m5b2kCompletionReason = String(item?.completionReason || "natural_resolution");
-      console.log("NEXIVRA M5B-2K NATURAL COMPLETION ARMED:", this.m5b2kCompletionReason);
+      console.log("NEXIVRA M5B-2L SEMANTIC COMPLETION ARMED:", this.m5b2kCompletionReason);
     }
     const repeatStartedAtMs = Date.now();
     this.m5b2GuestSpeaking = true;
