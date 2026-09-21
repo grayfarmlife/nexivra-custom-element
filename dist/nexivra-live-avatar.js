@@ -30487,7 +30487,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2D-GUEST-STABILITY-HARD-SHUTDOWN"
+      "PACKAGE3-M5B2E-GUEST-SELECTION-LATENCY-VISUAL"
     );
     this.render();
     this.bindControls();
@@ -30564,7 +30564,7 @@ ${tail}`;
           console.warn("NEXIVRA M5B-2B GUEST RESPONSE IGNORED:", { sid, active: this.formalRolePlaySessionId || "" });
           return;
         }
-        this.queuePedroGuestResponse(t3);
+        this.queuePedroGuestResponse(t3, p3?.latency || {});
       } catch (error) {
         console.error("NEXIVRA M5B-2B GUEST RESPONSE PARSE ERROR:", error);
       }
@@ -31211,10 +31211,13 @@ ${tail}`;
     );
     this.requestAdaptiveRolePlay();
   }
-  requestAdaptiveRolePlay() {
+  requestAdaptiveRolePlay(options = {}) {
     this.dispatchRuntimeEvent(
       "nexivra-request-role-play",
-      { sessionId: this.runtimeSessionId || "" }
+      {
+        sessionId: this.runtimeSessionId || "",
+        requestedGuestType: String(options?.requestedGuestType || "")
+      }
     );
     setTimeout(
       () => {
@@ -31408,23 +31411,36 @@ ${tail}`;
     }
     console.log("NEXIVRA M5B-2B ELENORA CONVERSATION RESTORED");
   }
-  queuePedroGuestResponse(text) {
+  queuePedroGuestResponse(text, latency = {}) {
     const v3 = String(text || "").trim();
     if (!v3) return;
-    this.m5b2GuestResponseQueue.push(v3);
-    console.log("NEXIVRA M5B-2B PEDRO RESPONSE QUEUED:", { chars: v3.length, queueDepth: this.m5b2GuestResponseQueue.length });
+    const queuedAtMs = Date.now();
+    this.m5b2GuestResponseQueue.push({ text: v3, latency: latency || {}, queuedAtMs });
+    console.log("NEXIVRA M5B-2E PEDRO RESPONSE QUEUED:", {
+      chars: v3.length,
+      queueDepth: this.m5b2GuestResponseQueue.length,
+      transcriptToQueueMs: Number(latency?.clientCapturedAtMs || 0) ? queuedAtMs - Number(latency.clientCapturedAtMs) : null
+    });
     this.flushPedroGuestResponseQueue();
   }
   async flushPedroGuestResponseQueue() {
     if (this.m5b2GuestSpeaking || !this.rolePlayActive || !this.m5b2RolePlayStageActive || !this.guestInfrastructureReady || !this.guestSession || !this.m5b2GuestResponseQueue.length) return;
-    const t3 = this.m5b2GuestResponseQueue.shift();
+    const item = this.m5b2GuestResponseQueue.shift();
+    const t3 = String(item?.text || "").trim();
+    const latency = item?.latency || {};
+    const repeatStartedAtMs = Date.now();
     this.m5b2GuestSpeaking = true;
     try {
       if (typeof this.guestSession.repeat !== "function") throw new Error("LIVEAVATAR_FULL_REPEAT_UNAVAILABLE");
-      console.log("NEXIVRA M5B-2B PEDRO SPEAK START:", { rolePlaySessionId: this.formalRolePlaySessionId || "", chars: t3.length });
+      console.log("NEXIVRA M5B-2E PEDRO SPEAK START:", {
+        rolePlaySessionId: this.formalRolePlaySessionId || "",
+        chars: t3.length,
+        queueWaitMs: repeatStartedAtMs - Number(item?.queuedAtMs || repeatStartedAtMs),
+        transcriptToRepeatMs: Number(latency?.clientCapturedAtMs || 0) ? repeatStartedAtMs - Number(latency.clientCapturedAtMs) : null
+      });
       await this.guestSession.repeat(t3);
       this.rolePlayConversation.push({ speaker: "guest", text: t3, at: (/* @__PURE__ */ new Date()).toISOString() });
-      console.log("NEXIVRA M5B-2B PEDRO SPEAK COMMAND SENT");
+      console.log("NEXIVRA M5B-2E PEDRO SPEAK COMMAND SENT");
       const ms2 = Math.max(1600, Math.min(12e3, t3.split(/\s+/).filter(Boolean).length * 390));
       setTimeout(() => {
         this.m5b2GuestSpeaking = false;
@@ -32282,17 +32298,32 @@ ${tail}`;
                                                                                                                   border-radius: 0 !important;
                                                                                                                   box-shadow: none !important;
                                                                                                                   z-index: 20 !important;
-                                                                                                                  background: #111 !important;
+                                                                                                                  background: #000 !important;
+                                                                                                                  opacity: 1 !important;
+                                                                                                                  filter: none !important;
+                                                                                                                  -webkit-filter: none !important;
+                                                                                                                  backdrop-filter: none !important;
+                                                                                                                  mix-blend-mode: normal !important;
+                                                                                                                  isolation: isolate !important;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage #guestInfraPanel::before,
+                                                                                                                .wrap.m5b2-roleplay-stage #guestInfraPanel::after {
+                                                                                                                  content: none !important;
+                                                                                                                  display: none !important;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #guestAvatarVideo {
                                                                                                                   width: 100% !important;
                                                                                                                   height: 100% !important;
                                                                                                                   object-fit: cover !important;
-                                                                                                                  background: #111 !important;
+                                                                                                                  background: #000 !important;
                                                                                                                   opacity: 1 !important;
-                                                                                                                  filter: brightness(1.38) saturate(1.08) contrast(.96) !important;
+                                                                                                                  filter: none !important;
+                                                                                                                  -webkit-filter: none !important;
+                                                                                                                  backdrop-filter: none !important;
                                                                                                                   mix-blend-mode: normal !important;
+                                                                                                                  isolation: isolate !important;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #avatarVideo {
@@ -34472,6 +34503,27 @@ ${tail}`;
               tracks: tracks.length,
               sandbox: false
             });
+            try {
+              const videoStyle = getComputedStyle(video);
+              const panelStyle = getComputedStyle(panel);
+              console.log("NEXIVRA M5B-2E PEDRO VISUAL DIAGNOSTIC:", {
+                video: {
+                  opacity: videoStyle.opacity,
+                  filter: videoStyle.filter,
+                  mixBlendMode: videoStyle.mixBlendMode,
+                  visibility: videoStyle.visibility
+                },
+                panel: {
+                  opacity: panelStyle.opacity,
+                  filter: panelStyle.filter,
+                  mixBlendMode: panelStyle.mixBlendMode,
+                  backgroundColor: panelStyle.backgroundColor
+                },
+                videoTrackSettings: tracks.filter((track) => track.kind === "video").map((track) => track.getSettings?.() || {})
+              });
+            } catch (error) {
+              console.warn("NEXIVRA M5B-2E PEDRO VISUAL DIAGNOSTIC ERROR:", error);
+            }
             console.log("NEXIVRA M5B ELENORA SESSION STILL HEALTHY:", {
               sessionExists: Boolean(this.session),
               instructorTracks: this.shadowRoot.getElementById("avatarVideo")?.srcObject?.getTracks?.().length || 0
@@ -34849,7 +34901,10 @@ ${tail}`;
           if (!this.rolePlayActive && !this.rolePlayGatewayLocked && gatewayNow >= Number(this.rolePlayGatewayRearmAt || 0) && explicitRolePlayRequest) {
             if (/\b(?:with\s+)?sally\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("sally", "Sally");
             else if (/\b(?:with\s+)?ron\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("ron", "Ron");
-            else this.requestAdaptiveRolePlay();
+            else if (/\b(?:new|first[- ]?time|unknown|someone new)\s+(?:guest|customer|client|person)\b/.test(lowerText)) {
+              console.log("NEXIVRA M5B-2E EXPLICIT NEW GUEST REQUEST:", text);
+              this.requestAdaptiveRolePlay({ requestedGuestType: "new_guest" });
+            } else this.requestAdaptiveRolePlay();
             this.rolePlayGatewayLocked = true;
             console.log("NEXIVRA FORMAL ROLE PLAY GATEWAY INTERCEPTED:", text);
           }
@@ -34864,7 +34919,13 @@ ${tail}`;
             }
           }
           if (this.rolePlayActive && this.formalRolePlaySessionId) {
-            this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", { rolePlaySessionId: this.formalRolePlaySessionId, speaker: "learner", text, scenario: this.activeRolePlayScenario || {} });
+            this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", {
+              rolePlaySessionId: this.formalRolePlaySessionId,
+              speaker: "learner",
+              text,
+              scenario: this.activeRolePlayScenario || {},
+              clientCapturedAtMs: Date.now()
+            });
           }
           this.dispatchRuntimeEvent("nexivra-learner-transcript", { sessionId: this.runtimeSessionId || "", text, observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null });
         }
