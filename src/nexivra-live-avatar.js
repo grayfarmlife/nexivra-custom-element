@@ -59,6 +59,8 @@
                                                                                                             this.m5b2GuestResponseQueue = [];
                                                                                                             this.m5b2GuestSpeaking = false;
                                                                                                             this.m5b2ElenoraVoiceSuspended = false;
+                                                                                                            this.m5b2FloorOwner = "ELENORA";
+                                                                                                            this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
                                                                                                             this.lessonId = null;
@@ -530,6 +532,18 @@ The next instructor response must teach, practice, check understanding, or trans
                           }
 
                           sendLiveAvatarMessageSafely(message,label="runtime") {
+                            if(
+                              this.m5b2FloorOwner==="PEDRO" &&
+                              this.rolePlayActive &&
+                              this.m5b2RolePlayStageActive
+                            ){
+                              console.log(
+                                "NEXIVRA M5B-2D ELENORA SPEECH BLOCKED — PEDRO OWNS FLOOR:",
+                                label
+                              );
+                              return false;
+                            }
+
                             const authoritative=this.enforceIdentityAndResume(message);
                         const safe=this.compactForLiveAvatar(authoritative,48000);
                             const bytes=this.utf8ByteLength(safe);
@@ -561,7 +575,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2C-PEDRO-FULL-MODE-TRANSPORT"
+                                                                                                              "PACKAGE3-M5B2D-GUEST-STABILITY-HARD-SHUTDOWN"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -1848,6 +1862,8 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                     this.m5b2RolePlayStageActive=true;
                                     this.m5b2GuestStartRequested=true;
+                                    this.m5b2FloorOwner="PEDRO";
+                                    console.log("NEXIVRA M5B-2D FLOOR OWNER: PEDRO");
                                     this.suspendElenoraForM5B2RolePlay();
                                     wrap.classList.add("m5b2-roleplay-stage");
 
@@ -1876,6 +1892,8 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                     this.m5b2RolePlayStageActive=false;
                                     this.m5b2GuestStartRequested=false;
+                                    this.m5b2FloorOwner="ELENORA";
+                                    console.log("NEXIVRA M5B-2D FLOOR OWNER: ELENORA");
 
                                     const wrap=this.shadowRoot?.querySelector(".wrap");
                                     if(wrap)wrap.classList.remove("m5b2-roleplay-stage");
@@ -3180,7 +3198,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   object-fit: cover !important;
                                                                                                                   background: #111 !important;
                                                                                                                   opacity: 1 !important;
-                                                                                                                  filter: none !important;
+                                                                                                                  filter: brightness(1.38) saturate(1.08) contrast(.96) !important;
                                                                                                                   mix-blend-mode: normal !important;
                                                                                                                 }
 
@@ -5495,6 +5513,27 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                               console.log("NEXIVRA M5B GUEST AVATAR SESSION CREATED");
                                                                                                               await this.guestSession.start();
+
+                                                                                                              // M5B-2D: Pedro is FULL mode for supported speech delivery,
+                                                                                                              // but NEXIVRA owns the guest brain. Disable autonomous
+                                                                                                              // voice-chat so Pedro cannot listen/respond on his own.
+                                                                                                              try {
+                                                                                                                if (
+                                                                                                                  this.guestSession?.voiceChat &&
+                                                                                                                  typeof this.guestSession.voiceChat.stop === "function"
+                                                                                                                ) {
+                                                                                                                  await this.guestSession.voiceChat.stop();
+                                                                                                                }
+                                                                                                              } catch (error) {
+                                                                                                                console.warn(
+                                                                                                                  "NEXIVRA M5B-2D PEDRO AUTONOMOUS VOICE STOP WARNING:",
+                                                                                                                  error
+                                                                                                                );
+                                                                                                              }
+                                                                                                              console.log(
+                                                                                                                "NEXIVRA M5B-2D PEDRO AUTONOMOUS LISTENING DISABLED"
+                                                                                                              );
+
                                                                                                               panel.style.display = "block";
 
                                                                                                               let attempts = 0;
@@ -5586,6 +5625,20 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             const video = this.shadowRoot.getElementById("guestAvatarVideo");
 
                                                                                                             console.log("NEXIVRA M5B GUEST AVATAR STOP START:", reason);
+
+                                                                                                            try {
+                                                                                                              if (
+                                                                                                                this.guestSession?.voiceChat &&
+                                                                                                                typeof this.guestSession.voiceChat.stop === "function"
+                                                                                                              ) {
+                                                                                                                await this.guestSession.voiceChat.stop();
+                                                                                                              }
+                                                                                                            } catch (error) {
+                                                                                                              console.warn(
+                                                                                                                "NEXIVRA M5B-2D PEDRO VOICE STOP WARNING:",
+                                                                                                                error
+                                                                                                              );
+                                                                                                            }
 
                                                                                                             try {
                                                                                                               if (this.guestSession?.stop) {
@@ -6457,153 +6510,153 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             }
                                                                                                           }
 
-                                                                                                          async endSession() {
+                                                                                                          async hardEndAllNexivraMedia(reason="end_session") {
+                                                                                                            if(this.m5b2HardShutdownActive)return;
+                                                                                                            this.m5b2HardShutdownActive=true;
 
-                                                                                                            if (this.sessionEnding) {
-                                                                                                              return;
-                                                                                                            }
+                                                                                                            console.log("NEXIVRA M5B-2D HARD SHUTDOWN START:",reason);
 
+                                                                                                            // No avatar is allowed to regain the floor during a hard exit.
+                                                                                                            this.m5b2FloorOwner="NONE";
+                                                                                                            this.rolePlayActive=false;
+                                                                                                            this.rolePlayPaused=false;
+                                                                                                            this.m5b2RolePlayStageActive=false;
+                                                                                                            this.m5b2GuestStartRequested=false;
+                                                                                                            this.m5b2GuestResponseQueue=[];
+                                                                                                            this.m5b2GuestSpeaking=false;
+                                                                                                            this.elenoraObserverMode=false;
+                                                                                                            this.formalRolePlayActivationConfirmed=false;
 
-                                                                                                            this.sessionEnding = true;
+                                                                                                            if(this.guestAutoStopTimer){clearTimeout(this.guestAutoStopTimer);this.guestAutoStopTimer=null;}
+                                                                                                            if(this.guestAttachTimer){clearInterval(this.guestAttachTimer);this.guestAttachTimer=null;}
+                                                                                                            if(this.attachTimer){clearInterval(this.attachTimer);this.attachTimer=null;}
 
-
-                                                                                                            const sessionButton =
-                                                                                                              this.shadowRoot.getElementById(
-                                                                                                                "sessionButton"
-                                                                                                              );
-
-
-                                                                                                            sessionButton.disabled = true;
-
-
-                                                                                                            this.setTrainingState(
-                                                                                                              "ENDING"
-                                                                                                            );
-
-
-                                                                                                            try {
-
-                                                                                                              this.stopVisualAnalysis();
-
-
-                                                                                                              const summary =
-                                                                                                                this.buildVisualSummary();
-
-
-                                                                                                              this.setStatus(
-                                                                                                                "NEXIVRA is reviewing your practice..."
-                                                                                                              );
-
-
-                                                                                                              this.sendLiveAvatarMessageSafely(summary,"runtime");
-
-
-                                                                                                              await this.delay(
-                                                                                                                800
-                                                                                                              );
-
-
-                                                                                                              this.sendLiveAvatarMessageSafely(this.buildFinalFeedbackPrompt(),"runtime");
-
-
-                                                                                                              this.setStatus(
-                                                                                                                "NEXIVRA is preparing your coaching feedback..."
-                                                                                                              );
-
-
-                                                                                                              await this.delay(
-                                                                                                                18000
-                                                                                                              );
-
-
-                                                                                                            } catch (error) {
-
-                                                                                                              console.error(
-                                                                                                                "NEXIVRA FINAL FEEDBACK ERROR:",
-                                                                                                                error
-                                                                                                              );
-                                                                                                            }
-
-
+                                                                                                            this.stopProgressCheckpoints();
+                                                                                                            this.stopVisualAnalysis();
+                                                                                                            this.stopLearnerTranscriptCapture();
                                                                                                             this.stopLearnerAudioMonitor();
 
-                                                                                                            this.stopCamera();
-
-
-                                                                                                            try {
-
-                                                                                                              if (
-                                                                                                                this.session?.voiceChat &&
-                                                                                                                typeof this.session
-                                                                                                                  .voiceChat
-                                                                                                                  .stop ===
-                                                                                                                  "function"
-                                                                                                              ) {
-
-                                                                                                                await this.session
-                                                                                                                  .voiceChat
-                                                                                                                  .stop();
+                                                                                                            try{
+                                                                                                              if(
+                                                                                                                this.guestSession?.voiceChat &&
+                                                                                                                typeof this.guestSession.voiceChat.stop==="function"
+                                                                                                              ){
+                                                                                                                await this.guestSession.voiceChat.stop();
                                                                                                               }
-
-                                                                                                            } catch (error) {
-
-                                                                                                              console.warn(
-                                                                                                                "VOICE STOP WARNING:",
-                                                                                                                error
-                                                                                                              );
+                                                                                                            }catch(error){
+                                                                                                              console.warn("NEXIVRA M5B-2D PEDRO HARD VOICE STOP WARNING:",error);
                                                                                                             }
 
+                                                                                                            try{
+                                                                                                              if(this.guestSession?.stop){
+                                                                                                                await this.guestSession.stop();
+                                                                                                              }
+                                                                                                            }catch(error){
+                                                                                                              console.warn("NEXIVRA M5B-2D PEDRO HARD SESSION STOP WARNING:",error);
+                                                                                                            }
 
-                                                                                                            this.sessionActive = false;
+                                                                                                            try{
+                                                                                                              if(
+                                                                                                                this.session?.voiceChat &&
+                                                                                                                typeof this.session.voiceChat.stop==="function"
+                                                                                                              ){
+                                                                                                                await this.session.voiceChat.stop();
+                                                                                                              }
+                                                                                                            }catch(error){
+                                                                                                              console.warn("NEXIVRA M5B-2D ELENORA HARD VOICE STOP WARNING:",error);
+                                                                                                            }
 
-                                                                                                            this.sessionEnding = false;
+                                                                                                            try{
+                                                                                                              if(typeof this.session?.interrupt==="function"){
+                                                                                                                await this.session.interrupt();
+                                                                                                              }
+                                                                                                            }catch(error){}
 
+                                                                                                            try{
+                                                                                                              if(this.session?.stop){
+                                                                                                                await this.session.stop();
+                                                                                                              }
+                                                                                                            }catch(error){
+                                                                                                              console.warn("NEXIVRA M5B-2D ELENORA HARD SESSION STOP WARNING:",error);
+                                                                                                            }
+
+                                                                                                            this.hardReleaseLocalMedia(reason);
+                                                                                                            this.stopCamera();
+
+                                                                                                            const guestPanel=this.shadowRoot?.getElementById("guestInfraPanel");
+                                                                                                            const guestVideo=this.shadowRoot?.getElementById("guestAvatarVideo");
+                                                                                                            const instructorVideo=this.shadowRoot?.getElementById("avatarVideo");
+
+                                                                                                            try{if(guestVideo){guestVideo.pause?.();guestVideo.srcObject=null;}}catch(error){}
+                                                                                                            try{if(instructorVideo){instructorVideo.pause?.();instructorVideo.srcObject=null;}}catch(error){}
+                                                                                                            if(guestPanel)guestPanel.style.display="none";
+
+                                                                                                            const wrap=this.shadowRoot?.querySelector(".wrap");
+                                                                                                            if(wrap)wrap.classList.remove("m5b2-roleplay-stage");
+
+                                                                                                            this.guestSession=null;
+                                                                                                            this.guestInfrastructureReady=false;
+                                                                                                            this.session=null;
+                                                                                                            this.avatarStarted=false;
+                                                                                                            this.sessionActive=false;
+                                                                                                            this.m5b2ElenoraVoiceSuspended=false;
+
+                                                                                                            console.log("NEXIVRA M5B-2D HARD SHUTDOWN COMPLETE:",{
+                                                                                                              reason,
+                                                                                                              pedroSession:false,
+                                                                                                              elenoraSession:false,
+                                                                                                              transcriptActive:this.speechRecognitionActive,
+                                                                                                              cameraActive:Boolean(this.cameraStream)
+                                                                                                            });
+
+                                                                                                            this.m5b2HardShutdownActive=false;
+                                                                                                          }
+
+
+                                                                                                          async endSession() {
+                                                                                                            if(this.sessionEnding)return;
+                                                                                                            this.sessionEnding=true;
+
+                                                                                                            const sessionButton=this.shadowRoot?.getElementById("sessionButton");
+                                                                                                            if(sessionButton)sessionButton.disabled=true;
+
+                                                                                                            this.setTrainingState("ENDING");
+                                                                                                            this.setStatus("Ending session...");
+
+                                                                                                            // Save state before destroying all live media.
+                                                                                                            try{
+                                                                                                              this.emitProgressCheckpoint("session_end");
+                                                                                                            }catch(error){}
+
+                                                                                                            await this.hardEndAllNexivraMedia("end_session_button");
 
                                                                                                             this.resetLiveState();
+                                                                                                            this.setTrainingState("READY");
 
+                                                                                                            if(sessionButton){
+                                                                                                              sessionButton.disabled=false;
+                                                                                                              sessionButton.textContent="Start Session";
+                                                                                                              sessionButton.classList.remove("session-active");
+                                                                                                            }
 
-                                                                                                            this.setTrainingState(
-                                                                                                              "READY"
-                                                                                                            );
-
-
-                                                                                                            sessionButton.disabled = false;
-
-
-                                                                                                            sessionButton.textContent =
-                                                                                                              "Start Session";
-
-
-                                                                                                            sessionButton.classList.remove(
-                                                                                                              "session-active"
-                                                                                                            );
-
-
-                                                                                                            this.setStatus(
-                                                                                                              "Practice session complete."
-                                                                                                            );
-
+                                                                                                            this.setStatus("Session ended.");
 
                                                                                                             this.dispatchRuntimeEvent(
                                                                                                               "nexivra-session-ended",
                                                                                                               {
-                                                                                                                sessionId:
-                                                                                                                  this.runtimeSessionId,
-                                                                                                                courseId:
-                                                                                                                  this.subjectId,
-                                                                                                                moduleId:
-                                                                                                                  this.lessonId,
-                                                                                                                observations:
-                                                                                                                  [
-                                                                                                                    ...this.observationTimeline
-                                                                                                                  ],
-                                                                                                                visualSummary:
-                                                                                                                  this.buildVisualSummary()
+                                                                                                                sessionId:this.runtimeSessionId,
+                                                                                                                courseId:this.subjectId,
+                                                                                                                moduleId:this.lessonId,
+                                                                                                                observations:[...this.observationTimeline],
+                                                                                                                visualSummary:this.buildVisualSummary(),
+                                                                                                                hardShutdown:true
                                                                                                               }
                                                                                                             );
 
-
                                                                                                             this.requestDashboardRefresh();
+                                                                                                            this.showUnifiedDashboard();
+
+                                                                                                            this.sessionEnding=false;
                                                                                                           }
 
 
