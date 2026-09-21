@@ -579,7 +579,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2F-ROLEPLAY-INTELLIGENCE-HANDOFF"
+                                                                                                              "PACKAGE3-M5B2G-CANONICAL-GUEST-PEDRO"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -1710,8 +1710,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                                   this.activateFormalGuestMode({
                                                     type:"formal-role-play-started",
                                                     rolePlaySessionId:scenario.rolePlaySessionId,
-                                                    guestId:scenario.guestId||"",
-                                                    guestName:scenario.guestName||"",
+                                                    guestId:"pedro",
+                                                    guestName:"Pedro",
                                                     relationshipMemory:scenario.relationshipMemory||{}
                                                   });
                                                 }else{
