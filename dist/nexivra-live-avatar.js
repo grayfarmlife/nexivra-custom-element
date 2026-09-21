@@ -30098,12 +30098,12 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2hWaitingForGuestReady = false;
     this.m5b2jPendingLearnerFragments = [];
     this.m5b2jLearnerTurnTimer = null;
-    this.m5b2jLearnerTurnSilenceMs = 550;
+    this.m5b2jLearnerTurnSilenceMs = 900;
     this.m5b2jPedroSpeaking = false;
     this.m5b2jLastFlushedText = "";
     this.m5b2jLastFlushedAt = 0;
-    this.m5b2kCompleteAfterPedroSpeaks = false;
-    this.m5b2kCompletionReason = "";
+    this.m5b2mCompleteAfterPedroSpeaks = false;
+    this.m5b2mCompletionReason = "";
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30502,7 +30502,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2L-SEMANTIC-COMPLETION-HYBRID-FAST-PEDRO"
+      "PACKAGE3-M5B2M-STABLE-ROLEPLAY-BASELINE"
     );
     this.render();
     this.bindControls();
@@ -30579,16 +30579,10 @@ ${tail}`;
           console.warn("NEXIVRA M5B-2B GUEST RESPONSE IGNORED:", { sid, active: this.formalRolePlaySessionId || "" });
           return;
         }
-        this.queuePedroGuestResponse(
-          t3,
-          p3?.latency || {},
-          {
-            interactionState: String(p3?.interactionState || "OPEN"),
-            completeAfterSpeak: String(p3?.interactionState || "OPEN") === "COMPLETE" && Boolean(p3?.rolePlayShouldComplete),
-            completionReason: String(p3?.completionReason || ""),
-            responseSource: String(p3?.responseSource || "")
-          }
-        );
+        this.queuePedroGuestResponse(t3, p3?.latency || {}, {
+          completeAfterSpeak: Boolean(p3?.rolePlayShouldComplete),
+          completionReason: String(p3?.completionReason || "")
+        });
       } catch (error) {
         console.error("NEXIVRA M5B-2B GUEST RESPONSE PARSE ERROR:", error);
       }
@@ -31527,10 +31521,8 @@ ${tail}`;
       text: v3,
       latency: latency || {},
       queuedAtMs,
-      interactionState: String(options?.interactionState || "OPEN"),
       completeAfterSpeak: Boolean(options?.completeAfterSpeak),
-      completionReason: String(options?.completionReason || ""),
-      responseSource: String(options?.responseSource || "")
+      completionReason: String(options?.completionReason || "")
     });
     console.log("NEXIVRA M5B-2E PEDRO RESPONSE QUEUED:", {
       chars: v3.length,
@@ -31544,14 +31536,10 @@ ${tail}`;
     const item = this.m5b2GuestResponseQueue.shift();
     const t3 = String(item?.text || "").trim();
     const latency = item?.latency || {};
-    console.log("NEXIVRA M5B-2L PEDRO TURN SOURCE:", {
-      source: item?.responseSource || "unknown",
-      interactionState: item?.interactionState || "OPEN"
-    });
     if (item?.completeAfterSpeak) {
-      this.m5b2kCompleteAfterPedroSpeaks = true;
-      this.m5b2kCompletionReason = String(item?.completionReason || "natural_resolution");
-      console.log("NEXIVRA M5B-2L SEMANTIC COMPLETION ARMED:", this.m5b2kCompletionReason);
+      this.m5b2mCompleteAfterPedroSpeaks = true;
+      this.m5b2mCompletionReason = String(item?.completionReason || "explicit_close");
+      console.log("NEXIVRA M5B-2M EXPLICIT CLOSE ARMED:", this.m5b2mCompletionReason);
     }
     const repeatStartedAtMs = Date.now();
     this.m5b2GuestSpeaking = true;
@@ -31678,13 +31666,9 @@ ${tail}`;
     this.formalRolePlayActivationConfirmed = false;
     console.log("NEXIVRA ELENORA INSTRUCTOR MODE RESTORED:", reason);
     if (reason === "role_play_complete" && this.sessionActive) {
-      const debrief = `The role-play is complete. Give the learner a concise debrief in your own natural voice. Mention one or two specific things they did well based only on the interaction, identify at most one useful improvement if warranted, and then transition naturally back into the course. Do not restart the course, do not repeat the role-play setup, and do not speak as Pedro.`;
-      try {
-        this.sendLiveAvatarMessageSafely(debrief, "m5b2k-role-play-debrief");
-        console.log("NEXIVRA M5B-2K ELENORA DEBRIEF DISPATCHED");
-      } catch (error) {
-        console.error("NEXIVRA M5B-2K ELENORA DEBRIEF ERROR:", error);
-      }
+      const debrief = `The hotel role-play is complete. Give the learner a brief debrief based only on what actually happened: one or two strengths, at most one useful improvement, then continue the course from the next appropriate point. Do not restart the course and do not speak as Pedro.`;
+      this.sendLiveAvatarMessageSafely(debrief, "m5b2m-role-play-debrief");
+      console.log("NEXIVRA M5B-2M ELENORA DEBRIEF DISPATCHED");
     }
   }
   applyAdaptiveGuidance(guidance = {}) {
@@ -34631,23 +34615,22 @@ ${tail}`;
           AgentEventsEnum.AVATAR_SPEAK_ENDED,
           () => {
             this.m5b2jPedroSpeaking = false;
-            if (this.m5b2kCompleteAfterPedroSpeaks && this.rolePlayActive) {
-              const completionReason = this.m5b2kCompletionReason || "natural_resolution";
-              this.m5b2kCompleteAfterPedroSpeaks = false;
-              this.m5b2kCompletionReason = "";
-              this.cancelM5B2JLearnerTurnTimer();
-              this.m5b2jPendingLearnerFragments = [];
-              console.log("NEXIVRA M5B-2K PEDRO FINAL LINE COMPLETE \u2014 RETURNING TO ELENORA:", completionReason);
+            this.cancelM5B2JLearnerTurnTimer();
+            this.m5b2jPendingLearnerFragments = [];
+            if (this.m5b2mCompleteAfterPedroSpeaks && this.rolePlayActive) {
+              const completionReason = this.m5b2mCompletionReason || "explicit_close";
+              this.m5b2mCompleteAfterPedroSpeaks = false;
+              this.m5b2mCompletionReason = "";
+              console.log("NEXIVRA M5B-2M PEDRO FINAL CLOSE COMPLETE \u2014 RETURNING TO ELENORA:", completionReason);
               this.completeAdaptiveRolePlay({
                 outcome: "completed",
                 needsAnotherAttempt: false,
-                outcomeSummary: "Hotel guest interaction reached a natural resolution.",
-                guestOutcome: "Pedro received a clear service path and follow-up expectation."
+                outcomeSummary: "Hotel guest interaction reached an explicit natural close.",
+                guestOutcome: "Pedro confirmed he did not need anything else."
               });
               return;
             }
-            console.log("NEXIVRA M5B-2J PEDRO FINISHED \u2014 LEARNER FLOOR OPEN");
-            this.scheduleM5B2JLearnerTurnFlush("pedro_finished");
+            console.log("NEXIVRA M5B-2M PEDRO FINISHED \u2014 CLEAN LEARNER FLOOR OPEN");
           }
         );
       } catch (error) {
@@ -35076,6 +35059,10 @@ ${tail}`;
           const rolePlayControlText = String(text || "").trim().toLowerCase();
           const isRolePlayControl = /^(pause|just pause|pause role[- ]?play|pause the role[- ]?play|resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText) || /\b(restart|repeat|start over|do over|redo|end|finish|complete|cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText);
           if (this.rolePlayActive && !isRolePlayControl) {
+            if (this.m5b2jPedroSpeaking) {
+              console.log("NEXIVRA M5B-2M TRANSCRIPT DISCARDED \u2014 PEDRO OWNS FLOOR:", text);
+              continue;
+            }
             this.queueM5B2JLearnerFragment(text);
             continue;
           }
@@ -35386,8 +35373,8 @@ ${tail}`;
     this.cancelM5B2JLearnerTurnTimer?.();
     this.m5b2jPendingLearnerFragments = [];
     this.m5b2jPedroSpeaking = false;
-    this.m5b2kCompleteAfterPedroSpeaks = false;
-    this.m5b2kCompletionReason = "";
+    this.m5b2mCompleteAfterPedroSpeaks = false;
+    this.m5b2mCompletionReason = "";
     this.elenoraObserverMode = false;
     this.formalRolePlayActivationConfirmed = false;
     if (this.guestAutoStopTimer) {
