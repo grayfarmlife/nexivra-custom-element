@@ -6262,7 +6262,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                         console.log("NEXIVRA FORMAL ROLE PLAY GATEWAY INTERCEPTED:",text);
                                       }if(this.rolePlayActive){this.rolePlayConversation.push({speaker:"learner",text,at:new Date().toISOString()});}if(this.rolePlayActive){
                                             // M5B-2F: never infer guest identity from learner speech.
-                                          }}if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{
+                                          }if(this.rolePlayActive&&this.formalRolePlaySessionId){this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{
                                               rolePlaySessionId:this.formalRolePlaySessionId,
                                               speaker:"learner",
                                               text,
