@@ -30494,7 +30494,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B2H-HOTEL-PREWARM-HANDOFF"
+      "PACKAGE3-M5B2I-HARD-HANDOFF-FAST-PEDRO"
     );
     this.render();
     this.bindControls();
@@ -31236,7 +31236,7 @@ ${tail}`;
       8e3
     );
   }
-  prepareM5B2FRolePlayHandoff(scenario = {}) {
+  async prepareM5B2FRolePlayHandoff(scenario = {}) {
     if (this.m5b2fRolePlayPreparing || this.rolePlayActive) return;
     this.m5b2fRolePlayPreparing = true;
     this.m5b2fPendingScenario = scenario || {};
@@ -31246,10 +31246,25 @@ ${tail}`;
     this.m5b2hSetupSpeaking = false;
     this.m5b2hWaitingForGuestReady = true;
     this.m5b2FloorOwner = "ELENORA";
-    console.log("NEXIVRA M5B-2H ROLE PLAY PREWARM \u2014 ELENORA OWNS FLOOR:", {
+    console.log("NEXIVRA M5B-2I HARD HANDOFF LOCK \u2014 ELENORA AUTONOMOUS VOICE OFF:", {
       scenarioId: scenario?.scenarioId || "",
       guestId: scenario?.guestId || "pedro"
     });
+    try {
+      if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") {
+        await this.session.voiceChat.stop();
+      }
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2I ELENORA VOICECHAT STOP WARNING:", error);
+    }
+    try {
+      if (typeof this.session?.interrupt === "function") {
+        await this.session.interrupt();
+      }
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2I ELENORA INTERRUPT WARNING:", error);
+    }
+    this.m5b2ElenoraVoiceSuspended = true;
     if (this.guestInfrastructureReady) {
       this.dispatchM5B2HInstructorSetup();
     } else if (this.guestSessionToken) {
@@ -31262,10 +31277,6 @@ ${tail}`;
     if (!this.m5b2fRolePlayPreparing || this.m5b2hSetupRequested) return;
     if (!this.guestInfrastructureReady) {
       this.m5b2hWaitingForGuestReady = true;
-      return;
-    }
-    if (this.avatarSpeaking) {
-      setTimeout(() => this.dispatchM5B2HInstructorSetup(), 120);
       return;
     }
     this.m5b2hWaitingForGuestReady = false;
@@ -31293,7 +31304,15 @@ ${tail}`;
     this.m5b2fSetupSpeechStarted = false;
     this.m5b2hSetupRequested = false;
     this.m5b2hWaitingForGuestReady = false;
-    console.log("NEXIVRA M5B-2H ELENORA SETUP COMPLETE \u2014 PEDRO ENTERING READY");
+    console.log("NEXIVRA M5B-2I ELENORA SETUP COMPLETE \u2014 HARD SILENCE BEFORE PEDRO");
+    try {
+      if (typeof this.session?.interrupt === "function") {
+        this.session.interrupt();
+      }
+    } catch (error) {
+      console.warn("NEXIVRA M5B-2I FINAL ELENORA INTERRUPT WARNING:", error);
+    }
+    this.avatarSpeaking = false;
     this.beginAdaptiveRolePlay(scenario);
     const opening = String(scenario?.openingLine || "Hi. The air conditioning in my room stopped cooling this morning. I was hoping you could help me get it taken care of.").trim();
     if (opening && !this.m5b2fPedroOpeningDelivered) {
@@ -34988,7 +35007,7 @@ ${tail}`;
           if (!this.rolePlayActive && !this.rolePlayGatewayLocked && gatewayNow >= Number(this.rolePlayGatewayRearmAt || 0) && explicitRolePlayRequest) {
             if (/\b(?:with\s+)?sally\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("sally", "Sally");
             else if (/\b(?:with\s+)?ron\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("ron", "Ron");
-            else if (/\b(?:new|first[- ]?time|unknown|someone new)\s+(?:guest|customer|client|person)\b/.test(lowerText)) {
+            else if (/\b(?:new|first[- ]?time|unknown|someone new)\s+(?:guest|customer|client|person)\b/.test(lowerText) || /\b(?:guest|customer|client|person)\s+(?:i|we)\s+(?:have not|haven't|havent|never)\s+(?:met|seen|helped|served)\b/.test(lowerText)) {
               console.log("NEXIVRA M5B-2E EXPLICIT NEW GUEST REQUEST:", text);
               this.requestAdaptiveRolePlay({ requestedGuestType: "new_guest" });
             } else this.requestAdaptiveRolePlay();
@@ -34999,6 +35018,10 @@ ${tail}`;
             this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
           }
           if (this.rolePlayActive) {
+          }
+          if (this.m5b2fRolePlayPreparing) {
+            console.log("NEXIVRA M5B-2I LEARNER INPUT IGNORED DURING HANDOFF:", text);
+            return;
           }
           if (this.rolePlayActive && this.formalRolePlaySessionId) {
             this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", {
