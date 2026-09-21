@@ -590,7 +590,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2K-FAST-TURN-ROLEPLAY-COMPLETION"
+                                                                                                              "PACKAGE3-M5B2L-SEMANTIC-COMPLETION-HYBRID-FAST-PEDRO"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -705,8 +705,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   t,
                                                                                                                   p?.latency||{},
                                                                                                                   {
-                                                                                                                    completeAfterSpeak:Boolean(p?.rolePlayShouldComplete),
-                                                                                                                    completionReason:String(p?.completionReason||"")
+                                                                                                                    interactionState:String(p?.interactionState||"OPEN"),
+                                                                                                                    completeAfterSpeak:String(p?.interactionState||"OPEN")==="COMPLETE"&&Boolean(p?.rolePlayShouldComplete),
+                                                                                                                    completionReason:String(p?.completionReason||""),
+                                                                                                                    responseSource:String(p?.responseSource||"")
                                                                                                                   }
                                                                                                                 );
                                                                                                               }catch(error){console.error("NEXIVRA M5B-2B GUEST RESPONSE PARSE ERROR:",error);}
@@ -1963,8 +1965,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                       text:v,
                                       latency:latency||{},
                                       queuedAtMs,
+                                      interactionState:String(options?.interactionState||"OPEN"),
                                       completeAfterSpeak:Boolean(options?.completeAfterSpeak),
-                                      completionReason:String(options?.completionReason||"")
+                                      completionReason:String(options?.completionReason||""),
+                                      responseSource:String(options?.responseSource||"")
                                     });
                                     console.log("NEXIVRA M5B-2E PEDRO RESPONSE QUEUED:",{
                                       chars:v.length,
@@ -1978,10 +1982,14 @@ The next instructor response must teach, practice, check understanding, or trans
                                     const item=this.m5b2GuestResponseQueue.shift();
                                     const t=String(item?.text||"").trim();
                                     const latency=item?.latency||{};
+                                    console.log("NEXIVRA M5B-2L PEDRO TURN SOURCE:",{
+                                      source:item?.responseSource||"unknown",
+                                      interactionState:item?.interactionState||"OPEN"
+                                    });
                                     if(item?.completeAfterSpeak){
                                       this.m5b2kCompleteAfterPedroSpeaks=true;
                                       this.m5b2kCompletionReason=String(item?.completionReason||"natural_resolution");
-                                      console.log("NEXIVRA M5B-2K NATURAL COMPLETION ARMED:",this.m5b2kCompletionReason);
+                                      console.log("NEXIVRA M5B-2L SEMANTIC COMPLETION ARMED:",this.m5b2kCompletionReason);
                                     }
                                     const repeatStartedAtMs=Date.now();
                                     this.m5b2GuestSpeaking=true;
