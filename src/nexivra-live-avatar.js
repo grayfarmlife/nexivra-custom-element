@@ -89,6 +89,9 @@
                                                                                                             this.m5b2oLatestInterimAtMs = 0;
                                                                                                             this.m5b2oFastTurnTimer = null;
                                                                                                             this.m5b2oFastTurnGraceMs = 300;
+                                                                                                            // M5B-3B — obvious incomplete utterances get a longer
+                                                                                                            // grace window so natural pauses do not split one thought.
+                                                                                                            this.m5b3bIncompleteTurnGraceMs = 1250;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -604,7 +607,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3A-STRUCTURED-EVALUATION-COACHING"
+                                                                                                              "PACKAGE3-M5B3B-CONTROL-HANDOFF-CANONICAL-SKILLS"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -959,7 +962,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                     const evaluation=command.evaluation||{},debrief=String(evaluation.debrief||"").trim(),nextAction=String(evaluation.nextAction||"continue_course");
                                                                                                                     const instruction=`The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction==="repeat_role_play"?"explain that another practice attempt will help and prepare the learner for another attempt":nextAction==="targeted_coaching"?"give one brief targeted coaching point and then continue forward":"continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro.`;
                                                                                                                     this.sendLiveAvatarMessageSafely(instruction,"m5b3a-structured-role-play-debrief");
-                                                                                                                    console.log("NEXIVRA M5B-3A STRUCTURED DEBRIEF DISPATCHED:",{nextAction,competencies:Array.isArray(evaluation.competencyResults)?evaluation.competencyResults.length:0});
+                                                                                                                    console.log("NEXIVRA M5B-3B STRUCTURED DEBRIEF DISPATCHED:",{nextAction,competencies:Array.isArray(evaluation.competencyResults)?evaluation.competencyResults.length:0});
                                                                                                                     return;
                                                                                                                   }
 
@@ -1720,7 +1723,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                             }
                                                                             this.m5b2ElenoraVoiceSuspended=true;
                                                                             this.m5b3aElenoraDrainUntilMs=Date.now()+350;
-                                                                            console.log("NEXIVRA M5B-3A ELENORA DRAINING BEFORE SETUP");
+                                                                            console.log("NEXIVRA M5B-3B ELENORA FALLBACK DRAINING BEFORE SETUP");
 
                                                                             // Prewarm Pedro invisibly while Elenora drains. Do not
                                                                             // expose Pedro's stage until his FULL session is actually ready.
@@ -1744,7 +1747,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                               this.m5b3aElenoraDrainTimer=setTimeout(()=>{this.m5b3aElenoraDrainTimer=null;this.dispatchM5B2HInstructorSetup();},120);
                                                                               return;
                                                                             }
-                                                                            console.log("NEXIVRA M5B-3A ELENORA DRAIN COMPLETE — SETUP ONLY");
+                                                                            console.log("NEXIVRA M5B-3B ELENORA QUIET — DETERMINISTIC SETUP ONLY");
                                                                             this.m5b2hWaitingForGuestReady=false;
                                                                             this.m5b2hSetupRequested=true;
                                                                             this.m5b2hSetupSpeaking=false;
@@ -6423,6 +6426,14 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.cancelM5B2OFastTurnTimer();
                                                                                                             if(!this.rolePlayActive||!this.formalRolePlaySessionId)return;
                                                                                                             if(!this.m5b2nLearnerTurnArmed||this.m5b2jPedroSpeaking)return;
+                                                                                                            const interimNow=String(this.m5b2oLatestInterimText||"").trim();
+                                                                                                            const looksIncomplete=/\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|get|have|with|and|but|because|so|if|when|while|to|for|the|a|an)\s*$/i.test(interimNow);
+                                                                                                            const graceMs=looksIncomplete
+                                                                                                              ? Number(this.m5b3bIncompleteTurnGraceMs||1250)
+                                                                                                              : Number(this.m5b2oFastTurnGraceMs||300);
+                                                                                                            if(looksIncomplete){
+                                                                                                              console.log("NEXIVRA M5B-3B INCOMPLETE TURN HELD FOR CONTINUATION:",{text:interimNow,graceMs});
+                                                                                                            }
                                                                                                             this.m5b2oFastTurnTimer=setTimeout(()=>{
                                                                                                               this.m5b2oFastTurnTimer=null;
                                                                                                               if(
@@ -6449,7 +6460,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               this.flushM5B2JLearnerTurn("fast_interim_after_audio_stop");
                                                                                                               this.m5b2oLatestInterimText="";
                                                                                                               this.m5b2oLatestInterimAtMs=0;
-                                                                                                            },Number(this.m5b2oFastTurnGraceMs||300));
+                                                                                                            },graceMs);
                                                                                                           }
 
                                                                                                           startLearnerTranscriptCapture() {
@@ -6588,7 +6599,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                         }
                                         else this.requestAdaptiveRolePlay();
                                         this.rolePlayGatewayLocked=true;
-                                        console.log("NEXIVRA FORMAL ROLE PLAY GATEWAY INTERCEPTED:",text);
+                                        try{
+                                          if(typeof this.session?.interrupt==="function")this.session.interrupt();
+                                        }catch(error){
+                                          console.warn("NEXIVRA M5B-3B CONTROL HANDOFF INTERRUPT WARNING:",error);
+                                        }
+                                        console.log("NEXIVRA M5B-3B ROLE PLAY CONTROL COMMAND CONSUMED — ELENORA BYPASSED:",text);
+                                        return;
                                       }if(this.rolePlayActive){this.rolePlayConversation.push({speaker:"learner",text,at:new Date().toISOString()});}if(this.rolePlayActive){
                                             // M5B-2F: never infer guest identity from learner speech.
                                           }if(this.m5b2fRolePlayPreparing){
