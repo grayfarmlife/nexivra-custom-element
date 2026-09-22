@@ -67,6 +67,9 @@
                                                                                                             this.m5b2hSetupRequested = false;
                                                                                                             this.m5b2hSetupSpeaking = false;
                                                                                                             this.m5b2hWaitingForGuestReady = false;
+                                                                                                            this.m5b3aElenoraDrainUntilMs = 0;
+                                                                                                            this.m5b3aElenoraDrainTimer = null;
+                                                                                                            this.m5b3aEvaluationPending = false;
                                                                                                             this.m5b2jPendingLearnerFragments = [];
                                                                                                             this.m5b2jLearnerTurnTimer = null;
                                                                                                             this.m5b2jLearnerTurnSilenceMs = 650;
@@ -601,7 +604,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2P-RESPONSE-FIRST-GUEST-BRAIN"
+                                                                                                              "PACKAGE3-M5B3A-STRUCTURED-EVALUATION-COACHING"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -949,6 +952,14 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                                   if(command?.type==="formal-role-play-started"){
                                                                                                                     this.activateFormalGuestMode(command);
+                                                                                                                    return;
+                                                                                                                  }
+                                                                                                                  if(command?.type==="role-play-evaluation-ready"&&command?.evaluation){
+                                                                                                                    this.m5b3aEvaluationPending=false;
+                                                                                                                    const evaluation=command.evaluation||{},debrief=String(evaluation.debrief||"").trim(),nextAction=String(evaluation.nextAction||"continue_course");
+                                                                                                                    const instruction=`The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction==="repeat_role_play"?"explain that another practice attempt will help and prepare the learner for another attempt":nextAction==="targeted_coaching"?"give one brief targeted coaching point and then continue forward":"continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro.`;
+                                                                                                                    this.sendLiveAvatarMessageSafely(instruction,"m5b3a-structured-role-play-debrief");
+                                                                                                                    console.log("NEXIVRA M5B-3A STRUCTURED DEBRIEF DISPATCHED:",{nextAction,competencies:Array.isArray(evaluation.competencyResults)?evaluation.competencyResults.length:0});
                                                                                                                     return;
                                                                                                                   }
 
@@ -1708,8 +1719,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                               console.warn("NEXIVRA M5B-2I ELENORA INTERRUPT WARNING:",error);
                                                                             }
                                                                             this.m5b2ElenoraVoiceSuspended=true;
+                                                                            this.m5b3aElenoraDrainUntilMs=Date.now()+350;
+                                                                            console.log("NEXIVRA M5B-3A ELENORA DRAINING BEFORE SETUP");
 
-                                                                            // Prewarm Pedro invisibly. Do not interrupt Elenora and do not
+                                                                            // Prewarm Pedro invisibly while Elenora drains. Do not
                                                                             // expose Pedro's stage until his FULL session is actually ready.
                                                                             if(this.guestInfrastructureReady){
                                                                               this.dispatchM5B2HInstructorSetup();
@@ -1726,6 +1739,12 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                               this.m5b2hWaitingForGuestReady=true;
                                                                               return;
                                                                             }
+                                                                            if(Date.now()<Number(this.m5b3aElenoraDrainUntilMs||0)||this.avatarSpeaking){
+                                                                              if(this.m5b3aElenoraDrainTimer)clearTimeout(this.m5b3aElenoraDrainTimer);
+                                                                              this.m5b3aElenoraDrainTimer=setTimeout(()=>{this.m5b3aElenoraDrainTimer=null;this.dispatchM5B2HInstructorSetup();},120);
+                                                                              return;
+                                                                            }
+                                                                            console.log("NEXIVRA M5B-3A ELENORA DRAIN COMPLETE — SETUP ONLY");
                                                                             this.m5b2hWaitingForGuestReady=false;
                                                                             this.m5b2hSetupRequested=true;
                                                                             this.m5b2hSetupSpeaking=false;
@@ -2111,9 +2130,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                                 this.formalRolePlayActivationConfirmed=false;
                                                 console.log("NEXIVRA ELENORA INSTRUCTOR MODE RESTORED:",reason);
                                                 if(reason==="role_play_complete"&&this.sessionActive){
-                                                  const debrief=`The hotel role-play is complete. Give the learner a brief debrief based only on what actually happened: one or two strengths, at most one useful improvement, then continue the course from the next appropriate point. Do not restart the course and do not speak as Pedro.`;
-                                                  this.sendLiveAvatarMessageSafely(debrief,"m5b2m-role-play-debrief");
-                                                  console.log("NEXIVRA M5B-2N ELENORA DEBRIEF DISPATCHED");
+                                                  this.m5b3aEvaluationPending=true;
+                                                  console.log("NEXIVRA M5B-3A ELENORA RETURNED — WAITING FOR STRUCTURED EVALUATION");
                                                 }
                                               }
 
