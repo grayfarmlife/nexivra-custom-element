@@ -92,6 +92,10 @@
                                                                                                             // M5B-3B — obvious incomplete utterances get a longer
                                                                                                             // grace window so natural pauses do not split one thought.
                                                                                                             this.m5b3bIncompleteTurnGraceMs = 1250;
+                                                                                                            // M5B-3C — NEXIVRA owns learner input routing.
+                                                                                                            // LiveAvatar autonomous microphone listening stays OFF.
+                                                                                                            this.m5b3cInputRouterActive = false;
+                                                                                                            this.m5b3cNormalTurnPending = false;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -607,7 +611,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3B-CONTROL-HANDOFF-CANONICAL-SKILLS"
+                                                                                                              "PACKAGE3-M5B3C-NEXIVRA-INPUT-ROUTER"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -1708,19 +1712,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                             // until Pedro owns the floor, Elenora may speak only the single
                                                                             // deterministic setup line sent by NEXIVRA.
                                                                             try{
-                                                                              if(this.session?.voiceChat&&typeof this.session.voiceChat.stop==="function"){
-                                                                                await this.session.voiceChat.stop();
-                                                                              }
-                                                                            }catch(error){
-                                                                              console.warn("NEXIVRA M5B-2I ELENORA VOICECHAT STOP WARNING:",error);
-                                                                            }
-                                                                            try{
                                                                               if(typeof this.session?.interrupt==="function"){
                                                                                 await this.session.interrupt();
                                                                               }
                                                                             }catch(error){
-                                                                              console.warn("NEXIVRA M5B-2I ELENORA INTERRUPT WARNING:",error);
+                                                                              console.warn("NEXIVRA M5B-3C ELENORA HANDOFF INTERRUPT WARNING:",error);
                                                                             }
+                                                                            console.log("NEXIVRA M5B-3C HANDOFF CONFIRMED — AUTONOMOUS MIC ALREADY OFF");
                                                                             this.m5b2ElenoraVoiceSuspended=true;
                                                                             this.m5b3aElenoraDrainUntilMs=Date.now()+350;
                                                                             console.log("NEXIVRA M5B-3B ELENORA FALLBACK DRAINING BEFORE SETUP");
@@ -1975,15 +1973,17 @@ The next instructor response must teach, practice, check understanding, or trans
 
 
                                   async suspendElenoraForM5B2RolePlay(){
-                                    if(this.m5b2ElenoraVoiceSuspended)return;this.m5b2ElenoraVoiceSuspended=true;
-                                    try{if(this.session?.voiceChat&&typeof this.session.voiceChat.stop==="function")await this.session.voiceChat.stop();}catch(error){console.warn("NEXIVRA M5B-2B ELENORA VOICE STOP WARNING:",error);}
-                                    try{if(typeof this.session?.interrupt==="function")await this.session.interrupt();}catch(error){console.warn("NEXIVRA M5B-2B ELENORA INTERRUPT WARNING:",error);}
-                                    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION BLOCKED — OBSERVER VIDEO ONLY");
+                                    if(this.m5b2ElenoraVoiceSuspended)return;
+                                    this.m5b2ElenoraVoiceSuspended=true;
+                                    try{if(typeof this.session?.interrupt==="function")await this.session.interrupt();}catch(error){console.warn("NEXIVRA M5B-3C ELENORA INTERRUPT WARNING:",error);}
+                                    console.log("NEXIVRA M5B-3C ELENORA ROUTER SUSPENDED — OBSERVER VIDEO ONLY");
                                   }
                                   async restoreElenoraVoiceAfterM5B2RolePlay(){
-                                    if(!this.m5b2ElenoraVoiceSuspended)return;this.m5b2ElenoraVoiceSuspended=false;
-                                    try{if(this.session?.voiceChat&&typeof this.session.voiceChat.start==="function"&&this.sessionActive)await this.session.voiceChat.start();}catch(error){console.warn("NEXIVRA M5B-2B ELENORA VOICE RESTORE WARNING:",error);}
-                                    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION RESTORED");
+                                    if(!this.m5b2ElenoraVoiceSuspended)return;
+                                    this.m5b2ElenoraVoiceSuspended=false;
+                                    // Do NOT restart LiveAvatar autonomous voiceChat. NEXIVRA remains
+                                    // the microphone/input owner after the role-play.
+                                    console.log("NEXIVRA M5B-3C ELENORA ROUTER RESTORED — AUTONOMOUS MIC REMAINS OFF");
                                   }
                                   queuePedroGuestResponse(text,latency={},options={}){
                                     const v=String(text||"").trim();if(!v)return;
@@ -6604,7 +6604,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                         }catch(error){
                                           console.warn("NEXIVRA M5B-3B CONTROL HANDOFF INTERRUPT WARNING:",error);
                                         }
-                                        console.log("NEXIVRA M5B-3B ROLE PLAY CONTROL COMMAND CONSUMED — ELENORA BYPASSED:",text);
+                                        console.log("NEXIVRA M5B-3C ROUTE: ROLE PLAY COMMAND → RUNTIME — ELENORA NEVER RECEIVED:",text);
                                         return;
                                       }if(this.rolePlayActive){this.rolePlayConversation.push({speaker:"learner",text,at:new Date().toISOString()});}if(this.rolePlayActive){
                                             // M5B-2F: never infer guest identity from learner speech.
@@ -6618,7 +6618,19 @@ The next instructor response must teach, practice, check understanding, or trans
                                               text,
                                               scenario:this.activeRolePlayScenario||{},
                                               clientCapturedAtMs:Date.now()
-                                            });}this.dispatchRuntimeEvent("nexivra-learner-transcript",{sessionId:this.runtimeSessionId||"",text,observation:this.observationTimeline.length?this.observationTimeline[this.observationTimeline.length-1]:null});}};
+                                            });}
+                                          this.dispatchRuntimeEvent("nexivra-learner-transcript",{sessionId:this.runtimeSessionId||"",text,observation:this.observationTimeline.length?this.observationTimeline[this.observationTimeline.length-1]:null});
+                                          if(
+                                            this.m5b3cInputRouterActive &&
+                                            !this.rolePlayActive &&
+                                            !this.m5b2fRolePlayPreparing &&
+                                            this.m5b2FloorOwner!=="PEDRO"
+                                          ){
+                                            const routed=`LEARNER TURN — AUTHORITATIVE\nThe learner just said: "${String(text||"").replaceAll('"',"'")}"\nRespond naturally as Elenora to this learner turn. Follow the current course state and instructions. Do not invent additional learner speech. If the learner asked a question, answer it. If the learner answered your question, evaluate only that actual answer and continue appropriately.`;
+                                            console.log("NEXIVRA M5B-3C ROUTE: LEARNER → ELENORA:",text);
+                                            this.sendLiveAvatarMessageSafely(routed,"m5b3c-learner-turn");
+                                          }
+                                        }};
                                                                                                               recognition.onerror=event=>{const error=String(event?.error||"");if(!["no-speech","aborted"].includes(error))console.warn("NEXIVRA TRANSCRIPT ERROR:",error);};
                                                                                                               recognition.onend=()=>{if(this.speechRecognitionActive&&this.sessionActive){try{recognition.start();}catch(error){}}};
                                                                                                               this.speechRecognition=recognition;this.speechRecognitionActive=true;recognition.start();console.log("NEXIVRA TRANSCRIPT CAPTURE ACTIVE");
@@ -6796,14 +6808,24 @@ The next instructor response must teach, practice, check understanding, or trans
 
 
                                                                                                               this.setStatus(
-                                                                                                                "Starting voice conversation..."
+                                                                                                                "Starting NEXIVRA input router..."
                                                                                                               );
 
-
-                                                                                                              await this.session
-                                                                                                                .voiceChat
-                                                                                                                .start();
-
+                                                                                                              // M5B-3C: Elenora must NOT listen to the learner microphone
+                                                                                                              // independently. NEXIVRA transcript capture is the single
+                                                                                                              // source of learner input and routes each completed turn.
+                                                                                                              try{
+                                                                                                                if(
+                                                                                                                  this.session?.voiceChat &&
+                                                                                                                  typeof this.session.voiceChat.stop==="function"
+                                                                                                                ){
+                                                                                                                  await this.session.voiceChat.stop();
+                                                                                                                }
+                                                                                                              }catch(error){
+                                                                                                                console.warn("NEXIVRA M5B-3C AUTONOMOUS VOICE DISABLE WARNING:",error);
+                                                                                                              }
+                                                                                                              this.m5b3cInputRouterActive=true;
+                                                                                                              console.log("NEXIVRA M5B-3C INPUT ROUTER ACTIVE — ELENORA AUTONOMOUS MIC OFF");
 
                                                                                                               this.sessionStartupStage =
                                                                                                                 "active";
@@ -7003,6 +7025,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.stopVisualAnalysis();
                                                                                                             this.stopLearnerTranscriptCapture();
                                                                                                             this.stopLearnerAudioMonitor();
+                                                                                                            this.m5b3cInputRouterActive=false;
+                                                                                                            this.m5b3cNormalTurnPending=false;
+                                                                                                            console.log("NEXIVRA M5B-3C INPUT ROUTER STOPPED");
 
                                                                                                             try{
                                                                                                               if(
@@ -8394,6 +8419,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               if (
                                                                                                                 resumeVoice &&
                                                                                                                 this.sessionActive &&
+                                                                                                                !this.m5b3cInputRouterActive &&
                                                                                                                 this.session.voiceChat &&
                                                                                                                 typeof this.session
                                                                                                                   .voiceChat
