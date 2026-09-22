@@ -601,7 +601,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B2O-FAST-TURN-CAPTURE"
+                                                                                                              "PACKAGE3-M5B2P-RESPONSE-FIRST-GUEST-BRAIN"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
