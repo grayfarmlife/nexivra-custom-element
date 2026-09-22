@@ -30116,6 +30116,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2oFastTurnTimer = null;
     this.m5b2oFastTurnGraceMs = 300;
     this.m5b3bIncompleteTurnGraceMs = 1250;
+    this.m5b3cInputRouterActive = false;
+    this.m5b3cNormalTurnPending = false;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30514,7 +30516,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3B-CONTROL-HANDOFF-CANONICAL-SKILLS"
+      "PACKAGE3-M5B3C-NEXIVRA-INPUT-ROUTER"
     );
     this.render();
     this.bindControls();
@@ -31282,19 +31284,13 @@ ${tail}`;
       guestId: scenario?.guestId || "pedro"
     });
     try {
-      if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") {
-        await this.session.voiceChat.stop();
-      }
-    } catch (error) {
-      console.warn("NEXIVRA M5B-2I ELENORA VOICECHAT STOP WARNING:", error);
-    }
-    try {
       if (typeof this.session?.interrupt === "function") {
         await this.session.interrupt();
       }
     } catch (error) {
-      console.warn("NEXIVRA M5B-2I ELENORA INTERRUPT WARNING:", error);
+      console.warn("NEXIVRA M5B-3C ELENORA HANDOFF INTERRUPT WARNING:", error);
     }
+    console.log("NEXIVRA M5B-3C HANDOFF CONFIRMED \u2014 AUTONOMOUS MIC ALREADY OFF");
     this.m5b2ElenoraVoiceSuspended = true;
     this.m5b3aElenoraDrainUntilMs = Date.now() + 350;
     console.log("NEXIVRA M5B-3B ELENORA FALLBACK DRAINING BEFORE SETUP");
@@ -31523,26 +31519,16 @@ ${tail}`;
     if (this.m5b2ElenoraVoiceSuspended) return;
     this.m5b2ElenoraVoiceSuspended = true;
     try {
-      if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") await this.session.voiceChat.stop();
-    } catch (error) {
-      console.warn("NEXIVRA M5B-2B ELENORA VOICE STOP WARNING:", error);
-    }
-    try {
       if (typeof this.session?.interrupt === "function") await this.session.interrupt();
     } catch (error) {
-      console.warn("NEXIVRA M5B-2B ELENORA INTERRUPT WARNING:", error);
+      console.warn("NEXIVRA M5B-3C ELENORA INTERRUPT WARNING:", error);
     }
-    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION BLOCKED \u2014 OBSERVER VIDEO ONLY");
+    console.log("NEXIVRA M5B-3C ELENORA ROUTER SUSPENDED \u2014 OBSERVER VIDEO ONLY");
   }
   async restoreElenoraVoiceAfterM5B2RolePlay() {
     if (!this.m5b2ElenoraVoiceSuspended) return;
     this.m5b2ElenoraVoiceSuspended = false;
-    try {
-      if (this.session?.voiceChat && typeof this.session.voiceChat.start === "function" && this.sessionActive) await this.session.voiceChat.start();
-    } catch (error) {
-      console.warn("NEXIVRA M5B-2B ELENORA VOICE RESTORE WARNING:", error);
-    }
-    console.log("NEXIVRA M5B-2B ELENORA CONVERSATION RESTORED");
+    console.log("NEXIVRA M5B-3C ELENORA ROUTER RESTORED \u2014 AUTONOMOUS MIC REMAINS OFF");
   }
   queuePedroGuestResponse(text, latency = {}, options = {}) {
     const v3 = String(text || "").trim();
@@ -35246,7 +35232,7 @@ ${tail}`;
             } catch (error) {
               console.warn("NEXIVRA M5B-3B CONTROL HANDOFF INTERRUPT WARNING:", error);
             }
-            console.log("NEXIVRA M5B-3B ROLE PLAY CONTROL COMMAND CONSUMED \u2014 ELENORA BYPASSED:", text);
+            console.log("NEXIVRA M5B-3C ROUTE: ROLE PLAY COMMAND \u2192 RUNTIME \u2014 ELENORA NEVER RECEIVED:", text);
             return;
           }
           if (this.rolePlayActive) {
@@ -35268,6 +35254,13 @@ ${tail}`;
             });
           }
           this.dispatchRuntimeEvent("nexivra-learner-transcript", { sessionId: this.runtimeSessionId || "", text, observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null });
+          if (this.m5b3cInputRouterActive && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && this.m5b2FloorOwner !== "PEDRO") {
+            const routed = `LEARNER TURN \u2014 AUTHORITATIVE
+The learner just said: "${String(text || "").replaceAll('"', "'")}"
+Respond naturally as Elenora to this learner turn. Follow the current course state and instructions. Do not invent additional learner speech. If the learner asked a question, answer it. If the learner answered your question, evaluate only that actual answer and continue appropriately.`;
+            console.log("NEXIVRA M5B-3C ROUTE: LEARNER \u2192 ELENORA:", text);
+            this.sendLiveAvatarMessageSafely(routed, "m5b3c-learner-turn");
+          }
         }
       };
       recognition.onerror = (event) => {
@@ -35384,9 +35377,17 @@ ${tail}`;
       await this.injectRuntimeContext();
       this.sessionStartupStage = "voice_chat";
       this.setStatus(
-        "Starting voice conversation..."
+        "Starting NEXIVRA input router..."
       );
-      await this.session.voiceChat.start();
+      try {
+        if (this.session?.voiceChat && typeof this.session.voiceChat.stop === "function") {
+          await this.session.voiceChat.stop();
+        }
+      } catch (error) {
+        console.warn("NEXIVRA M5B-3C AUTONOMOUS VOICE DISABLE WARNING:", error);
+      }
+      this.m5b3cInputRouterActive = true;
+      console.log("NEXIVRA M5B-3C INPUT ROUTER ACTIVE \u2014 ELENORA AUTONOMOUS MIC OFF");
       this.sessionStartupStage = "active";
       this.sessionActive = true;
       if (this.resumeLockDeferred === true) {
@@ -35498,6 +35499,9 @@ ${tail}`;
     this.stopVisualAnalysis();
     this.stopLearnerTranscriptCapture();
     this.stopLearnerAudioMonitor();
+    this.m5b3cInputRouterActive = false;
+    this.m5b3cNormalTurnPending = false;
+    console.log("NEXIVRA M5B-3C INPUT ROUTER STOPPED");
     try {
       if (this.guestSession?.voiceChat && typeof this.guestSession.voiceChat.stop === "function") {
         await this.guestSession.voiceChat.stop();
@@ -36173,7 +36177,7 @@ ${tail}`;
       await this.delay(
         speechMs
       );
-      if (resumeVoice && this.sessionActive && this.session.voiceChat && typeof this.session.voiceChat.start === "function") {
+      if (resumeVoice && this.sessionActive && !this.m5b3cInputRouterActive && this.session.voiceChat && typeof this.session.voiceChat.start === "function") {
         try {
           await this.session.voiceChat.start();
         } catch (error) {
