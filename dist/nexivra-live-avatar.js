@@ -30115,6 +30115,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2oLatestInterimAtMs = 0;
     this.m5b2oFastTurnTimer = null;
     this.m5b2oFastTurnGraceMs = 300;
+    this.m5b3bIncompleteTurnGraceMs = 1250;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30513,7 +30514,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3A-STRUCTURED-EVALUATION-COACHING"
+      "PACKAGE3-M5B3B-CONTROL-HANDOFF-CANONICAL-SKILLS"
     );
     this.render();
     this.bindControls();
@@ -30761,7 +30762,7 @@ ${tail}`;
             const evaluation = command.evaluation || {}, debrief = String(evaluation.debrief || "").trim(), nextAction = String(evaluation.nextAction || "continue_course");
             const instruction = `The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction === "repeat_role_play" ? "explain that another practice attempt will help and prepare the learner for another attempt" : nextAction === "targeted_coaching" ? "give one brief targeted coaching point and then continue forward" : "continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro.`;
             this.sendLiveAvatarMessageSafely(instruction, "m5b3a-structured-role-play-debrief");
-            console.log("NEXIVRA M5B-3A STRUCTURED DEBRIEF DISPATCHED:", { nextAction, competencies: Array.isArray(evaluation.competencyResults) ? evaluation.competencyResults.length : 0 });
+            console.log("NEXIVRA M5B-3B STRUCTURED DEBRIEF DISPATCHED:", { nextAction, competencies: Array.isArray(evaluation.competencyResults) ? evaluation.competencyResults.length : 0 });
             return;
           }
           if (command?.type === "adaptive-role-play" && command?.scenario) {
@@ -31296,7 +31297,7 @@ ${tail}`;
     }
     this.m5b2ElenoraVoiceSuspended = true;
     this.m5b3aElenoraDrainUntilMs = Date.now() + 350;
-    console.log("NEXIVRA M5B-3A ELENORA DRAINING BEFORE SETUP");
+    console.log("NEXIVRA M5B-3B ELENORA FALLBACK DRAINING BEFORE SETUP");
     if (this.guestInfrastructureReady) {
       this.dispatchM5B2HInstructorSetup();
     } else if (this.guestSessionToken) {
@@ -31319,7 +31320,7 @@ ${tail}`;
       }, 120);
       return;
     }
-    console.log("NEXIVRA M5B-3A ELENORA DRAIN COMPLETE \u2014 SETUP ONLY");
+    console.log("NEXIVRA M5B-3B ELENORA QUIET \u2014 DETERMINISTIC SETUP ONLY");
     this.m5b2hWaitingForGuestReady = false;
     this.m5b2hSetupRequested = true;
     this.m5b2hSetupSpeaking = false;
@@ -35087,6 +35088,12 @@ ${tail}`;
     this.cancelM5B2OFastTurnTimer();
     if (!this.rolePlayActive || !this.formalRolePlaySessionId) return;
     if (!this.m5b2nLearnerTurnArmed || this.m5b2jPedroSpeaking) return;
+    const interimNow = String(this.m5b2oLatestInterimText || "").trim();
+    const looksIncomplete = /\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|get|have|with|and|but|because|so|if|when|while|to|for|the|a|an)\s*$/i.test(interimNow);
+    const graceMs = looksIncomplete ? Number(this.m5b3bIncompleteTurnGraceMs || 1250) : Number(this.m5b2oFastTurnGraceMs || 300);
+    if (looksIncomplete) {
+      console.log("NEXIVRA M5B-3B INCOMPLETE TURN HELD FOR CONTINUATION:", { text: interimNow, graceMs });
+    }
     this.m5b2oFastTurnTimer = setTimeout(() => {
       this.m5b2oFastTurnTimer = null;
       if (!this.rolePlayActive || !this.formalRolePlaySessionId || !this.m5b2nLearnerTurnArmed || this.m5b2jPedroSpeaking || this.learnerMicSpeaking || this.learnerSpeaking) return;
@@ -35102,7 +35109,7 @@ ${tail}`;
       this.flushM5B2JLearnerTurn("fast_interim_after_audio_stop");
       this.m5b2oLatestInterimText = "";
       this.m5b2oLatestInterimAtMs = 0;
-    }, Number(this.m5b2oFastTurnGraceMs || 300));
+    }, graceMs);
   }
   startLearnerTranscriptCapture() {
     if (this.speechRecognitionActive) return;
@@ -35234,7 +35241,13 @@ ${tail}`;
               this.requestAdaptiveRolePlay({ requestedGuestType: "new_guest" });
             } else this.requestAdaptiveRolePlay();
             this.rolePlayGatewayLocked = true;
-            console.log("NEXIVRA FORMAL ROLE PLAY GATEWAY INTERCEPTED:", text);
+            try {
+              if (typeof this.session?.interrupt === "function") this.session.interrupt();
+            } catch (error) {
+              console.warn("NEXIVRA M5B-3B CONTROL HANDOFF INTERRUPT WARNING:", error);
+            }
+            console.log("NEXIVRA M5B-3B ROLE PLAY CONTROL COMMAND CONSUMED \u2014 ELENORA BYPASSED:", text);
+            return;
           }
           if (this.rolePlayActive) {
             this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
