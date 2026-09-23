@@ -30118,6 +30118,12 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b3bIncompleteTurnGraceMs = 1250;
     this.m5b3cInputRouterActive = false;
     this.m5b3cNormalTurnPending = false;
+    this.m5b3dLastMouthRatio = 0;
+    this.m5b3dLastMouthActivityAtMs = 0;
+    this.m5b3dSpeechWindowMouthActivity = false;
+    this.m5b3dMouthOpenThreshold = 0.018;
+    this.m5b3dMouthDeltaThreshold = 45e-4;
+    this.m5b3dSpeakerGateGraceMs = 700;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30516,7 +30522,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3C-NEXIVRA-INPUT-ROUTER"
+      "PACKAGE3-M5B3D-LEARNER-SPEAKER-GATE"
     );
     this.render();
     this.bindControls();
@@ -35123,8 +35129,22 @@ ${tail}`;
           }
           const now = Date.now();
           if (text === this.lastLearnerTranscript && now - this.lastLearnerTranscriptAt < 5e3) continue;
+          const faceVisible = Boolean(this.metrics?.faceDetected);
+          const recentMouthActivity = now - Number(this.m5b3dLastMouthActivityAtMs || 0) <= Number(this.m5b3dSpeakerGateGraceMs || 700);
+          const learnerSpeakerSupported = faceVisible && Boolean(this.m5b3dSpeechWindowMouthActivity || recentMouthActivity);
+          if (this.m5b3cInputRouterActive && !learnerSpeakerSupported) {
+            console.log("NEXIVRA M5B-3D BACKGROUND SPEECH REJECTED:", {
+              text,
+              faceVisible,
+              mouthActivity: Boolean(this.m5b3dSpeechWindowMouthActivity || recentMouthActivity)
+            });
+            this.m5b3dSpeechWindowMouthActivity = false;
+            continue;
+          }
           this.lastLearnerTranscript = text;
           this.lastLearnerTranscriptAt = now;
+          if (this.m5b3cInputRouterActive) console.log("NEXIVRA M5B-3D LEARNER SPEAKER CONFIRMED:", text);
+          this.m5b3dSpeechWindowMouthActivity = false;
           console.log("NEXIVRA LEARNER TRANSCRIPT CAPTURED:", text);
           this.captureGuestIdentityFromConversation(text);
           const rolePlayControlText = String(text || "").trim().toLowerCase();
@@ -35501,6 +35521,9 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     this.stopLearnerAudioMonitor();
     this.m5b3cInputRouterActive = false;
     this.m5b3cNormalTurnPending = false;
+    this.m5b3dLastMouthRatio = 0;
+    this.m5b3dLastMouthActivityAtMs = 0;
+    this.m5b3dSpeechWindowMouthActivity = false;
     console.log("NEXIVRA M5B-3C INPUT ROUTER STOPPED");
     try {
       if (this.guestSession?.voiceChat && typeof this.guestSession.voiceChat.stop === "function") {
@@ -35741,6 +35764,17 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
       faceLandmarks && faceLandmarks.length
     );
     m3.faceDetected = faceDetected;
+    if (faceDetected && faceLandmarks?.[10] && faceLandmarks?.[152] && faceLandmarks?.[13] && faceLandmarks?.[14]) {
+      const faceHeight = Math.max(1e-4, Math.abs(Number(faceLandmarks[152].y) - Number(faceLandmarks[10].y)));
+      const lipGap = Math.abs(Number(faceLandmarks[14].y) - Number(faceLandmarks[13].y));
+      const mouthRatio = lipGap / faceHeight;
+      const mouthDelta = Math.abs(mouthRatio - Number(this.m5b3dLastMouthRatio || 0));
+      if (mouthRatio >= Number(this.m5b3dMouthOpenThreshold || 0.018) || mouthDelta >= Number(this.m5b3dMouthDeltaThreshold || 45e-4)) {
+        this.m5b3dLastMouthActivityAtMs = Date.now();
+        if (this.learnerMicSpeaking) this.m5b3dSpeechWindowMouthActivity = true;
+      }
+      this.m5b3dLastMouthRatio = mouthRatio;
+    }
     let faceData = {
       orientation: "No face detected",
       facingForward: false,
@@ -36305,6 +36339,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                 console.log(
                   "NEXIVRA LEARNER AUDIO: speaking started"
                 );
+                this.m5b3dSpeechWindowMouthActivity = Boolean(this.metrics?.faceDetected) && Date.now() - Number(this.m5b3dLastMouthActivityAtMs || 0) <= Number(this.m5b3dSpeakerGateGraceMs || 700);
                 if (this.rolePlayActive) {
                   this.cancelM5B2JLearnerTurnTimer();
                   this.cancelM5B2OFastTurnTimer();
@@ -36320,7 +36355,11 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                     });
                   }
                 }
-                this.startSpeechOverlapCandidate();
+                if (!this.m5b3cInputRouterActive || this.m5b3dSpeechWindowMouthActivity) {
+                  this.startSpeechOverlapCandidate();
+                } else {
+                  console.log("NEXIVRA M5B-3D OVERLAP OBSERVATION SUPPRESSED \u2014 SPEAKER NOT CONFIRMED");
+                }
               }
             } else {
               this.learnerSpeechAboveSince = null;
