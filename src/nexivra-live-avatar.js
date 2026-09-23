@@ -632,7 +632,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3D2-UNIFIED-SEMANTIC-TURN-BOUNDARY"
+                                                                                                              "PACKAGE3-M5B3E-FAST-EVALUATION-RESTART-LIFECYCLE"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -2030,6 +2030,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                       this.m5b2mCompleteAfterPedroSpeaks=true;
                                       this.m5b2mCompletionReason=String(item?.completionReason||"explicit_close");
                                       console.log("NEXIVRA M5B-2N EXPLICIT CLOSE ARMED:",this.m5b2mCompletionReason);
+                                      this.dispatchRuntimeEvent("nexivra-role-play-evaluation-prewarm",{
+                                        rolePlaySessionId:this.formalRolePlaySessionId||"",
+                                        sessionId:this.runtimeSessionId||"",
+                                        scenario:this.activeRolePlayScenario||{},
+                                        reason:this.m5b2mCompletionReason
+                                      });
+                                      console.log("NEXIVRA M5B-3E EVALUATION PREWARM REQUESTED:",this.formalRolePlaySessionId||"");
                                     }
                                     const repeatStartedAtMs=Date.now();
                                     this.m5b2GuestSpeaking=true;
@@ -7299,6 +7306,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.avatarStarted=false;
                                                                                                             this.sessionActive=false;
                                                                                                             this.m5b2ElenoraVoiceSuspended=false;
+                                                                                                            this.runtimeLifecycleState="IDLE";
+                                                                                                            this.runtimeLifecycleToken=null;
+                                                                                                            this.runtimeStartPromise=null;
+                                                                                                            this.runtimeContextInjected=false;
+                                                                                                            this.runtimeContextInjectionPending=false;
+                                                                                                            this.sessionStartupStage="idle";
+                                                                                                            console.log("NEXIVRA M5B-3E RUNTIME RESET FOR RESTART");
 
                                                                                                             console.log("NEXIVRA M5B-2D HARD SHUTDOWN COMPLETE:",{
                                                                                                               reason,
@@ -7348,9 +7362,11 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 moduleId:this.lessonId,
                                                                                                                 observations:[...this.observationTimeline],
                                                                                                                 visualSummary:this.buildVisualSummary(),
-                                                                                                                hardShutdown:true
+                                                                                                                hardShutdown:true,
+                                                                                                                requestFreshAvatarSessions:true
                                                                                                               }
                                                                                                             );
+                                                                                                            console.log("NEXIVRA M5B-3E FRESH SESSION TOKENS REQUESTED");
 
                                                                                                             this.requestDashboardRefresh();
                                                                                                             this.showUnifiedDashboard();
