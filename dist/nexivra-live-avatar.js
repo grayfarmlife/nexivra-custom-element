@@ -30239,6 +30239,9 @@ var NexivraLiveAvatar = class extends HTMLElement {
       learnerSpeechStopHoldMs: 360,
       learnerSpeechThresholdFloor: 0.016,
       learnerSpeechThresholdCeiling: 0.04,
+      learnerNoiseFloorGuardCeiling: 65e-4,
+      learnerSpeechAdaptiveStartCeiling: 0.022,
+      learnerSpeechAdaptiveStopCeiling: 0.0145,
       minimumMeaningfulOverlapMs: 1200,
       speechOverlapWindowMs: 3e4,
       speechOverlapsBeforePattern: 2,
@@ -30541,7 +30544,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3E3-TRUE-SILENT-STANDBY-RESUME-IDENTITY"
+      "PACKAGE3-M5B3E4-AUDIO-GUARD-RESTART-DEDUPE"
     );
     this.render();
     this.bindControls();
@@ -32020,6 +32023,16 @@ ${tail}`;
                 );
                 if (loadingStatus) {
                   loadingStatus.hidden = false;
+                }
+                if (this.m5b3e1AwaitingManualRestart && (this.m5b3e2WarmStandbyActive || this.m5b3e2WarmStandbyPromise || this.m5b3e1PreparedRestartToken)) {
+                  console.log("NEXIVRA M5B-3E4 DUPLICATE ASSIGNMENT START SUPPRESSED \u2014 PREPARED RESTART EXISTS:", assignmentId);
+                  button.dataset.loading = "false";
+                  button.disabled = false;
+                  button.removeAttribute("aria-busy");
+                  button.textContent = originalLabel;
+                  if (loadingStatus) loadingStatus.hidden = true;
+                  this.showUnifiedTraining();
+                  return;
                 }
                 console.log(
                   "NEXIVRA ASSIGNMENT START REQUESTED:",
@@ -36602,21 +36615,32 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                 (sum, value) => sum + value,
                 0
               ) / quietSamples.length;
-              this.learnerNoiseFloor = Math.max(
-                2e-3,
-                quietAverage
+              const rawNoiseFloor = Math.max(2e-3, quietAverage);
+              this.learnerNoiseFloor = Math.min(
+                Number(this.thresholds.learnerNoiseFloorGuardCeiling || 65e-4),
+                rawNoiseFloor
               );
+              if (rawNoiseFloor > this.learnerNoiseFloor) {
+                console.log("NEXIVRA M5B-3E4 NOISE FLOOR GUARD APPLIED:", {
+                  measured: rawNoiseFloor.toFixed(4),
+                  guarded: this.learnerNoiseFloor.toFixed(4)
+                });
+              }
               const adaptiveStart = Math.max(
                 this.thresholds.learnerSpeechThresholdFloor,
                 this.learnerNoiseFloor * 2.4 + 4e-3
               );
               this.learnerSpeechStartThreshold = Math.min(
                 this.thresholds.learnerSpeechThresholdCeiling,
+                Number(this.thresholds.learnerSpeechAdaptiveStartCeiling || 0.022),
                 adaptiveStart
               );
-              this.learnerSpeechStopThreshold = Math.max(
-                this.learnerNoiseFloor * 1.7 + 2e-3,
-                this.learnerSpeechStartThreshold * 0.65
+              this.learnerSpeechStopThreshold = Math.min(
+                Number(this.thresholds.learnerSpeechAdaptiveStopCeiling || 0.0145),
+                Math.max(
+                  this.learnerNoiseFloor * 1.7 + 2e-3,
+                  this.learnerSpeechStartThreshold * 0.65
+                )
               );
               this.learnerCalibrationComplete = true;
               console.log(
