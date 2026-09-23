@@ -270,6 +270,9 @@
                                                                                                               learnerSpeechStopHoldMs: 360,
                                                                                                               learnerSpeechThresholdFloor: 0.016,
                                                                                                               learnerSpeechThresholdCeiling: 0.040,
+                                                                                                              learnerNoiseFloorGuardCeiling: 0.0065,
+                                                                                                              learnerSpeechAdaptiveStartCeiling: 0.0220,
+                                                                                                              learnerSpeechAdaptiveStopCeiling: 0.0145,
 
                                                                                                               minimumMeaningfulOverlapMs: 1200,
                                                                                                               speechOverlapWindowMs: 30000,
@@ -644,7 +647,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3E3-TRUE-SILENT-STANDBY-RESUME-IDENTITY"
+                                                                                                              "PACKAGE3-M5B3E4-AUDIO-GUARD-RESTART-DEDUPE"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -2688,6 +2691,24 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                                           if (loadingStatus) {
                                                                                                                             loadingStatus.hidden = false;
+                                                                                                                          }
+
+                                                                                                                          if(
+                                                                                                                            this.m5b3e1AwaitingManualRestart &&
+                                                                                                                            (
+                                                                                                                              this.m5b3e2WarmStandbyActive ||
+                                                                                                                              this.m5b3e2WarmStandbyPromise ||
+                                                                                                                              this.m5b3e1PreparedRestartToken
+                                                                                                                            )
+                                                                                                                          ){
+                                                                                                                            console.log("NEXIVRA M5B-3E4 DUPLICATE ASSIGNMENT START SUPPRESSED — PREPARED RESTART EXISTS:",assignmentId);
+                                                                                                                            button.dataset.loading="false";
+                                                                                                                            button.disabled=false;
+                                                                                                                            button.removeAttribute("aria-busy");
+                                                                                                                            button.textContent=originalLabel;
+                                                                                                                            if(loadingStatus)loadingStatus.hidden=true;
+                                                                                                                            this.showUnifiedTraining();
+                                                                                                                            return;
                                                                                                                           }
 
                                                                                                                           console.log(
@@ -9045,11 +9066,18 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                           quietSamples.length;
 
 
+                                                                                                                        const rawNoiseFloor=Math.max(0.002,quietAverage);
                                                                                                                         this.learnerNoiseFloor =
-                                                                                                                          Math.max(
-                                                                                                                            0.002,
-                                                                                                                            quietAverage
+                                                                                                                          Math.min(
+                                                                                                                            Number(this.thresholds.learnerNoiseFloorGuardCeiling||0.0065),
+                                                                                                                            rawNoiseFloor
                                                                                                                           );
+                                                                                                                        if(rawNoiseFloor>this.learnerNoiseFloor){
+                                                                                                                          console.log("NEXIVRA M5B-3E4 NOISE FLOOR GUARD APPLIED:",{
+                                                                                                                            measured:rawNoiseFloor.toFixed(4),
+                                                                                                                            guarded:this.learnerNoiseFloor.toFixed(4)
+                                                                                                                          });
+                                                                                                                        }
 
 
                                                                                                                         const adaptiveStart =
@@ -9064,19 +9092,19 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                                         this.learnerSpeechStartThreshold =
                                                                                                                           Math.min(
-                                                                                                                            this.thresholds
-                                                                                                                              .learnerSpeechThresholdCeiling,
+                                                                                                                            this.thresholds.learnerSpeechThresholdCeiling,
+                                                                                                                            Number(this.thresholds.learnerSpeechAdaptiveStartCeiling||0.022),
                                                                                                                             adaptiveStart
                                                                                                                           );
 
 
                                                                                                                         this.learnerSpeechStopThreshold =
-                                                                                                                          Math.max(
-                                                                                                                            this.learnerNoiseFloor *
-                                                                                                                              1.7 +
-                                                                                                                              0.002,
-                                                                                                                            this.learnerSpeechStartThreshold *
-                                                                                                                              0.65
+                                                                                                                          Math.min(
+                                                                                                                            Number(this.thresholds.learnerSpeechAdaptiveStopCeiling||0.0145),
+                                                                                                                            Math.max(
+                                                                                                                              this.learnerNoiseFloor * 1.7 + 0.002,
+                                                                                                                              this.learnerSpeechStartThreshold * 0.65
+                                                                                                                            )
                                                                                                                           );
 
 
