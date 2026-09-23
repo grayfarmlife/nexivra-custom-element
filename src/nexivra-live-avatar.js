@@ -92,6 +92,13 @@
                                                                                                             // M5B-3B — obvious incomplete utterances get a longer
                                                                                                             // grace window so natural pauses do not split one thought.
                                                                                                             this.m5b3bIncompleteTurnGraceMs = 1250;
+                                                                                                            // M5B-3D.2 — unified learner turn boundary.
+                                                                                                            // Fast questions stay fast; acknowledgments, vocatives,
+                                                                                                            // and ambiguous pauses receive a natural continuation window.
+                                                                                                            this.m5b3d2TurnGraceFastMs = 350;
+                                                                                                            this.m5b3d2TurnGraceNormalMs = 650;
+                                                                                                            this.m5b3d2TurnGraceContinuationMs = 1200;
+                                                                                                            this.m5b3d2TurnGraceStrongContinuationMs = 1450;
                                                                                                             // M5B-3C — NEXIVRA owns learner input routing.
                                                                                                             // LiveAvatar autonomous microphone listening stays OFF.
                                                                                                             this.m5b3cInputRouterActive = false;
@@ -625,7 +632,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3D1-FLOOR-LEARNER-LOCK-CONTROLS"
+                                                                                                              "PACKAGE3-M5B3D2-UNIFIED-SEMANTIC-TURN-BOUNDARY"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -6439,17 +6446,104 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             }
                                                                                                           }
 
+                                                                                                          classifyM5B3D2TurnBoundary(text="") {
+                                                                                                            const raw=String(text||"").trim();
+                                                                                                            const normalized=raw
+                                                                                                              .toLowerCase()
+                                                                                                              .replace(/[^a-z0-9' ]+/g," ")
+                                                                                                              .replace(/\s+/g," ")
+                                                                                                              .trim();
+                                                                                                            const words=normalized?normalized.split(" "):[];
+                                                                                                            const wordCount=words.length;
+
+                                                                                                            // Strong continuation cues: sentence grammatically or
+                                                                                                            // conversationally points forward.
+                                                                                                            const strongContinuation=
+                                                                                                              /\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should| gonna)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|because|although|unless|until|while|when|if|so that|in order to|and then|but then)\s*$/i.test(normalized) ||
+                                                                                                              /\b(?:to|for|with|and|but|or|because|so|if|when|while|the|a|an|your|my|our|their)\s*$/i.test(normalized);
+
+                                                                                                            // Vocative/acknowledgment-only phrases often precede the
+                                                                                                            // learner's actual action statement: "Okay, Mr. Alvarez..."
+                                                                                                            const acknowledgmentLead=
+                                                                                                              /^(?:oh\s+)?(?:okay|ok|all right|alright|absolutely|sure|certainly|great|thank you|thanks|i understand|i see)(?:\s+(?:mr|mrs|ms|miss|sir|ma'am|maam)\.?\s+[a-z'-]+)?$/i.test(raw.replace(/[,.!?]+$/g,"").trim()) ||
+                                                                                                              /^(?:oh\s+)?(?:okay|ok|all right|alright)\s+(?:mr|mrs|ms|miss)\.?\s+[a-z'-]+$/i.test(raw.replace(/[,.!?]+$/g,"").trim());
+
+                                                                                                            // Short forms that are usually conversational setup rather
+                                                                                                            // than a complete role-play response.
+                                                                                                            const shortAmbiguous=
+                                                                                                              wordCount<=5 &&
+                                                                                                              !/^(?:yes|no|nope|yep|yeah|correct|right|thanks|thank you|okay|ok|sure)$/i.test(normalized);
+
+                                                                                                            // Direct questions can be released quickly even when the
+                                                                                                            // browser transcript contains no punctuation.
+                                                                                                            const directQuestion=
+                                                                                                              /^(?:what|where|when|why|who|whose|which|how|do|does|did|is|are|was|were|can|could|would|will|have|has|had|may|might|should)\b/i.test(normalized) &&
+                                                                                                              wordCount>=3;
+
+                                                                                                            // Common hospitality questions that may begin with a name
+                                                                                                            // or acknowledgment before the interrogative.
+                                                                                                            const embeddedQuestion=
+                                                                                                              /\b(?:what|where|when|why|who|which|how)\b.*\b(?:you|your|room|name|stay|issue|problem|need|prefer|like)\b/i.test(normalized);
+
+                                                                                                            // Complete action/ownership statements are allowed to be
+                                                                                                            // reasonably fast, but not as aggressively as direct questions.
+                                                                                                            const completeAction=
+                                                                                                              /\b(?:i(?:'ll| will| can)|we(?:'ll| will| can))\b.+\b(?:help|check|call|send|contact|have|get|look|take care|follow up|find out|bring|move|fix|resolve)\b/i.test(normalized) &&
+                                                                                                              wordCount>=6;
+
+                                                                                                            let classification="NORMAL";
+                                                                                                            let graceMs=Number(this.m5b3d2TurnGraceNormalMs||650);
+
+                                                                                                            if(strongContinuation){
+                                                                                                              classification="STRONG_CONTINUATION";
+                                                                                                              graceMs=Number(this.m5b3d2TurnGraceStrongContinuationMs||1450);
+                                                                                                            }else if(acknowledgmentLead||shortAmbiguous){
+                                                                                                              classification="LIKELY_CONTINUATION";
+                                                                                                              graceMs=Number(this.m5b3d2TurnGraceContinuationMs||1200);
+                                                                                                            }else if(directQuestion||embeddedQuestion){
+                                                                                                              classification="FAST_QUESTION";
+                                                                                                              graceMs=Number(this.m5b3d2TurnGraceFastMs||350);
+                                                                                                            }else if(completeAction){
+                                                                                                              classification="COMPLETE_ACTION";
+                                                                                                              graceMs=Number(this.m5b3d2TurnGraceNormalMs||650);
+                                                                                                            }
+
+                                                                                                            return{
+                                                                                                              classification,
+                                                                                                              graceMs,
+                                                                                                              wordCount,
+                                                                                                              strongContinuation,
+                                                                                                              acknowledgmentLead,
+                                                                                                              shortAmbiguous,
+                                                                                                              directQuestion,
+                                                                                                              embeddedQuestion,
+                                                                                                              completeAction
+                                                                                                            };
+                                                                                                          }
+
                                                                                                           scheduleM5B2OFastInterimFlush() {
                                                                                                             this.cancelM5B2OFastTurnTimer();
                                                                                                             if(!this.rolePlayActive||!this.formalRolePlaySessionId)return;
                                                                                                             if(!this.m5b2nLearnerTurnArmed||this.m5b2jPedroSpeaking)return;
                                                                                                             const interimNow=String(this.m5b2oLatestInterimText||"").trim();
-                                                                                                            const looksIncomplete=/\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|get|have|with|and|but|because|so|if|when|while|to|for|the|a|an)\s*$/i.test(interimNow);
-                                                                                                            const graceMs=looksIncomplete
-                                                                                                              ? Number(this.m5b3bIncompleteTurnGraceMs||1250)
-                                                                                                              : Number(this.m5b2oFastTurnGraceMs||300);
-                                                                                                            if(looksIncomplete){
-                                                                                                              console.log("NEXIVRA M5B-3B INCOMPLETE TURN HELD FOR CONTINUATION:",{text:interimNow,graceMs});
+                                                                                                            if(!interimNow)return;
+                                                                                                            const boundary=this.classifyM5B3D2TurnBoundary(interimNow);
+                                                                                                            const graceMs=Number(boundary.graceMs||650);
+                                                                                                            console.log("NEXIVRA M5B-3D2 TURN BOUNDARY:",{
+                                                                                                              text:interimNow,
+                                                                                                              classification:boundary.classification,
+                                                                                                              graceMs,
+                                                                                                              wordCount:boundary.wordCount
+                                                                                                            });
+                                                                                                            if(
+                                                                                                              boundary.classification==="LIKELY_CONTINUATION" ||
+                                                                                                              boundary.classification==="STRONG_CONTINUATION"
+                                                                                                            ){
+                                                                                                              console.log("NEXIVRA M5B-3D2 LEARNER TURN HELD FOR CONTINUATION:",{
+                                                                                                                text:interimNow,
+                                                                                                                classification:boundary.classification,
+                                                                                                                graceMs
+                                                                                                              });
                                                                                                             }
                                                                                                             this.m5b2oFastTurnTimer=setTimeout(()=>{
                                                                                                               this.m5b2oFastTurnTimer=null;
@@ -6463,7 +6557,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               )return;
                                                                                                               const interim=String(this.m5b2oLatestInterimText||"").trim();
                                                                                                               if(!interim)return;
-                                                                                                              console.log("NEXIVRA M5B-2O FAST INTERIM TURN USED:",{
+                                                                                                              console.log("NEXIVRA M5B-3D2 SEMANTIC TURN RELEASED:",{
                                                                                                                 text:interim,
                                                                                                                 audioStopToFastTurnMs:this.m5b2nLearnerAudioStoppedAtMs
                                                                                                                   ? Date.now()-this.m5b2nLearnerAudioStoppedAtMs
@@ -6474,7 +6568,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               });
                                                                                                               this.m5b2jPendingLearnerFragments=[];
                                                                                                               this.queueM5B2JLearnerFragment(interim);
-                                                                                                              this.flushM5B2JLearnerTurn("fast_interim_after_audio_stop");
+                                                                                                              this.flushM5B2JLearnerTurn("semantic_turn_boundary");
                                                                                                               this.m5b2oLatestInterimText="";
                                                                                                               this.m5b2oLatestInterimAtMs=0;
                                                                                                             },graceMs);
