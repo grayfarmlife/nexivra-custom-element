@@ -30135,6 +30135,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b3d1FaceCenterTolerance = 0.24;
     this.m5b3d1FaceScaleTolerance = 0.55;
     this.m5b3d1ManualPaused = false;
+    this.m5b3e1AwaitingManualRestart = false;
+    this.m5b3e1PreparedRestartToken = null;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30533,7 +30535,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3E-FAST-EVALUATION-RESTART-LIFECYCLE"
+      "PACKAGE3-M5B3E1-SINGLE-OWNER-RESTART"
     );
     this.render();
     this.bindControls();
@@ -30637,6 +30639,18 @@ ${tail}`;
       const previousToken = this.sessionToken;
       this.sessionToken = newValue;
       if (this.isConnected && previousToken && previousToken !== newValue) {
+        if (this.m5b3e1AwaitingManualRestart) {
+          this.sessionToken = newValue;
+          this.m5b3e1PreparedRestartToken = newValue;
+          this.runtimeLifecycleState = "IDLE";
+          this.runtimeLifecycleToken = null;
+          this.runtimeStartPromise = null;
+          this.avatarStarted = false;
+          this.session = null;
+          this.setStatus("Session ended. Ready to start again.");
+          console.log("NEXIVRA M5B-3E1 FRESH INSTRUCTOR TOKEN STAGED \u2014 WAITING FOR START SESSION");
+          return;
+        }
         if (this.runtimeLifecycleState === "STARTING" || this.runtimeLifecycleState === "ACTIVE") {
           console.warn(
             "NEXIVRA TOKEN CHANGE IGNORED \u2014 RUNTIME SINGLE-FLIGHT:",
@@ -30653,15 +30667,18 @@ ${tail}`;
           this.sessionToken = newValue;
           this.startNexivra();
         }).catch((error) => {
-          console.error(
-            "NEXIVRA TOKEN RESET ERROR:",
-            error
-          );
+          console.error("NEXIVRA TOKEN RESET ERROR:", error);
         });
         return;
       }
       if (this.isConnected) {
         this.showUnifiedTraining();
+        if (this.m5b3e1AwaitingManualRestart) {
+          this.m5b3e1PreparedRestartToken = newValue;
+          this.setStatus("Session ended. Ready to start again.");
+          console.log("NEXIVRA M5B-3E1 TOKEN STAGED \u2014 AUTO START SUPPRESSED");
+          return;
+        }
         this.setStatus(
           "Connecting NEXIVRA Live Instructor..."
         );
@@ -35459,10 +35476,27 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
       "learnerPreview"
     );
     if (!this.session) {
-      this.setStatus(
-        "Please wait for NEXIVRA to connect."
-      );
-      return;
+      if (this.m5b3e1AwaitingManualRestart && (this.m5b3e1PreparedRestartToken || this.sessionToken)) {
+        try {
+          this.sessionToken = this.m5b3e1PreparedRestartToken || this.sessionToken;
+          this.m5b3e1AwaitingManualRestart = false;
+          this.m5b3e1PreparedRestartToken = null;
+          this.setStatus("Reconnecting NEXIVRA Live Instructor...");
+          console.log("NEXIVRA M5B-3E1 MANUAL RESTART ACTIVATED");
+          await this.startNexivra();
+        } catch (error) {
+          this.m5b3e1AwaitingManualRestart = true;
+          console.error("NEXIVRA M5B-3E1 MANUAL RESTART ERROR:", error);
+          this.setStatus(`RESTART ERROR: ${error?.message || String(error)}`);
+          return;
+        }
+      }
+      if (!this.session) {
+        this.setStatus(
+          "Please wait for NEXIVRA to connect."
+        );
+        return;
+      }
     }
     try {
       sessionButton.disabled = true;
@@ -35533,6 +35567,8 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
       console.log("NEXIVRA M5B-3C INPUT ROUTER ACTIVE \u2014 ELENORA AUTONOMOUS MIC OFF");
       this.sessionStartupStage = "active";
       this.sessionActive = true;
+      this.m5b3e1AwaitingManualRestart = false;
+      this.m5b3e1PreparedRestartToken = null;
       if (this.resumeLockDeferred === true) {
         console.log(
           "NEXIVRA LEARNER START CONFIRMED \u2014 CONTROL EVENT ONLY"
@@ -35721,7 +35757,9 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     this.runtimeContextInjected = false;
     this.runtimeContextInjectionPending = false;
     this.sessionStartupStage = "idle";
-    console.log("NEXIVRA M5B-3E RUNTIME RESET FOR RESTART");
+    this.m5b3e1AwaitingManualRestart = true;
+    this.m5b3e1PreparedRestartToken = null;
+    console.log("NEXIVRA M5B-3E1 RUNTIME RESET \u2014 WAITING FOR MANUAL START");
     console.log("NEXIVRA M5B-2D HARD SHUTDOWN COMPLETE:", {
       reason,
       pedroSession: false,
