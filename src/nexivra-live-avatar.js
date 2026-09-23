@@ -102,6 +102,14 @@
                                                                                                             this.m5b3dMouthOpenThreshold = 0.018;
                                                                                                             this.m5b3dMouthDeltaThreshold = 0.0045;
                                                                                                             this.m5b3dSpeakerGateGraceMs = 700;
+                                                                                                            // M5B-3D.1 — instructor-floor quarantine + session learner continuity.
+                                                                                                            this.m5b3d1SpeechBeganDuringInstructor = false;
+                                                                                                            this.m5b3d1FaceVisibleAtSpeechStart = false;
+                                                                                                            this.m5b3d1CurrentFaceAnchor = null;
+                                                                                                            this.m5b3d1LearnerFaceAnchor = null;
+                                                                                                            this.m5b3d1FaceCenterTolerance = 0.24;
+                                                                                                            this.m5b3d1FaceScaleTolerance = 0.55;
+                                                                                                            this.m5b3d1ManualPaused = false;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -617,7 +625,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3D-LEARNER-SPEAKER-GATE"
+                                                                                                              "PACKAGE3-M5B3D1-FLOOR-LEARNER-LOCK-CONTROLS"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -5570,6 +5578,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar started speaking"
                                                                                                                   );
+                                                                                                                  // M5B-3D.1 — instructor owns the floor.
+                                                                                                                  // Any learner-audio window that begins now is quarantined.
+                                                                                                                  this.m5b3d1SpeechBeganDuringInstructor=false;
                                                                                                                   if(this.m5b2fRolePlayPreparing&&this.m5b2hSetupRequested){
                                                                                                                     this.m5b2fSetupSpeechStarted=true;
                                                                                                                     this.m5b2hSetupSpeaking=true;
@@ -6489,23 +6500,92 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 }
                                                                                                                 const now=Date.now();
                                                                                                                 if(text===this.lastLearnerTranscript&&now-this.lastLearnerTranscriptAt<5000)continue;
-                                                                                                                const faceVisible=Boolean(this.metrics?.faceDetected);
-                                                                                                                const recentMouthActivity=now-Number(this.m5b3dLastMouthActivityAtMs||0)<=Number(this.m5b3dSpeakerGateGraceMs||700);
-                                                                                                                const learnerSpeakerSupported=faceVisible&&Boolean(this.m5b3dSpeechWindowMouthActivity||recentMouthActivity);
-                                                                                                                if(this.m5b3cInputRouterActive&&!learnerSpeakerSupported){
-                                                                                                                  console.log("NEXIVRA M5B-3D BACKGROUND SPEECH REJECTED:",{
-                                                                                                                    text,
-                                                                                                                    faceVisible,
-                                                                                                                    mouthActivity:Boolean(this.m5b3dSpeechWindowMouthActivity||recentMouthActivity)
-                                                                                                                  });
+
+                                                                                                                if(this.m5b3cInputRouterActive&&this.m5b3d1SpeechBeganDuringInstructor){
+                                                                                                                  console.log("NEXIVRA M5B-3D1 TRANSCRIPT DISCARDED — AUDIO BEGAN WHILE ELENORA OWNED FLOOR:",text);
                                                                                                                   this.m5b3dSpeechWindowMouthActivity=false;
+                                                                                                                  this.m5b3d1SpeechBeganDuringInstructor=false;
                                                                                                                   continue;
                                                                                                                 }
+
+                                                                                                                const faceVisible=Boolean(this.metrics?.faceDetected);
+                                                                                                                const mouthActivity=Boolean(this.m5b3dSpeechWindowMouthActivity);
+                                                                                                                const currentAnchor=this.m5b3d1CurrentFaceAnchor;
+                                                                                                                let learnerContinuity=true;
+
+                                                                                                                if(this.m5b3d1LearnerFaceAnchor&&currentAnchor){
+                                                                                                                  const dx=Math.abs(Number(currentAnchor.centerX)-Number(this.m5b3d1LearnerFaceAnchor.centerX));
+                                                                                                                  const dy=Math.abs(Number(currentAnchor.centerY)-Number(this.m5b3d1LearnerFaceAnchor.centerY));
+                                                                                                                  const scaleBase=Math.max(0.0001,Number(this.m5b3d1LearnerFaceAnchor.scale||0.0001));
+                                                                                                                  const scaleDelta=Math.abs(Number(currentAnchor.scale)-scaleBase)/scaleBase;
+                                                                                                                  learnerContinuity=
+                                                                                                                    dx<=Number(this.m5b3d1FaceCenterTolerance||0.24) &&
+                                                                                                                    dy<=Number(this.m5b3d1FaceCenterTolerance||0.24) &&
+                                                                                                                    scaleDelta<=Number(this.m5b3d1FaceScaleTolerance||0.55);
+                                                                                                                }
+
+                                                                                                                const learnerSpeakerSupported=
+                                                                                                                  faceVisible &&
+                                                                                                                  Boolean(this.m5b3d1FaceVisibleAtSpeechStart) &&
+                                                                                                                  mouthActivity &&
+                                                                                                                  Boolean(currentAnchor) &&
+                                                                                                                  learnerContinuity;
+
+                                                                                                                if(this.m5b3cInputRouterActive&&!learnerSpeakerSupported){
+                                                                                                                  console.log("NEXIVRA M5B-3D1 BACKGROUND/UNVERIFIED SPEECH REJECTED:",{
+                                                                                                                    text,
+                                                                                                                    faceVisible,
+                                                                                                                    faceVisibleAtSpeechStart:Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
+                                                                                                                    mouthActivity,
+                                                                                                                    learnerContinuity
+                                                                                                                  });
+                                                                                                                  this.m5b3dSpeechWindowMouthActivity=false;
+                                                                                                                  this.m5b3d1SpeechBeganDuringInstructor=false;
+                                                                                                                  continue;
+                                                                                                                }
+
+                                                                                                                if(this.m5b3cInputRouterActive&&!this.m5b3d1LearnerFaceAnchor&&currentAnchor){
+                                                                                                                  this.m5b3d1LearnerFaceAnchor={...currentAnchor};
+                                                                                                                  console.log("NEXIVRA M5B-3D1 SESSION LEARNER POSITION LOCKED:",this.m5b3d1LearnerFaceAnchor);
+                                                                                                                }
+
                                                                                                                 this.lastLearnerTranscript=text;
                                                                                                                 this.lastLearnerTranscriptAt=now;
-                                                                                                                if(this.m5b3cInputRouterActive)console.log("NEXIVRA M5B-3D LEARNER SPEAKER CONFIRMED:",text);
+                                                                                                                if(this.m5b3cInputRouterActive)console.log("NEXIVRA M5B-3D1 LEARNER SPEAKER CONFIRMED:",text);
                                                                                                                 this.m5b3dSpeechWindowMouthActivity=false;
+                                                                                                                this.m5b3d1SpeechBeganDuringInstructor=false;
                                                                                                                 console.log("NEXIVRA LEARNER TRANSCRIPT CAPTURED:",text);
+
+                                      const globalControlText=String(text||"").trim().toLowerCase();
+                                      if(!this.rolePlayActive){
+                                        if(/^(pause|pause session|hold on|just pause)$/.test(globalControlText)){
+                                          this.m5b3d1ManualPaused=true;
+                                          try{if(typeof this.session?.interrupt==="function")this.session.interrupt();}catch(error){}
+                                          this.setTrainingState("PAUSED_MANUAL");
+                                          this.setStatus("Session paused.");
+                                          console.log("NEXIVRA M5B-3D1 ROUTE: PAUSE → RUNTIME");
+                                          continue;
+                                        }
+                                        if(/^(resume|resume session|continue|continue session)$/.test(globalControlText)){
+                                          if(this.m5b3d1ManualPaused){
+                                            this.m5b3d1ManualPaused=false;
+                                            this.setTrainingState("ACTIVE");
+                                            this.setStatus("Session active.");
+                                            console.log("NEXIVRA M5B-3D1 ROUTE: RESUME → RUNTIME");
+                                            continue;
+                                          }
+                                        }
+                                        if(/^(end session|finish session|stop session|end the session)$/.test(globalControlText)){
+                                          console.log("NEXIVRA M5B-3D1 ROUTE: END SESSION → RUNTIME");
+                                          this.endSession();
+                                          return;
+                                        }
+                                        if(this.m5b3d1ManualPaused){
+                                          console.log("NEXIVRA M5B-3D1 INPUT IGNORED — SESSION MANUALLY PAUSED:",text);
+                                          continue;
+                                        }
+                                      }
+
                                       this.captureGuestIdentityFromConversation(text);
                                               const rolePlayControlText=String(text||"").trim().toLowerCase();
                                               const isRolePlayControl=
@@ -7054,6 +7134,11 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.m5b3dLastMouthRatio=0;
                                                                                                             this.m5b3dLastMouthActivityAtMs=0;
                                                                                                             this.m5b3dSpeechWindowMouthActivity=false;
+                                                                                                            this.m5b3d1SpeechBeganDuringInstructor=false;
+                                                                                                            this.m5b3d1FaceVisibleAtSpeechStart=false;
+                                                                                                            this.m5b3d1CurrentFaceAnchor=null;
+                                                                                                            this.m5b3d1LearnerFaceAnchor=null;
+                                                                                                            this.m5b3d1ManualPaused=false;
                                                                                                             console.log("NEXIVRA M5B-3C INPUT ROUTER STOPPED");
 
                                                                                                             try{
@@ -7460,6 +7545,25 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                             m.faceDetected =
                                                                                                               faceDetected;
+
+                                                                                                            if(
+                                                                                                              faceDetected &&
+                                                                                                              faceLandmarks?.[10] &&
+                                                                                                              faceLandmarks?.[152] &&
+                                                                                                              faceLandmarks?.[234] &&
+                                                                                                              faceLandmarks?.[454]
+                                                                                                            ){
+                                                                                                              const top=faceLandmarks[10],bottom=faceLandmarks[152],left=faceLandmarks[234],right=faceLandmarks[454];
+                                                                                                              const centerX=(Number(left.x)+Number(right.x))/2;
+                                                                                                              const centerY=(Number(top.y)+Number(bottom.y))/2;
+                                                                                                              const scale=Math.max(
+                                                                                                                0.0001,
+                                                                                                                Math.hypot(Number(right.x)-Number(left.x),Number(right.y)-Number(left.y))
+                                                                                                              );
+                                                                                                              this.m5b3d1CurrentFaceAnchor={centerX,centerY,scale,at:Date.now()};
+                                                                                                            }else{
+                                                                                                              this.m5b3d1CurrentFaceAnchor=null;
+                                                                                                            }
 
                                                                                                             // M5B-3D: correlate microphone speech with visible
                                                                                                             // mouth movement from the on-camera learner.
@@ -8765,6 +8869,11 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                           console.log(
                                                                                                                             "NEXIVRA LEARNER AUDIO: speaking started"
                                                                                                                           );
+                                                                                                                          this.m5b3d1SpeechBeganDuringInstructor=Boolean(this.avatarSpeaking);
+                                                                                                                          this.m5b3d1FaceVisibleAtSpeechStart=Boolean(this.metrics?.faceDetected);
+                                                                                                                          if(this.m5b3d1SpeechBeganDuringInstructor){
+                                                                                                                            console.log("NEXIVRA M5B-3D1 AUDIO WINDOW QUARANTINED — ELENORA OWNS FLOOR");
+                                                                                                                          }
                                                                                                                           this.m5b3dSpeechWindowMouthActivity=
                                                                                                                             Boolean(this.metrics?.faceDetected)&&
                                                                                                                             (Date.now()-Number(this.m5b3dLastMouthActivityAtMs||0)<=Number(this.m5b3dSpeakerGateGraceMs||700));
@@ -8787,10 +8896,16 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                             }
                                                                                                                           }
 
-                                                                                                                          if(!this.m5b3cInputRouterActive||this.m5b3dSpeechWindowMouthActivity){
+                                                                                                                          if(
+                                                                                                                            !this.m5b3cInputRouterActive ||
+                                                                                                                            (
+                                                                                                                              !this.avatarSpeaking &&
+                                                                                                                              this.m5b3dSpeechWindowMouthActivity
+                                                                                                                            )
+                                                                                                                          ){
                                                                                                                             this.startSpeechOverlapCandidate();
                                                                                                                           }else{
-                                                                                                                            console.log("NEXIVRA M5B-3D OVERLAP OBSERVATION SUPPRESSED — SPEAKER NOT CONFIRMED");
+                                                                                                                            console.log("NEXIVRA M5B-3D1 OVERLAP OBSERVATION SUPPRESSED — INSTRUCTOR FLOOR OR SPEAKER UNVERIFIED");
                                                                                                                           }
                                                                                                                         }
 
