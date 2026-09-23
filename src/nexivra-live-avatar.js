@@ -158,6 +158,10 @@
                                                             this.resumeSummaryTurnObserved = false;
                                                             this.resumeLockMessageSent = false;
                                                             this.resumeLockDeferred = false;
+                                                            // M5B-3G.1 — remembers that the learner has already
+                                                            // pressed Start during this startup cycle. A later
+                                                            // resume-summary completion may not re-arm the gate.
+                                                            this.m5b3g1LearnerStartLatched = false;
                                                             this.resumeSummaryArmed = false;
                                                             this.resumeSummarySpeechStarted = false;
 
@@ -427,13 +431,21 @@ The next instructor response must teach, practice, check understanding, or trans
 
             this.resumeContinuationState="RESUME_LOCKED";
             this.resumeSummaryTurnObserved=true;
-            this.resumeLockDeferred=true;
 
             console.log("NEXIVRA RESUME STATE TRANSITION:",{
               from:"SUMMARY_PENDING",
               to:"RESUME_LOCKED"
             });
 
+            if(this.m5b3g1LearnerStartLatched===true || this.sessionActive===true){
+              this.resumeLockDeferred=false;
+              console.log(
+                "NEXIVRA M5B-3G1 RESUME GATE NOT RE-ARMED — LEARNER START ALREADY CONFIRMED"
+              );
+              return true;
+            }
+
+            this.resumeLockDeferred=true;
             console.log(
               "NEXIVRA RESUME INTERACTION GATE ARMED — WAITING FOR START SESSION"
             );
@@ -651,7 +663,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3G-CLEAN-CONSECUTIVE-ROLEPLAY"
+                                                                                                              "PACKAGE3-M5B3G1-STARTUP-GATE-LATCH"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -7249,6 +7261,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 true;
                                                                                                               this.m5b3e1AwaitingManualRestart=false;
                                                                                                               this.m5b3e1PreparedRestartToken=null;
+                                                                                                              this.m5b3g1LearnerStartLatched=true;
+                                                                                                              console.log("NEXIVRA M5B-3G1 LEARNER START LATCHED — RESUME GATE CANNOT RE-ARM");
 
                                                                                                               if (
                                                                                                                 this.resumeLockDeferred === true
@@ -7525,6 +7539,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.sessionStartupStage="idle";
                                                                                                             this.m5b3e1AwaitingManualRestart=true;
                                                                                                             this.m5b3e1PreparedRestartToken=null;
+                                                                                                            this.m5b3g1LearnerStartLatched=false;
                                                                                                             this.m5b3e2WarmStandbyActive=false;
                                                                                                             this.m5b3e2WarmStandbyPromise=null;
                                                                                                             this.m5b3e3SilentStandbyLock=false;
