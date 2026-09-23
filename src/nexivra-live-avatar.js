@@ -663,7 +663,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3G1-STARTUP-GATE-LATCH"
+                                                                                                              "PACKAGE3-M5B3K-CENTIER-DEMO-CLEANUP"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -1825,9 +1825,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                             this.m5b2hSetupRequested=true;
                                                                             this.m5b2hSetupSpeaking=false;
                                                                             const setup=String(this.m5b2fPendingScenario?.learnerFacingSetup||
-                                                                              "You are working at the hotel front desk. A guest you have not met before is approaching with a service concern. Welcome him and handle the situation naturally."
+                                                                              "You are a Centier associate. A client is approaching with a banking service need. Welcome the client, understand what they need, and handle the interaction naturally."
                                                                             ).trim();
-                                                                            const spoken=`All right, let's do a hotel front-desk role-play. ${setup} Ready? Here comes the guest.`;
+                                                                            const spoken=`All right, let's do a Centier banking role-play. ${setup} Ready? Here comes the client.`;
                                                                             console.log("NEXIVRA M5B-2H ELENORA SETUP DISPATCHED");
                                                                             try{
                                                                               if(typeof this.session?.repeat==="function"){
@@ -1857,7 +1857,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                             }
                                                                             this.avatarSpeaking=false;
                                                                             this.beginAdaptiveRolePlay(scenario);
-                                                                            const opening=String(scenario?.openingLine||"Hi. The air conditioning in my room stopped cooling this morning. I was hoping you could help me get it taken care of.").trim();
+                                                                            const opening=String(scenario?.openingLine||"Hi. I was hoping you could help me with a banking question.").trim();
                                                                             if(opening&&!this.m5b2fPedroOpeningDelivered){
                                                                               this.m5b2fPedroOpeningDelivered=true;
                                                                               this.queuePedroGuestResponse(opening,{clientCapturedAtMs:Date.now()});
@@ -1933,7 +1933,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                         ${scenario.situation || "The guest needs assistance."}
 
                                                                         HIDDEN DEVELOPMENT TARGET:
-                                                                        ${scenario.targetCompetencyName || "general hospitality application"}
+                                                                        ${scenario.targetCompetencyName || "general Centier client experience application"}
 
                                                                         RELATIONSHIP MEMORY:
                                                                         ${JSON.stringify(scenario.relationshipMemory || {})}
@@ -5934,7 +5934,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                       this.completeAdaptiveRolePlay({
                                                                                                                         outcome:"completed",
                                                                                                                         needsAnotherAttempt:false,
-                                                                                                                        outcomeSummary:"Hotel guest interaction reached an explicit natural close.",
+                                                                                                                        outcomeSummary:"Centier banking client interaction reached an explicit natural close.",
                                                                                                                         guestOutcome:"Pedro confirmed he did not need anything else."
                                                                                                                       });
                                                                                                                       return;
@@ -6647,10 +6647,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               /^(?:what|where|when|why|who|whose|which|how|do|does|did|is|are|was|were|can|could|would|will|have|has|had|may|might|should)\b/i.test(normalized) &&
                                                                                                               wordCount>=3;
 
-                                                                                                            // Common hospitality questions that may begin with a name
+                                                                                                            // Common client-service questions that may begin with a name
                                                                                                             // or acknowledgment before the interrogative.
                                                                                                             const embeddedQuestion=
-                                                                                                              /\b(?:what|where|when|why|who|which|how)\b.*\b(?:you|your|room|name|stay|issue|problem|need|prefer|like)\b/i.test(normalized);
+                                                                                                              /\b(?:what|where|when|why|who|which|how)\b.*\b(?:you|your|name|account|transaction|fee|rate|issue|problem|need|prefer|like)\b/i.test(normalized);
 
                                                                                                             // Complete action/ownership statements are allowed to be
                                                                                                             // reasonably fast, but not as aggressively as direct questions.
