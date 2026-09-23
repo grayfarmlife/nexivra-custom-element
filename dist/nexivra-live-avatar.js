@@ -30124,6 +30124,13 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b3dMouthOpenThreshold = 0.018;
     this.m5b3dMouthDeltaThreshold = 45e-4;
     this.m5b3dSpeakerGateGraceMs = 700;
+    this.m5b3d1SpeechBeganDuringInstructor = false;
+    this.m5b3d1FaceVisibleAtSpeechStart = false;
+    this.m5b3d1CurrentFaceAnchor = null;
+    this.m5b3d1LearnerFaceAnchor = null;
+    this.m5b3d1FaceCenterTolerance = 0.24;
+    this.m5b3d1FaceScaleTolerance = 0.55;
+    this.m5b3d1ManualPaused = false;
     this.m5b2HardShutdownActive = false;
     this.subjectId = null;
     this.lessonId = null;
@@ -30522,7 +30529,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3D-LEARNER-SPEAKER-GATE"
+      "PACKAGE3-M5B3D1-FLOOR-LEARNER-LOCK-CONTROLS"
     );
     this.render();
     this.bindControls();
@@ -34531,6 +34538,7 @@ ${tail}`;
             console.log(
               "NEXIVRA SPEECH EVENT: avatar started speaking"
             );
+            this.m5b3d1SpeechBeganDuringInstructor = false;
             if (this.m5b2fRolePlayPreparing && this.m5b2hSetupRequested) {
               this.m5b2fSetupSpeechStarted = true;
               this.m5b2hSetupSpeaking = true;
@@ -35129,23 +35137,78 @@ ${tail}`;
           }
           const now = Date.now();
           if (text === this.lastLearnerTranscript && now - this.lastLearnerTranscriptAt < 5e3) continue;
+          if (this.m5b3cInputRouterActive && this.m5b3d1SpeechBeganDuringInstructor) {
+            console.log("NEXIVRA M5B-3D1 TRANSCRIPT DISCARDED \u2014 AUDIO BEGAN WHILE ELENORA OWNED FLOOR:", text);
+            this.m5b3dSpeechWindowMouthActivity = false;
+            this.m5b3d1SpeechBeganDuringInstructor = false;
+            continue;
+          }
           const faceVisible = Boolean(this.metrics?.faceDetected);
-          const recentMouthActivity = now - Number(this.m5b3dLastMouthActivityAtMs || 0) <= Number(this.m5b3dSpeakerGateGraceMs || 700);
-          const learnerSpeakerSupported = faceVisible && Boolean(this.m5b3dSpeechWindowMouthActivity || recentMouthActivity);
+          const mouthActivity = Boolean(this.m5b3dSpeechWindowMouthActivity);
+          const currentAnchor = this.m5b3d1CurrentFaceAnchor;
+          let learnerContinuity = true;
+          if (this.m5b3d1LearnerFaceAnchor && currentAnchor) {
+            const dx = Math.abs(Number(currentAnchor.centerX) - Number(this.m5b3d1LearnerFaceAnchor.centerX));
+            const dy = Math.abs(Number(currentAnchor.centerY) - Number(this.m5b3d1LearnerFaceAnchor.centerY));
+            const scaleBase = Math.max(1e-4, Number(this.m5b3d1LearnerFaceAnchor.scale || 1e-4));
+            const scaleDelta = Math.abs(Number(currentAnchor.scale) - scaleBase) / scaleBase;
+            learnerContinuity = dx <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && dy <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && scaleDelta <= Number(this.m5b3d1FaceScaleTolerance || 0.55);
+          }
+          const learnerSpeakerSupported = faceVisible && Boolean(this.m5b3d1FaceVisibleAtSpeechStart) && mouthActivity && Boolean(currentAnchor) && learnerContinuity;
           if (this.m5b3cInputRouterActive && !learnerSpeakerSupported) {
-            console.log("NEXIVRA M5B-3D BACKGROUND SPEECH REJECTED:", {
+            console.log("NEXIVRA M5B-3D1 BACKGROUND/UNVERIFIED SPEECH REJECTED:", {
               text,
               faceVisible,
-              mouthActivity: Boolean(this.m5b3dSpeechWindowMouthActivity || recentMouthActivity)
+              faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
+              mouthActivity,
+              learnerContinuity
             });
             this.m5b3dSpeechWindowMouthActivity = false;
+            this.m5b3d1SpeechBeganDuringInstructor = false;
             continue;
+          }
+          if (this.m5b3cInputRouterActive && !this.m5b3d1LearnerFaceAnchor && currentAnchor) {
+            this.m5b3d1LearnerFaceAnchor = { ...currentAnchor };
+            console.log("NEXIVRA M5B-3D1 SESSION LEARNER POSITION LOCKED:", this.m5b3d1LearnerFaceAnchor);
           }
           this.lastLearnerTranscript = text;
           this.lastLearnerTranscriptAt = now;
-          if (this.m5b3cInputRouterActive) console.log("NEXIVRA M5B-3D LEARNER SPEAKER CONFIRMED:", text);
+          if (this.m5b3cInputRouterActive) console.log("NEXIVRA M5B-3D1 LEARNER SPEAKER CONFIRMED:", text);
           this.m5b3dSpeechWindowMouthActivity = false;
+          this.m5b3d1SpeechBeganDuringInstructor = false;
           console.log("NEXIVRA LEARNER TRANSCRIPT CAPTURED:", text);
+          const globalControlText = String(text || "").trim().toLowerCase();
+          if (!this.rolePlayActive) {
+            if (/^(pause|pause session|hold on|just pause)$/.test(globalControlText)) {
+              this.m5b3d1ManualPaused = true;
+              try {
+                if (typeof this.session?.interrupt === "function") this.session.interrupt();
+              } catch (error) {
+              }
+              this.setTrainingState("PAUSED_MANUAL");
+              this.setStatus("Session paused.");
+              console.log("NEXIVRA M5B-3D1 ROUTE: PAUSE \u2192 RUNTIME");
+              continue;
+            }
+            if (/^(resume|resume session|continue|continue session)$/.test(globalControlText)) {
+              if (this.m5b3d1ManualPaused) {
+                this.m5b3d1ManualPaused = false;
+                this.setTrainingState("ACTIVE");
+                this.setStatus("Session active.");
+                console.log("NEXIVRA M5B-3D1 ROUTE: RESUME \u2192 RUNTIME");
+                continue;
+              }
+            }
+            if (/^(end session|finish session|stop session|end the session)$/.test(globalControlText)) {
+              console.log("NEXIVRA M5B-3D1 ROUTE: END SESSION \u2192 RUNTIME");
+              this.endSession();
+              return;
+            }
+            if (this.m5b3d1ManualPaused) {
+              console.log("NEXIVRA M5B-3D1 INPUT IGNORED \u2014 SESSION MANUALLY PAUSED:", text);
+              continue;
+            }
+          }
           this.captureGuestIdentityFromConversation(text);
           const rolePlayControlText = String(text || "").trim().toLowerCase();
           const isRolePlayControl = /^(pause|just pause|pause role[- ]?play|pause the role[- ]?play|resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText) || /\b(restart|repeat|start over|do over|redo|end|finish|complete|cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText);
@@ -35524,6 +35587,11 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     this.m5b3dLastMouthRatio = 0;
     this.m5b3dLastMouthActivityAtMs = 0;
     this.m5b3dSpeechWindowMouthActivity = false;
+    this.m5b3d1SpeechBeganDuringInstructor = false;
+    this.m5b3d1FaceVisibleAtSpeechStart = false;
+    this.m5b3d1CurrentFaceAnchor = null;
+    this.m5b3d1LearnerFaceAnchor = null;
+    this.m5b3d1ManualPaused = false;
     console.log("NEXIVRA M5B-3C INPUT ROUTER STOPPED");
     try {
       if (this.guestSession?.voiceChat && typeof this.guestSession.voiceChat.stop === "function") {
@@ -35764,6 +35832,18 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
       faceLandmarks && faceLandmarks.length
     );
     m3.faceDetected = faceDetected;
+    if (faceDetected && faceLandmarks?.[10] && faceLandmarks?.[152] && faceLandmarks?.[234] && faceLandmarks?.[454]) {
+      const top = faceLandmarks[10], bottom = faceLandmarks[152], left = faceLandmarks[234], right = faceLandmarks[454];
+      const centerX = (Number(left.x) + Number(right.x)) / 2;
+      const centerY = (Number(top.y) + Number(bottom.y)) / 2;
+      const scale = Math.max(
+        1e-4,
+        Math.hypot(Number(right.x) - Number(left.x), Number(right.y) - Number(left.y))
+      );
+      this.m5b3d1CurrentFaceAnchor = { centerX, centerY, scale, at: Date.now() };
+    } else {
+      this.m5b3d1CurrentFaceAnchor = null;
+    }
     if (faceDetected && faceLandmarks?.[10] && faceLandmarks?.[152] && faceLandmarks?.[13] && faceLandmarks?.[14]) {
       const faceHeight = Math.max(1e-4, Math.abs(Number(faceLandmarks[152].y) - Number(faceLandmarks[10].y)));
       const lipGap = Math.abs(Number(faceLandmarks[14].y) - Number(faceLandmarks[13].y));
@@ -36339,6 +36419,11 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                 console.log(
                   "NEXIVRA LEARNER AUDIO: speaking started"
                 );
+                this.m5b3d1SpeechBeganDuringInstructor = Boolean(this.avatarSpeaking);
+                this.m5b3d1FaceVisibleAtSpeechStart = Boolean(this.metrics?.faceDetected);
+                if (this.m5b3d1SpeechBeganDuringInstructor) {
+                  console.log("NEXIVRA M5B-3D1 AUDIO WINDOW QUARANTINED \u2014 ELENORA OWNS FLOOR");
+                }
                 this.m5b3dSpeechWindowMouthActivity = Boolean(this.metrics?.faceDetected) && Date.now() - Number(this.m5b3dLastMouthActivityAtMs || 0) <= Number(this.m5b3dSpeakerGateGraceMs || 700);
                 if (this.rolePlayActive) {
                   this.cancelM5B2JLearnerTurnTimer();
@@ -36355,10 +36440,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                     });
                   }
                 }
-                if (!this.m5b3cInputRouterActive || this.m5b3dSpeechWindowMouthActivity) {
+                if (!this.m5b3cInputRouterActive || !this.avatarSpeaking && this.m5b3dSpeechWindowMouthActivity) {
                   this.startSpeechOverlapCandidate();
                 } else {
-                  console.log("NEXIVRA M5B-3D OVERLAP OBSERVATION SUPPRESSED \u2014 SPEAKER NOT CONFIRMED");
+                  console.log("NEXIVRA M5B-3D1 OVERLAP OBSERVATION SUPPRESSED \u2014 INSTRUCTOR FLOOR OR SPEAKER UNVERIFIED");
                 }
               }
             } else {
