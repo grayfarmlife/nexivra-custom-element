@@ -52,6 +52,10 @@
                                                                                                             this.guestAttachTimer = null;
                                                                                                             this.guestAutoStopTimer = null;
                                                                                                             this.guestInfrastructureReady = false;
+                                                                                                            this.m5b3gGuestNeedsFreshToken = false;
+                                                                                                            this.m5b3gGuestTokenGeneration = 0;
+                                                                                                            this.m5b3gGuestStartPromise = null;
+                                                                                                            this.m5b3gGuestStopPromise = null;
 
                                                                                                             // Package 3 M5B-2 — real multi-avatar stage handoff.
                                                                                                             this.m5b2RolePlayStageActive = false;
@@ -647,7 +651,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3E5-DORMANT-PREPARED-RESTART"
+                                                                                                              "PACKAGE3-M5B3G-CLEAN-CONSECUTIVE-ROLEPLAY"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -767,7 +771,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             }
 
                                                                                                             if (name === "guest-session-token") {
+                                                                                                              const previousGuestToken=this.guestSessionToken;
                                                                                                               this.guestSessionToken = newValue;
+                                                                                                              if(newValue && newValue!==previousGuestToken){
+                                                                                                                this.m5b3gGuestNeedsFreshToken=false;
+                                                                                                                this.m5b3gGuestTokenGeneration+=1;
+                                                                                                                console.log("NEXIVRA M5B-3G FRESH GUEST TOKEN ACCEPTED:",{generation:this.m5b3gGuestTokenGeneration,rolePlayActive:this.rolePlayActive});
+                                                                                                              }
                                                                                                               console.log(
                                                                                                                 "NEXIVRA M5B-2 GUEST TOKEN STAGED:",
                                                                                                                 {
@@ -5840,7 +5850,19 @@ The next instructor response must teach, practice, check understanding, or trans
 
 
                                                                                                           async startGuestInfrastructureTest() {
-                                                                                                            if (!this.guestSessionToken) return;
+                                                                                                            if(this.m5b3gGuestNeedsFreshToken || !this.guestSessionToken){
+                                                                                                              console.log("NEXIVRA M5B-3G PEDRO START WAITING — FRESH GUEST TOKEN REQUIRED");
+                                                                                                              return;
+                                                                                                            }
+                                                                                                            if(this.m5b3gGuestStopPromise){
+                                                                                                              console.log("NEXIVRA M5B-3G PEDRO START WAITING — PREVIOUS GUEST STOP STILL SETTLING");
+                                                                                                              try{await this.m5b3gGuestStopPromise;}catch(error){}
+                                                                                                              if(this.m5b3gGuestNeedsFreshToken || !this.guestSessionToken)return;
+                                                                                                            }
+                                                                                                            if(this.m5b3gGuestStartPromise){
+                                                                                                              console.log("NEXIVRA M5B-3G PEDRO START SINGLE-FLIGHT — EXISTING START REUSED");
+                                                                                                              return this.m5b3gGuestStartPromise;
+                                                                                                            }
 
                                                                                                             if (this.guestSession) {
                                                                                                               // Token may be re-delivered by Wix; never create
@@ -5911,7 +5933,15 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               } catch(error) {
                                                                                                                 console.warn("NEXIVRA M5B-2J PEDRO SPEECH EVENT BIND WARNING:",error);
                                                                                                               }
-                                                                                                              await this.guestSession.start();
+                                                                                                              const guestStartPromise=this.guestSession.start();
+                                                                                                              this.m5b3gGuestStartPromise=guestStartPromise;
+                                                                                                              try{
+                                                                                                                await guestStartPromise;
+                                                                                                              }finally{
+                                                                                                                if(this.m5b3gGuestStartPromise===guestStartPromise){
+                                                                                                                  this.m5b3gGuestStartPromise=null;
+                                                                                                                }
+                                                                                                              }
 
                                                                                                               // M5B-2D: Pedro is FULL mode for supported speech delivery,
                                                                                                               // but NEXIVRA owns the guest brain. Disable autonomous
@@ -6033,79 +6063,78 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               }, 500);
                                                                                                             } catch (error) {
                                                                                                               console.error("NEXIVRA M5B GUEST AVATAR START ERROR:", error);
+                                                                                                              this.m5b3gGuestNeedsFreshToken=true;
                                                                                                               await this.stopGuestInfrastructureTest("start_error");
                                                                                                             }
                                                                                                           }
 
                                                                                                           async stopGuestInfrastructureTest(reason = "manual") {
-                                                                                                            if (this.guestAutoStopTimer) {
-                                                                                                              clearTimeout(this.guestAutoStopTimer);
-                                                                                                              this.guestAutoStopTimer = null;
+                                                                                                            if(this.m5b3gGuestStopPromise){
+                                                                                                              console.log("NEXIVRA M5B-3G GUEST STOP SINGLE-FLIGHT — EXISTING STOP REUSED:",reason);
+                                                                                                              return this.m5b3gGuestStopPromise;
                                                                                                             }
-                                                                                                            if (this.guestAttachTimer) {
-                                                                                                              clearInterval(this.guestAttachTimer);
-                                                                                                              this.guestAttachTimer = null;
-                                                                                                            }
+                                                                                                            const stopPromise=(async()=>{
+                                                                                                              if (this.guestAutoStopTimer) { clearTimeout(this.guestAutoStopTimer); this.guestAutoStopTimer = null; }
+                                                                                                              if (this.guestAttachTimer) { clearInterval(this.guestAttachTimer); this.guestAttachTimer = null; }
 
-                                                                                                            const panel = this.shadowRoot.getElementById("guestInfraPanel");
-                                                                                                            const video = this.shadowRoot.getElementById("guestAvatarVideo");
+                                                                                                              const panel=this.shadowRoot.getElementById("guestInfraPanel");
+                                                                                                              const video=this.shadowRoot.getElementById("guestAvatarVideo");
+                                                                                                              const retiringSession=this.guestSession;
+                                                                                                              const retiringToken=this.guestSessionToken;
 
-                                                                                                            console.log("NEXIVRA M5B GUEST AVATAR STOP START:", reason);
+                                                                                                              console.log("NEXIVRA M5B GUEST AVATAR STOP START:",reason);
+                                                                                                              this.guestSession=null;
+                                                                                                              this.guestInfrastructureReady=false;
 
-                                                                                                            try {
-                                                                                                              if (
-                                                                                                                this.guestSession?.voiceChat &&
-                                                                                                                typeof this.guestSession.voiceChat.stop === "function"
-                                                                                                              ) {
-                                                                                                                await this.guestSession.voiceChat.stop();
+                                                                                                              try{
+                                                                                                                if(retiringSession?.voiceChat&&typeof retiringSession.voiceChat.stop==="function"){
+                                                                                                                  await retiringSession.voiceChat.stop();
+                                                                                                                }
+                                                                                                              }catch(error){
+                                                                                                                console.warn("NEXIVRA M5B-2D PEDRO VOICE STOP WARNING:",error);
                                                                                                               }
-                                                                                                            } catch (error) {
-                                                                                                              console.warn(
-                                                                                                                "NEXIVRA M5B-2D PEDRO VOICE STOP WARNING:",
-                                                                                                                error
-                                                                                                              );
-                                                                                                            }
-
-                                                                                                            try {
-                                                                                                              if (this.guestSession?.stop) {
-                                                                                                                await this.guestSession.stop();
+                                                                                                              try{
+                                                                                                                if(retiringSession?.stop)await retiringSession.stop();
+                                                                                                              }catch(error){
+                                                                                                                console.warn("NEXIVRA M5B GUEST SESSION STOP WARNING:",error);
                                                                                                               }
-                                                                                                            } catch (error) {
-                                                                                                              console.warn("NEXIVRA M5B GUEST SESSION STOP WARNING:", error);
-                                                                                                            }
+                                                                                                              try{
+                                                                                                                const stream=video?.srcObject;
+                                                                                                                stream?.getTracks?.().forEach(track=>{try{track.enabled=false;track.stop();}catch(error){}});
+                                                                                                                if(video)video.srcObject=null;
+                                                                                                              }catch(error){}
 
-                                                                                                            try {
-                                                                                                              const stream = video?.srcObject;
-                                                                                                              stream?.getTracks?.().forEach(track => {
-                                                                                                                try {
-                                                                                                                  track.enabled = false;
-                                                                                                                  track.stop();
-                                                                                                                } catch (error) {}
+                                                                                                              if(panel)panel.style.display="none";
+                                                                                                              if(retiringToken&&this.guestSessionToken===retiringToken)this.guestSessionToken=null;
+                                                                                                              this.m5b3gGuestNeedsFreshToken=true;
+
+                                                                                                              console.log("NEXIVRA M5B-3G GUEST TOKEN RETIRED — FRESH TOKEN REQUIRED BEFORE NEXT ROLE PLAY:",{
+                                                                                                                reason,
+                                                                                                                hadRetiringToken:Boolean(retiringToken)
                                                                                                               });
-                                                                                                              if (video) video.srcObject = null;
-                                                                                                            } catch (error) {}
+                                                                                                              console.log("NEXIVRA M5B GUEST MEDIA RELEASED:",reason);
+                                                                                                              console.log("NEXIVRA M5B ELENORA SESSION STILL HEALTHY:",{
+                                                                                                                sessionExists:Boolean(this.session),
+                                                                                                                instructorTracks:this.shadowRoot.getElementById("avatarVideo")?.srcObject?.getTracks?.().length||0
+                                                                                                              });
 
-                                                                                                            if (panel) panel.style.display = "none";
-                                                                                                            this.guestSession = null;
-                                                                                                            this.guestInfrastructureReady = false;
-
-                                                                                                            console.log("NEXIVRA M5B GUEST MEDIA RELEASED:", reason);
-                                                                                                            console.log("NEXIVRA M5B ELENORA SESSION STILL HEALTHY:", {
-                                                                                                              sessionExists: Boolean(this.session),
-                                                                                                              instructorTracks:
-                                                                                                                this.shadowRoot
-                                                                                                                  .getElementById("avatarVideo")
-                                                                                                                  ?.srcObject?.getTracks?.().length || 0
-                                                                                                            });
-
-                                                                                                            this.dispatchRuntimeEvent(
-                                                                                                              "nexivra-m5b-guest-infrastructure-stopped",
-                                                                                                              {
-                                                                                                                sessionId: this.runtimeSessionId,
-                                                                                                                avatarId: this.guestAvatarId,
+                                                                                                              this.dispatchRuntimeEvent("nexivra-m5b-guest-infrastructure-stopped",{
+                                                                                                                sessionId:this.runtimeSessionId,
+                                                                                                                avatarId:this.guestAvatarId,
                                                                                                                 reason
-                                                                                                              }
-                                                                                                            );
+                                                                                                              });
+                                                                                                              this.dispatchRuntimeEvent("nexivra-m5b3g-refresh-guest-token",{
+                                                                                                                sessionId:this.runtimeSessionId,
+                                                                                                                reason,
+                                                                                                                previousGeneration:this.m5b3gGuestTokenGeneration
+                                                                                                              });
+                                                                                                            })();
+                                                                                                            this.m5b3gGuestStopPromise=stopPromise;
+                                                                                                            try{
+                                                                                                              await stopPromise;
+                                                                                                            }finally{
+                                                                                                              if(this.m5b3gGuestStopPromise===stopPromise)this.m5b3gGuestStopPromise=null;
+                                                                                                            }
                                                                                                           }
 
 
