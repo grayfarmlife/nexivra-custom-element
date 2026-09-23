@@ -117,6 +117,10 @@
                                                                                                             this.m5b3d1FaceCenterTolerance = 0.24;
                                                                                                             this.m5b3d1FaceScaleTolerance = 0.55;
                                                                                                             this.m5b3d1ManualPaused = false;
+                                                                                                            // M5B-3E.1 — after End Session, fresh tokens are staged
+                                                                                                            // but only the Start Session button may activate them.
+                                                                                                            this.m5b3e1AwaitingManualRestart = false;
+                                                                                                            this.m5b3e1PreparedRestartToken = null;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -632,7 +636,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3E-FAST-EVALUATION-RESTART-LIFECYCLE"
+                                                                                                              "PACKAGE3-M5B3E1-SINGLE-OWNER-RESTART"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -785,6 +789,19 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 previousToken !== newValue
                                                                                                               ) {
 
+                                                                                                                if(this.m5b3e1AwaitingManualRestart){
+                                                                                                                  this.sessionToken=newValue;
+                                                                                                                  this.m5b3e1PreparedRestartToken=newValue;
+                                                                                                                  this.runtimeLifecycleState="IDLE";
+                                                                                                                  this.runtimeLifecycleToken=null;
+                                                                                                                  this.runtimeStartPromise=null;
+                                                                                                                  this.avatarStarted=false;
+                                                                                                                  this.session=null;
+                                                                                                                  this.setStatus("Session ended. Ready to start again.");
+                                                                                                                  console.log("NEXIVRA M5B-3E1 FRESH INSTRUCTOR TOKEN STAGED — WAITING FOR START SESSION");
+                                                                                                                  return;
+                                                                                                                }
+
                                                                                                                 if (
                                                                                                                   this.runtimeLifecycleState === "STARTING" ||
                                                                                                                   this.runtimeLifecycleState === "ACTIVE"
@@ -805,20 +822,11 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 this.resetLiveAvatarRuntime()
                                                                                                                   .then(() => {
                                                                                                                     this.hardReleaseLocalMedia("runtime_reset");
-
-                                                                                                                    this.sessionToken =
-                                                                                                                      newValue;
-
+                                                                                                                    this.sessionToken=newValue;
                                                                                                                     this.startNexivra();
-
                                                                                                                   })
                                                                                                                   .catch(error => {
-
-                                                                                                                    console.error(
-                                                                                                                      "NEXIVRA TOKEN RESET ERROR:",
-                                                                                                                      error
-                                                                                                                    );
-
+                                                                                                                    console.error("NEXIVRA TOKEN RESET ERROR:",error);
                                                                                                                   });
 
                                                                                                                 return;
@@ -827,6 +835,13 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               if (this.isConnected) {
 
                                                                                                                 this.showUnifiedTraining();
+
+                                                                                                                if(this.m5b3e1AwaitingManualRestart){
+                                                                                                                  this.m5b3e1PreparedRestartToken=newValue;
+                                                                                                                  this.setStatus("Session ended. Ready to start again.");
+                                                                                                                  console.log("NEXIVRA M5B-3E1 TOKEN STAGED — AUTO START SUPPRESSED");
+                                                                                                                  return;
+                                                                                                                }
 
                                                                                                                 this.setStatus(
                                                                                                                   "Connecting NEXIVRA Live Instructor..."
@@ -6884,11 +6899,31 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                             if (!this.session) {
 
-                                                                                                              this.setStatus(
-                                                                                                                "Please wait for NEXIVRA to connect."
-                                                                                                              );
+                                                                                                              if(
+                                                                                                                this.m5b3e1AwaitingManualRestart &&
+                                                                                                                (this.m5b3e1PreparedRestartToken||this.sessionToken)
+                                                                                                              ){
+                                                                                                                try{
+                                                                                                                  this.sessionToken=this.m5b3e1PreparedRestartToken||this.sessionToken;
+                                                                                                                  this.m5b3e1AwaitingManualRestart=false;
+                                                                                                                  this.m5b3e1PreparedRestartToken=null;
+                                                                                                                  this.setStatus("Reconnecting NEXIVRA Live Instructor...");
+                                                                                                                  console.log("NEXIVRA M5B-3E1 MANUAL RESTART ACTIVATED");
+                                                                                                                  await this.startNexivra();
+                                                                                                                }catch(error){
+                                                                                                                  this.m5b3e1AwaitingManualRestart=true;
+                                                                                                                  console.error("NEXIVRA M5B-3E1 MANUAL RESTART ERROR:",error);
+                                                                                                                  this.setStatus(`RESTART ERROR: ${error?.message||String(error)}`);
+                                                                                                                  return;
+                                                                                                                }
+                                                                                                              }
 
-                                                                                                              return;
+                                                                                                              if(!this.session){
+                                                                                                                this.setStatus(
+                                                                                                                  "Please wait for NEXIVRA to connect."
+                                                                                                                );
+                                                                                                                return;
+                                                                                                              }
                                                                                                             }
 
 
@@ -7038,6 +7073,8 @@ The next instructor response must teach, practice, check understanding, or trans
 
                                                                                                               this.sessionActive =
                                                                                                                 true;
+                                                                                                              this.m5b3e1AwaitingManualRestart=false;
+                                                                                                              this.m5b3e1PreparedRestartToken=null;
 
                                                                                                               if (
                                                                                                                 this.resumeLockDeferred === true
@@ -7312,7 +7349,9 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.runtimeContextInjected=false;
                                                                                                             this.runtimeContextInjectionPending=false;
                                                                                                             this.sessionStartupStage="idle";
-                                                                                                            console.log("NEXIVRA M5B-3E RUNTIME RESET FOR RESTART");
+                                                                                                            this.m5b3e1AwaitingManualRestart=true;
+                                                                                                            this.m5b3e1PreparedRestartToken=null;
+                                                                                                            console.log("NEXIVRA M5B-3E1 RUNTIME RESET — WAITING FOR MANUAL START");
 
                                                                                                             console.log("NEXIVRA M5B-2D HARD SHUTDOWN COMPLETE:",{
                                                                                                               reason,
