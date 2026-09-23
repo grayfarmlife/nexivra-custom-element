@@ -30544,7 +30544,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3E4-AUDIO-GUARD-RESTART-DEDUPE"
+      "PACKAGE3-M5B3E5-DORMANT-PREPARED-RESTART"
     );
     this.render();
     this.bindControls();
@@ -30656,11 +30656,11 @@ ${tail}`;
           this.runtimeStartPromise = null;
           this.avatarStarted = false;
           this.session = null;
-          this.setStatus("Preparing next session...");
-          console.log("NEXIVRA M5B-3E2 FRESH INSTRUCTOR TOKEN STAGED \u2014 PREWARMING SILENTLY");
-          this.prepareM5B3E2WarmStandby().then(() => {
-            console.log("NEXIVRA M5B-3E2 RESTART PREWARM COMPLETE");
-          }).catch((error) => console.error("NEXIVRA M5B-3E2 RESTART PREWARM ERROR:", error));
+          this.m5b3e2WarmStandbyActive = false;
+          this.m5b3e2WarmStandbyPromise = null;
+          this.m5b3e3SilentStandbyLock = false;
+          this.setStatus("Session ended. Ready to start again.");
+          console.log("NEXIVRA M5B-3E5 FRESH INSTRUCTOR TOKEN STAGED \u2014 LIVEAVATAR DORMANT UNTIL START SESSION");
           return;
         }
         if (this.runtimeLifecycleState === "STARTING" || this.runtimeLifecycleState === "ACTIVE") {
@@ -30687,9 +30687,11 @@ ${tail}`;
         this.showUnifiedTraining();
         if (this.m5b3e1AwaitingManualRestart) {
           this.m5b3e1PreparedRestartToken = newValue;
-          this.setStatus("Preparing next session...");
-          console.log("NEXIVRA M5B-3E2 TOKEN STAGED \u2014 SILENT PREWARM REQUESTED");
-          this.prepareM5B3E2WarmStandby().catch((error) => console.error("NEXIVRA M5B-3E2 RESTART PREWARM ERROR:", error));
+          this.m5b3e2WarmStandbyActive = false;
+          this.m5b3e2WarmStandbyPromise = null;
+          this.m5b3e3SilentStandbyLock = false;
+          this.setStatus("Session ended. Ready to start again.");
+          console.log("NEXIVRA M5B-3E5 TOKEN STAGED \u2014 LIVEAVATAR DORMANT UNTIL START SESSION");
           return;
         }
         this.setStatus(
@@ -35608,7 +35610,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
             this.m5b3e1AwaitingManualRestart = false;
             this.m5b3e1PreparedRestartToken = null;
             this.setStatus("Reconnecting NEXIVRA Live Instructor...");
-            console.log("NEXIVRA M5B-3E1 MANUAL RESTART ACTIVATED");
+            console.log("NEXIVRA M5B-3E5 START SESSION ACTIVATING DORMANT PREPARED TOKEN");
             await this.startNexivra();
           }
         } catch (error) {
@@ -35889,6 +35891,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     this.m5b3e2WarmStandbyActive = false;
     this.m5b3e2WarmStandbyPromise = null;
     this.m5b3e3SilentStandbyLock = false;
+    console.log("NEXIVRA M5B-3E5 RUNTIME RESET \u2014 DORMANT RESTART REQUIRED");
     console.log("NEXIVRA M5B-3E1 RUNTIME RESET \u2014 WAITING FOR MANUAL START");
     console.log("NEXIVRA M5B-2D HARD SHUTDOWN COMPLETE:", {
       reason,
