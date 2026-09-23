@@ -125,6 +125,7 @@
                                                                                                             // standby after End Session. Learner media/router remain off.
                                                                                                             this.m5b3e2WarmStandbyActive = false;
                                                                                                             this.m5b3e2WarmStandbyPromise = null;
+                                                                                                            this.m5b3e3SilentStandbyLock = false;
                                                                                                             this.m5b2HardShutdownActive = false;
 
                                                                                                             this.subjectId = null;
@@ -565,6 +566,9 @@ The next instructor response must teach, practice, check understanding, or trans
               return `SESSION_POSITION — AUTHORITATIVE
     This is a returning learning session.
     Do NOT introduce yourself again.
+    Do NOT state your name, title, role, or platform.
+    Do NOT say "I'm Elenora", "My name is Elenora", or "I'm your NEXIVRA instructor".
+    Treat the learner as someone you already know and continue naturally from the supplied instructional ledger.
     Do NOT restart the course.
     Do NOT begin with a fragment from an earlier transcript.
     Give a brief natural acknowledgment that the learner is returning, summarize only the reliable recent learning supplied in runtime context, and continue at the next complete instructional thought.`;
@@ -640,7 +644,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3E2-WARM-STANDBY-RESTART"
+                                                                                                              "PACKAGE3-M5B3E3-TRUE-SILENT-STANDBY-RESUME-IDENTITY"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -5562,7 +5566,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.runtimeLifecycleState="STARTING";
                                                                                                             this.runtimeLifecycleToken=this.sessionToken;
                                                                                                             this.avatarStarted=true;
-                                                                                                            console.log("NEXIVRA M5B-3E2 WARM STANDBY STARTING");
+                                                                                                            this.m5b3e3SilentStandbyLock=true;
+                                                                                                            console.log("NEXIVRA M5B-3E3 TRUE SILENT STANDBY STARTING");
 
                                                                                                             const warmPromise=(async()=>{
                                                                                                               try{
@@ -5576,6 +5581,14 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   ()=>{
                                                                                                                     this.avatarSpeaking=true;
                                                                                                                     console.log("NEXIVRA SPEECH EVENT: avatar started speaking");
+                                                                                                                    if(this.m5b3e3SilentStandbyLock){
+                                                                                                                      console.log("NEXIVRA M5B-3E3 STANDBY SPEECH BLOCKED");
+                                                                                                                      try{
+                                                                                                                        if(typeof this.session?.interrupt==="function"){
+                                                                                                                          Promise.resolve(this.session.interrupt()).catch(()=>{});
+                                                                                                                        }
+                                                                                                                      }catch(error){}
+                                                                                                                    }
                                                                                                                   }
                                                                                                                 );
                                                                                                                 this.session.on(
@@ -5593,7 +5606,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 this.runtimeContextInjected=false;
                                                                                                                 this.runtimeContextInjectionPending=false;
                                                                                                                 this.setStatus("Session ended. Ready to start again.");
-                                                                                                                console.log("NEXIVRA M5B-3E2 WARM STANDBY READY — MEDIA AND ROUTER OFF");
+                                                                                                                console.log("NEXIVRA M5B-3E3 TRUE SILENT STANDBY READY — AVATAR CONNECTED, MEDIA AND ROUTER OFF");
                                                                                                               }catch(error){
                                                                                                                 this.session=null;
                                                                                                                 this.avatarStarted=false;
@@ -6979,8 +6992,11 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 this.m5b3e1PreparedRestartToken=null;
                                                                                                                 this.m5b3e2WarmStandbyActive=false;
                                                                                                                 this.setStatus("Activating prepared NEXIVRA session...");
-                                                                                                                console.log("NEXIVRA M5B-3E2 WARM STANDBY ACTIVATED BY START SESSION");
+                                                                                                                console.log("NEXIVRA M5B-3E3 SILENT STANDBY ACTIVATED BY START SESSION");
+                                                                                                                try{if(typeof this.session?.interrupt==="function")await this.session.interrupt();}catch(error){}
                                                                                                                 await this.injectRuntimeContext();
+                                                                                                                this.m5b3e3SilentStandbyLock=false;
+                                                                                                                console.log("NEXIVRA M5B-3E3 STANDBY SPEECH LOCK RELEASED");
                                                                                                               }catch(error){
                                                                                                                 console.error("NEXIVRA M5B-3E2 WARM ACTIVATE ERROR:",error);
                                                                                                                 this.setStatus(`RESTART ERROR: ${error?.message||String(error)}`);
@@ -7003,8 +7019,10 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                       this.m5b3e1AwaitingManualRestart=false;
                                                                                                                       this.m5b3e1PreparedRestartToken=null;
                                                                                                                       this.m5b3e2WarmStandbyActive=false;
+                                                                                                                      try{if(typeof this.session?.interrupt==="function")await this.session.interrupt();}catch(error){}
                                                                                                                       await this.injectRuntimeContext();
-                                                                                                                      console.log("NEXIVRA M5B-3E2 WARM STANDBY ACTIVATED AFTER SHORT WAIT");
+                                                                                                                      this.m5b3e3SilentStandbyLock=false;
+                                                                                                                      console.log("NEXIVRA M5B-3E3 STANDBY SPEECH LOCK RELEASED AFTER SHORT WAIT");
                                                                                                                     }
                                                                                                                   }
                                                                                                                   if(this.session) {
@@ -7460,6 +7478,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             this.m5b3e1PreparedRestartToken=null;
                                                                                                             this.m5b3e2WarmStandbyActive=false;
                                                                                                             this.m5b3e2WarmStandbyPromise=null;
+                                                                                                            this.m5b3e3SilentStandbyLock=false;
                                                                                                             console.log("NEXIVRA M5B-3E1 RUNTIME RESET — WAITING FOR MANUAL START");
 
                                                                                                             console.log("NEXIVRA M5B-2D HARD SHUTDOWN COMPLETE:",{
