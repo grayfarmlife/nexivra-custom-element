@@ -30556,14 +30556,30 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-A4-INSTRUCTOR-RENDER-ROLLBACK"
+      "PACKAGE3-M5B3L-A5-SAFE-PEDRO-BACKGROUND-LAYER"
     );
+    const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
+    const activeCourseId = String(
+      this.runtimeContext?.courseId || this.dashboardData?.assignments?.[0]?.courseId || ""
+    ).trim();
+    const activeModuleId = String(
+      this.runtimeContext?.moduleId || ""
+    ).trim();
+    const rolePlayBackgroundAsset = courseAssets.find(
+      (asset) => String(asset?.assetPurpose || "") === "role_play_background" && (!activeCourseId || !asset?.courseId || String(asset.courseId) === activeCourseId) && (!activeModuleId || !asset?.moduleId || String(asset.moduleId) === activeModuleId)
+    ) || courseAssets.find(
+      (asset) => String(asset?.assetPurpose || "") === "role_play_background"
+    ) || null;
+    this.m5b3lRolePlayBackgroundUrl = String(
+      rolePlayBackgroundAsset?.fileUrl || ""
+    ).trim();
     console.log(
-      "NEXIVRA M5B-3L-A4 ASSET TRANSPORT ONLY:",
+      "NEXIVRA M5B-3L-A5 COURSE ASSET RESOLUTION:",
       {
-        courseAssets: Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets.length : 0,
+        courseAssets: courseAssets.length,
         liveAvatarRenderPath: "KNOWN_GOOD_3K",
-        assetVisualMutation: false
+        instructorVisualMutation: false,
+        rolePlayBackgroundResolved: Boolean(this.m5b3lRolePlayBackgroundUrl)
       }
     );
     this.render();
@@ -31674,6 +31690,17 @@ ${tail}`;
     wrap.classList.add("m5b2-roleplay-stage");
     const readyGuestPanel = this.shadowRoot?.getElementById("guestInfraPanel");
     if (readyGuestPanel && this.guestInfrastructureReady) readyGuestPanel.style.display = "block";
+    const rolePlayBackgroundLayer = this.shadowRoot?.getElementById("m5b3lRolePlayBackgroundLayer");
+    if (rolePlayBackgroundLayer) {
+      const backgroundUrl = String(this.m5b3lRolePlayBackgroundUrl || "").trim();
+      rolePlayBackgroundLayer.style.backgroundImage = backgroundUrl ? `url("${backgroundUrl.replace(/"/g, "%22")}")` : "none";
+      rolePlayBackgroundLayer.style.display = backgroundUrl ? "block" : "none";
+      console.log("NEXIVRA M5B-3L-A5 PEDRO BACKGROUND LAYER:", {
+        resolved: Boolean(backgroundUrl),
+        videoElementMutated: false,
+        instructorElementMutated: false
+      });
+    }
     const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
     if (stageBadge) stageBadge.textContent = "ROLE-PLAY";
     console.log("NEXIVRA M5B-2 STAGE HANDOFF:", {
@@ -32542,11 +32569,24 @@ ${tail}`;
                                                                                                                   display: none !important;
                                                                                                                 }
 
+                                                                                                                .wrap.m5b2-roleplay-stage #m5b3lRolePlayBackgroundLayer {
+                                                                                                                  display: block;
+                                                                                                                  position: absolute;
+                                                                                                                  inset: 0;
+                                                                                                                  z-index: 0;
+                                                                                                                  background-position: center;
+                                                                                                                  background-size: cover;
+                                                                                                                  background-repeat: no-repeat;
+                                                                                                                  pointer-events: none;
+                                                                                                                }
+
                                                                                                                 .wrap.m5b2-roleplay-stage #guestAvatarVideo {
+                                                                                                                  position: relative !important;
+                                                                                                                  z-index: 1 !important;
                                                                                                                   width: 100% !important;
                                                                                                                   height: 100% !important;
                                                                                                                   object-fit: cover !important;
-                                                                                                                  background: #000 !important;
+                                                                                                                  background: transparent !important;
                                                                                                                   opacity: 1 !important;
                                                                                                                   filter: none !important;
                                                                                                                   -webkit-filter: none !important;
@@ -34259,11 +34299,16 @@ ${tail}`;
                                                                                                                 <div
                                                                                                                   id="guestInfraPanel"
                                                                                                                   style="display:none; position:absolute; inset:0; background:#111; overflow:hidden; z-index:20;">
+                                                                                                                  <div
+                                                                                                                    id="m5b3lRolePlayBackgroundLayer"
+                                                                                                                    aria-hidden="true"
+                                                                                                                    style="position:absolute; inset:0; z-index:0; background:#000 center center / cover no-repeat; display:none; pointer-events:none;">
+                                                                                                                  </div>
                                                                                                                   <video
                                                                                                                     id="guestAvatarVideo"
                                                                                                                     autoplay
                                                                                                                     playsinline
-                                                                                                                    style="width:100%; height:100%; object-fit:cover; background:#111;">
+                                                                                                                    style="position:relative; z-index:1; width:100%; height:100%; object-fit:cover; background:#111;">
                                                                                                                   </video>
                                                                                                                 </div>
 
