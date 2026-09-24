@@ -30290,6 +30290,30 @@ var NexivraLiveAvatar = class extends HTMLElement {
     }
     return text.trim();
   }
+  sanitizeResumeForActiveCourse(value = "", maxLength = 360) {
+    const text = this.cleanResumeText(value, maxLength);
+    if (!text) return "";
+    const activeCourse = String(
+      this.runtimeContext?.course?.title || this.subjectName || ""
+    ).trim();
+    const activeModule = String(
+      this.runtimeContext?.module?.title || this.lessonTitle || ""
+    ).trim();
+    const lower = text.toLowerCase();
+    const contaminated = /(hotel|front desk|front-desk|guest room|room reservation|check[- ]?in|check[- ]?out|lodging|housekeeping)/i.test(text) || /(?:pedro|guest avatar|role[- ]?play guest)/i.test(text);
+    if (contaminated) {
+      console.warn(
+        "NEXIVRA M5B-3L-C RESUME SCENARIO CONTEXT SANITIZED:",
+        {
+          activeCourse,
+          activeModule,
+          removedPreview: text.slice(0, 140)
+        }
+      );
+      return "";
+    }
+    return text;
+  }
   buildNaturalResumeSummary({ currentObjective = "", lastActivity = "", nextObjective = "" } = {}) {
     const current = this.cleanResumeText(currentObjective, 260);
     const recent = this.cleanResumeText(lastActivity, 320);
@@ -30392,15 +30416,15 @@ The next instructor response must teach, practice, check understanding, or trans
     const cp = this.resumeCheckpoint;
     const firstSession = this.getAttribute("first-session") === "true";
     const ledger = this.runtimeContext?.session?.state?.instructionalLedger || {};
-    const currentObjective = this.cleanResumeText(
+    const currentObjective = this.sanitizeResumeForActiveCourse(
       cp?.objectiveId || cp?.instructionalPosition || ledger.currentObjectiveSummary || ledger.currentObjective || "",
       300
     );
-    const lastActivity = this.cleanResumeText(
+    const lastActivity = this.sanitizeResumeForActiveCourse(
       cp?.sessionSummary || cp?.lastCompletedObjective || ledger.lastActivitySummary || ledger.lastMeaningfulActivity || "",
       360
     );
-    const nextObjective = this.cleanResumeText(
+    const nextObjective = this.sanitizeResumeForActiveCourse(
       cp?.nextObjective || ledger.nextObjectiveSummary || ledger.nextObjective || "",
       300
     );
@@ -30556,7 +30580,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-B-DETERMINISTIC-ROLEPLAY-ACTIVATION"
+      "PACKAGE3-M5B3L-C-COURSE-AUTHORITY-ROLE-LOCK"
     );
     const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
     const activeCourseId = String(
@@ -31036,6 +31060,23 @@ ${tail}`;
                     - Completed opening/orientation material remains completed.
                     - These identity and resume rules outrank lower-priority supporting context.
 
+                    ACTIVE COURSE AUTHORITY \u2014 NON-NEGOTIABLE:
+                    - The CURRENT organization, course, module, approved knowledge, and module configuration in this message are authoritative.
+                    - Historical instructional ledgers preserve learner progress only. They do NOT preserve a prior industry's setting, scenario, guest identity, location, or role-play narrative.
+                    - Never allow historical hotel, lodging, front-desk, room, reservation, or other unrelated scenario context to redefine the current course.
+                    - For the active Centier Foundations course, the environment is banking and the competency focus is hospitality.
+                    - Banking provides the situation. Hospitality provides the competency.
+                    - If historical context conflicts with the active course, ignore the historical setting and preserve only valid competency/progress evidence.
+
+                    AVATAR ROLE OWNERSHIP \u2014 NON-NEGOTIABLE:
+                    - Elenora is the instructor only.
+                    - Pedro is a separate guest avatar only.
+                    - Elenora must NEVER portray, imitate, voice, simulate, quote dialogue for, or act as Pedro.
+                    - Elenora must NEVER conduct the formal client role-play herself.
+                    - When the learner requests role-play, Elenora may only acknowledge the transition and wait for NEXIVRA to activate the separate guest avatar.
+                    - If Pedro is not technically active, do not fake the role-play. Remain Elenora and wait for the runtime handoff.
+                    - Only the separate guest LiveAvatar session may speak as Pedro.
+
 
                                                                                                         NEXIVRA ACTIVE LEARNING CONTEXT
 
@@ -31363,7 +31404,10 @@ ${tail}`;
     const elenoraTransition = `ROLE-PLAY TRANSITION \u2014 AUTHORITATIVE
 The learner explicitly requested a formal role-play.
 A separate guest avatar named Pedro will handle the client interaction.
+You are Elenora and you remain Elenora.
+Do not role-play, imitate, voice, simulate, or speak dialogue for Pedro.
 Do not role-play the client yourself and do not continue ordinary teaching.
+If the separate Pedro avatar has not yet been activated, wait as Elenora rather than simulating the interaction.
 Briefly acknowledge the request and tell the learner you are preparing a banking role-play. Do not invent the scenario; NEXIVRA will provide the selected scenario and handoff instructions.`;
     this.sendLiveAvatarMessageSafely(
       elenoraTransition,
