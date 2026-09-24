@@ -6634,8 +6634,8 @@ function detectBrowser(window2) {
     navigator: navigator2
   } = window2;
   if (navigator2.userAgentData && navigator2.userAgentData.brands) {
-    const chromium = navigator2.userAgentData.brands.find((brand2) => {
-      return brand2.brand === "Chromium";
+    const chromium = navigator2.userAgentData.brands.find((brand) => {
+      return brand.brand === "Chromium";
     });
     if (chromium) {
       return {
@@ -30556,7 +30556,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3K-CENTIER-DEMO-CLEANUP"
+      "PACKAGE3-M5B3L-A-COURSE-ASSET-RUNTIME"
     );
     this.render();
     this.bindControls();
@@ -32004,13 +32004,13 @@ ${tail}`;
                                                                                                                         `;
           }
         ).join("");
-        const brand2 = this.getClientBranding();
+        const brand = this.getClientBranding();
         list.querySelectorAll(
           "[data-course-brand-image]"
         ).forEach(
           (image) => {
-            if (brand2.courseImageUrl) {
-              image.src = brand2.courseImageUrl;
+            if (brand.courseImageUrl) {
+              image.src = brand.courseImageUrl;
               image.hidden = false;
             } else {
               image.hidden = true;
@@ -32413,14 +32413,39 @@ ${tail}`;
       }
     };
     const preset = presets[organizationId] || {};
+    const courseId = String(
+      this.runtimeContext?.courseId || this.dashboardData?.assignments?.[0]?.courseId || ""
+    ).trim();
+    const moduleId = String(
+      this.runtimeContext?.moduleId || ""
+    ).trim();
+    const assets = Array.isArray(
+      this.dashboardData?.courseAssets
+    ) ? this.dashboardData.courseAssets : [];
+    const resolveAsset = (purpose) => {
+      const candidates = assets.filter((asset) => {
+        if (String(asset?.assetPurpose || "") !== purpose) return false;
+        if (courseId && asset?.courseId && String(asset.courseId) !== courseId) return false;
+        return true;
+      });
+      const moduleMatch = moduleId ? candidates.find((asset) => String(asset?.moduleId || "") === moduleId) : null;
+      const courseMatch = candidates.find((asset) => !String(asset?.moduleId || ""));
+      return String((moduleMatch || courseMatch || candidates[0])?.fileUrl || "").trim();
+    };
     return {
       name: attr("client-name") || preset.name || organizationId || "Client Organization",
-      logoUrl: attr("client-logo-url") || preset.logoUrl || "",
+      logoUrl: resolveAsset("organization_logo") || attr("client-logo-url") || preset.logoUrl || "",
       tagline: attr("client-tagline") || preset.tagline || "",
-      heroImageUrl: attr("client-hero-image-url") || preset.heroImageUrl || "",
-      courseImageUrl: attr("client-course-image-url") || preset.courseImageUrl || "",
-      journeyImageUrl: attr("client-journey-image-url") || preset.journeyImageUrl || "",
-      communityImageUrl: preset.communityImageUrl || ""
+      heroImageUrl: resolveAsset("organization_brand_asset") || attr("client-hero-image-url") || preset.heroImageUrl || "",
+      courseImageUrl: resolveAsset("course_cover") || attr("client-course-image-url") || preset.courseImageUrl || "",
+      journeyImageUrl: resolveAsset("module_image") || attr("client-journey-image-url") || preset.journeyImageUrl || "",
+      communityImageUrl: resolveAsset("teaching_image") || preset.communityImageUrl || "",
+      practiceImageUrl: resolveAsset("practice_image") || "",
+      rolePlayImageUrl: resolveAsset("role_play_image") || "",
+      evaluationImageUrl: resolveAsset("evaluation_image") || "",
+      completionImageUrl: resolveAsset("completion_image") || "",
+      instructorBackgroundUrl: resolveAsset("instructor_background") || "",
+      rolePlayBackgroundUrl: resolveAsset("role_play_background") || ""
     };
   }
   applyClientBranding() {
@@ -32435,15 +32460,31 @@ ${tail}`;
     };
     setImage("clientLogo", b3.logoUrl);
     setImage("journeyBrandImage", b3.journeyImageUrl);
+    const avatarVideo = this.shadowRoot?.getElementById("avatarVideo");
+    if (avatarVideo && b3.instructorBackgroundUrl) {
+      avatarVideo.parentElement.style.backgroundImage = `url("${b3.instructorBackgroundUrl}")`;
+      avatarVideo.parentElement.style.backgroundSize = "cover";
+      avatarVideo.parentElement.style.backgroundPosition = "center";
+    }
+    const guestPanel = this.shadowRoot?.getElementById("guestInfraPanel");
+    if (guestPanel) {
+      guestPanel.style.backgroundImage = b3.rolePlayBackgroundUrl ? `url("${b3.rolePlayBackgroundUrl}")` : "none";
+      guestPanel.style.backgroundSize = "cover";
+      guestPanel.style.backgroundPosition = "center";
+    }
+    const guestVideo = this.shadowRoot?.getElementById("guestAvatarVideo");
+    if (guestVideo && b3.rolePlayBackgroundUrl) {
+      guestVideo.style.backgroundColor = "transparent";
+    }
     const hero = this.shadowRoot?.getElementById("learnerHero");
     if (hero) hero.style.backgroundImage = b3.heroImageUrl ? `linear-gradient(90deg,rgba(2,9,18,.95),rgba(2,9,18,.18)),url("${b3.heroImageUrl}")` : "linear-gradient(90deg,#03101b,#082033)";
     const community = this.shadowRoot?.getElementById("communityBrandImage");
     if (community) {
-      community.style.backgroundImage = brand.communityImageUrl ? `url("${brand.communityImageUrl}")` : "none";
+      community.style.backgroundImage = b3.communityImageUrl ? `url("${b3.communityImageUrl}")` : "none";
     }
     const courseVisual = this.shadowRoot?.getElementById("courseBrandVisual");
     if (courseVisual) {
-      courseVisual.style.backgroundImage = brand.courseImageUrl ? `url("${brand.courseImageUrl}")` : "none";
+      courseVisual.style.backgroundImage = b3.courseImageUrl ? `url("${b3.courseImageUrl}")` : "none";
     }
   }
   renderLearnerSkills() {
