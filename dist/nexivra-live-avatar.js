@@ -30556,7 +30556,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-A-COURSE-ASSET-RUNTIME"
+      "PACKAGE3-M5B3L-A3-VISUAL-RENDER-SAFETY"
     );
     this.render();
     this.bindControls();
@@ -32460,22 +32460,23 @@ ${tail}`;
     };
     setImage("clientLogo", b3.logoUrl);
     setImage("journeyBrandImage", b3.journeyImageUrl);
-    const avatarVideo = this.shadowRoot?.getElementById("avatarVideo");
-    if (avatarVideo && b3.instructorBackgroundUrl) {
-      avatarVideo.parentElement.style.backgroundImage = `url("${b3.instructorBackgroundUrl}")`;
-      avatarVideo.parentElement.style.backgroundSize = "cover";
-      avatarVideo.parentElement.style.backgroundPosition = "center";
-    }
     const guestPanel = this.shadowRoot?.getElementById("guestInfraPanel");
     if (guestPanel) {
-      guestPanel.style.backgroundImage = b3.rolePlayBackgroundUrl ? `url("${b3.rolePlayBackgroundUrl}")` : "none";
-      guestPanel.style.backgroundSize = "cover";
-      guestPanel.style.backgroundPosition = "center";
+      guestPanel.style.setProperty(
+        "--nexivra-roleplay-background",
+        b3.rolePlayBackgroundUrl ? `url("${b3.rolePlayBackgroundUrl}")` : "none"
+      );
+      guestPanel.dataset.rolePlayBackgroundReady = b3.rolePlayBackgroundUrl ? "true" : "false";
     }
-    const guestVideo = this.shadowRoot?.getElementById("guestAvatarVideo");
-    if (guestVideo && b3.rolePlayBackgroundUrl) {
-      guestVideo.style.backgroundColor = "transparent";
-    }
+    console.log(
+      "NEXIVRA M5B-3L-A3 COURSE ASSET RESOLUTION:",
+      {
+        courseAssets: Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets.length : 0,
+        instructorBackgroundResolved: Boolean(b3.instructorBackgroundUrl),
+        rolePlayBackgroundResolved: Boolean(b3.rolePlayBackgroundUrl),
+        instructorVideoMutation: false
+      }
+    );
     const hero = this.shadowRoot?.getElementById("learnerHero");
     if (hero) hero.style.backgroundImage = b3.heroImageUrl ? `linear-gradient(90deg,rgba(2,9,18,.95),rgba(2,9,18,.18)),url("${b3.heroImageUrl}")` : "linear-gradient(90deg,#03101b,#082033)";
     const community = this.shadowRoot?.getElementById("communityBrandImage");
