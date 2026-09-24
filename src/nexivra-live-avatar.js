@@ -663,7 +663,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-A5-SAFE-PEDRO-BACKGROUND-LAYER"
+                                                                                                              "PACKAGE3-M5B3L-B-DETERMINISTIC-ROLEPLAY-ACTIVATION"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -1752,6 +1752,77 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   ""
                                                                                                               }
                                                                                                             );
+                                                                                                          }
+
+
+                                                                                                          isExplicitRolePlayRequest(text = "") {
+                                                                                                            const value = String(text || "")
+                                                                                                              .trim()
+                                                                                                              .toLowerCase()
+                                                                                                              .replace(/[’]/g, "'");
+
+                                                                                                            if (!value) return false;
+
+                                                                                                            return (
+                                                                                                              /\b(?:let'?s|lets|can we|could we|i want to|i'?d like to|i am ready to|i'?m ready to|ready to|start|begin|do|try|practice)\b[\s\S]{0,48}\brole[\s-]?play\b/i.test(value) ||
+                                                                                                              /\brole[\s-]?play\b[\s\S]{0,48}\b(?:start|begin|ready|now|please)\b/i.test(value) ||
+                                                                                                              /\bwhere(?:'s| is)\s+pedro\b/i.test(value) ||
+                                                                                                              /\bbring\s+(?:in\s+)?pedro\b/i.test(value) ||
+                                                                                                              /\b(?:i'?m|i am)\s+ready[\s\S]{0,24}\bpedro\b/i.test(value)
+                                                                                                            );
+                                                                                                          }
+
+
+                                                                                                          requestDeterministicRolePlayFromLearner(text = "") {
+                                                                                                            if (
+                                                                                                              !this.sessionActive ||
+                                                                                                              this.rolePlayActive ||
+                                                                                                              this.m5b2fRolePlayPreparing
+                                                                                                            ) {
+                                                                                                              return false;
+                                                                                                            }
+
+                                                                                                            if (!this.isExplicitRolePlayRequest(text)) {
+                                                                                                              return false;
+                                                                                                            }
+
+                                                                                                            if (this.rolePlayRequestPending) {
+                                                                                                              console.log(
+                                                                                                                "NEXIVRA M5B-3L-B ROLE-PLAY REQUEST ALREADY PENDING"
+                                                                                                              );
+                                                                                                              return true;
+                                                                                                            }
+
+                                                                                                            this.rolePlayRecommended = false;
+                                                                                                            this.rolePlayRequestPending = true;
+                                                                                                            this.lastAdaptiveRolePlayRequestAt = Date.now();
+
+                                                                                                            console.log(
+                                                                                                              "NEXIVRA M5B-3L-B EXPLICIT ROLE-PLAY INTENT DETECTED:",
+                                                                                                              {
+                                                                                                                text,
+                                                                                                                sessionId: this.runtimeSessionId || "",
+                                                                                                                guestTokenReady: Boolean(this.guestSessionToken)
+                                                                                                              }
+                                                                                                            );
+
+                                                                                                            this.requestAdaptiveRolePlay({
+                                                                                                              requestedGuestType: "pedro"
+                                                                                                            });
+
+                                                                                                            const elenoraTransition =
+                                                                                                              `ROLE-PLAY TRANSITION — AUTHORITATIVE
+The learner explicitly requested a formal role-play.
+A separate guest avatar named Pedro will handle the client interaction.
+Do not role-play the client yourself and do not continue ordinary teaching.
+Briefly acknowledge the request and tell the learner you are preparing a banking role-play. Do not invent the scenario; NEXIVRA will provide the selected scenario and handoff instructions.`;
+
+                                                                                                            this.sendLiveAvatarMessageSafely(
+                                                                                                              elenoraTransition,
+                                                                                                              "m5b3l-b-roleplay-intent"
+                                                                                                            );
+
+                                                                                                            return true;
                                                                                                           }
 
 
@@ -7061,6 +7132,18 @@ The next instructor response must teach, practice, check understanding, or trans
                                             !this.m5b2fRolePlayPreparing &&
                                             this.m5b2FloorOwner!=="PEDRO"
                                           ){
+                                            const deterministicRolePlayRequested =
+                                              this.requestDeterministicRolePlayFromLearner(
+                                                text
+                                              );
+
+                                            if (deterministicRolePlayRequested) {
+                                              console.log(
+                                                "NEXIVRA M5B-3L-B NORMAL ELENORA ROUTE SUPPRESSED — ROLE-PLAY ORCHESTRATION OWNS TURN"
+                                              );
+                                              return;
+                                            }
+
                                             const routed=`LEARNER TURN — AUTHORITATIVE\nThe learner just said: "${String(text||"").replaceAll('"',"'")}"\nRespond naturally as Elenora to this learner turn. Follow the current course state and instructions. Do not invent additional learner speech. If the learner asked a question, answer it. If the learner answered your question, evaluate only that actual answer and continue appropriately.`;
                                             console.log("NEXIVRA M5B-3C ROUTE: LEARNER → ELENORA:",text);
                                             this.sendLiveAvatarMessageSafely(routed,"m5b3c-learner-turn");
