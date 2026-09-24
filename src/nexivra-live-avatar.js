@@ -663,7 +663,17 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-A3-VISUAL-RENDER-SAFETY"
+                                                                                                              "PACKAGE3-M5B3L-A4-INSTRUCTOR-RENDER-ROLLBACK"
+                                                                                                            );
+                                                                                                            console.log(
+                                                                                                              "NEXIVRA M5B-3L-A4 ASSET TRANSPORT ONLY:",
+                                                                                                              {
+                                                                                                                courseAssets: Array.isArray(this.dashboardData?.courseAssets)
+                                                                                                                  ? this.dashboardData.courseAssets.length
+                                                                                                                  : 0,
+                                                                                                                liveAvatarRenderPath: "KNOWN_GOOD_3K",
+                                                                                                                assetVisualMutation: false
+                                                                                                              }
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -3358,50 +3368,14 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             };
                                                                                                             const preset = presets[organizationId] || {};
 
-                                                                                                            const courseId = String(
-                                                                                                              this.runtimeContext?.courseId ||
-                                                                                                              this.dashboardData?.assignments?.[0]?.courseId ||
-                                                                                                              ""
-                                                                                                            ).trim();
-
-                                                                                                            const moduleId = String(
-                                                                                                              this.runtimeContext?.moduleId ||
-                                                                                                              ""
-                                                                                                            ).trim();
-
-                                                                                                            const assets = Array.isArray(
-                                                                                                              this.dashboardData?.courseAssets
-                                                                                                            )
-                                                                                                              ? this.dashboardData.courseAssets
-                                                                                                              : [];
-
-                                                                                                            const resolveAsset = purpose => {
-                                                                                                              const candidates = assets.filter(asset => {
-                                                                                                                if (String(asset?.assetPurpose || "") !== purpose) return false;
-                                                                                                                if (courseId && asset?.courseId && String(asset.courseId) !== courseId) return false;
-                                                                                                                return true;
-                                                                                                              });
-                                                                                                              const moduleMatch = moduleId
-                                                                                                                ? candidates.find(asset => String(asset?.moduleId || "") === moduleId)
-                                                                                                                : null;
-                                                                                                              const courseMatch = candidates.find(asset => !String(asset?.moduleId || ""));
-                                                                                                              return String((moduleMatch || courseMatch || candidates[0])?.fileUrl || "").trim();
-                                                                                                            };
-
                                                                                                             return {
                                                                                                               name: attr("client-name") || preset.name || organizationId || "Client Organization",
-                                                                                                              logoUrl: resolveAsset("organization_logo") || attr("client-logo-url") || preset.logoUrl || "",
+                                                                                                              logoUrl: attr("client-logo-url") || preset.logoUrl || "",
                                                                                                               tagline: attr("client-tagline") || preset.tagline || "",
-                                                                                                              heroImageUrl: resolveAsset("organization_brand_asset") || attr("client-hero-image-url") || preset.heroImageUrl || "",
-                                                                                                              courseImageUrl: resolveAsset("course_cover") || attr("client-course-image-url") || preset.courseImageUrl || "",
-                                                                                                              journeyImageUrl: resolveAsset("module_image") || attr("client-journey-image-url") || preset.journeyImageUrl || "",
-                                                                                                              communityImageUrl: resolveAsset("teaching_image") || preset.communityImageUrl || "",
-                                                                                                              practiceImageUrl: resolveAsset("practice_image") || "",
-                                                                                                              rolePlayImageUrl: resolveAsset("role_play_image") || "",
-                                                                                                              evaluationImageUrl: resolveAsset("evaluation_image") || "",
-                                                                                                              completionImageUrl: resolveAsset("completion_image") || "",
-                                                                                                              instructorBackgroundUrl: resolveAsset("instructor_background") || "",
-                                                                                                              rolePlayBackgroundUrl: resolveAsset("role_play_background") || ""
+                                                                                                              heroImageUrl: attr("client-hero-image-url") || preset.heroImageUrl || "",
+                                                                                                              courseImageUrl: attr("client-course-image-url") || preset.courseImageUrl || "",
+                                                                                                              journeyImageUrl: attr("client-journey-image-url") || preset.journeyImageUrl || "",
+                                                                                                              communityImageUrl: preset.communityImageUrl || ""
                                                                                                             };
                                                                                                           }
 
@@ -3412,51 +3386,20 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             const setImage=(id,url)=>{const el=this.shadowRoot?.getElementById(id);if(!el)return;el.hidden=!url;if(url)el.src=url;};
                                                                                                             setImage("clientLogo",b.logoUrl);
                                                                                                             setImage("journeyBrandImage",b.journeyImageUrl);
-                                                                                                            /*
-                                                                                                              M5B-3L-A.3 VISUAL RENDER SAFETY
-                                                                                                              Course assets are presentation data only.
-                                                                                                              Never mutate the LiveAvatar video element or its
-                                                                                                              immediate rendering parent. The instructor stage
-                                                                                                              remains exactly on the proven pre-asset path.
-                                                                                                            */
-                                                                                                            const guestPanel=this.shadowRoot?.getElementById("guestInfraPanel");
-                                                                                                            if(guestPanel){
-                                                                                                              guestPanel.style.setProperty(
-                                                                                                                "--nexivra-roleplay-background",
-                                                                                                                b.rolePlayBackgroundUrl
-                                                                                                                  ? `url("${b.rolePlayBackgroundUrl}")`
-                                                                                                                  : "none"
-                                                                                                              );
-                                                                                                              guestPanel.dataset.rolePlayBackgroundReady =
-                                                                                                                b.rolePlayBackgroundUrl ? "true" : "false";
-                                                                                                            }
-
-                                                                                                            console.log(
-                                                                                                              "NEXIVRA M5B-3L-A3 COURSE ASSET RESOLUTION:",
-                                                                                                              {
-                                                                                                                courseAssets: Array.isArray(this.dashboardData?.courseAssets)
-                                                                                                                  ? this.dashboardData.courseAssets.length
-                                                                                                                  : 0,
-                                                                                                                instructorBackgroundResolved: Boolean(b.instructorBackgroundUrl),
-                                                                                                                rolePlayBackgroundResolved: Boolean(b.rolePlayBackgroundUrl),
-                                                                                                                instructorVideoMutation: false
-                                                                                                              }
-                                                                                                            );
-
                                                                                                             const hero=this.shadowRoot?.getElementById("learnerHero");
                                                                                                             if(hero) hero.style.backgroundImage=b.heroImageUrl ? `linear-gradient(90deg,rgba(2,9,18,.95),rgba(2,9,18,.18)),url("${b.heroImageUrl}")` : "linear-gradient(90deg,#03101b,#082033)";
                                                                                                             const community =
                                                                                                               this.shadowRoot?.getElementById("communityBrandImage");
                                                                                                             if (community) {
                                                                                                               community.style.backgroundImage =
-                                                                                                                b.communityImageUrl ? `url("${b.communityImageUrl}")` : "none";
+                                                                                                                brand.communityImageUrl ? `url("${brand.communityImageUrl}")` : "none";
                                                                                                             }
 
                                                                                                             const courseVisual =
                                                                                                               this.shadowRoot?.getElementById("courseBrandVisual");
                                                                                                             if (courseVisual) {
                                                                                                               courseVisual.style.backgroundImage =
-                                                                                                                b.courseImageUrl ? `url("${b.courseImageUrl}")` : "none";
+                                                                                                                brand.courseImageUrl ? `url("${brand.courseImageUrl}")` : "none";
                                                                                                             }
 
                                                                                                           }
