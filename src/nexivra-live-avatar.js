@@ -94,6 +94,10 @@
                                                                                                             this.m5b2oLatestInterimAtMs = 0;
                                                                                                             this.m5b2oFastTurnTimer = null;
                                                                                                             this.m5b2oFastTurnGraceMs = 300;
+                                                                                                            // M5B-3L-H1 — final transcript is authoritative.
+                                                                                                            // Interim speech may provide a fallback only after a bounded wait.
+                                                                                                            this.m5b3lH1FinalTranscriptWaitMs = 1850;
+                                                                                                            this.m5b3lH1AwaitingFinalTranscript = false;
                                                                                                             // M5B-3B — obvious incomplete utterances get a longer
                                                                                                             // grace window so natural pauses do not split one thought.
                                                                                                             this.m5b3bIncompleteTurnGraceMs = 1250;
@@ -704,7 +708,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-F-NATIVE-PEDRO-CONVERSATION-STABILIZATION"
+                                                                                                              "PACKAGE3-M5B3L-H1-AUTHORITATIVE-FINAL-TURN-COMMIT"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -6772,6 +6776,10 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                             if(!this.m5b2jPendingLearnerFragments.length)return;
                                                                                                             if(this.m5b2jPedroSpeaking)return;
                                                                                                             if(this.learnerMicSpeaking||this.learnerSpeaking)return;
+                                                                                                            const commitDelayMs=
+                                                                                                              reason==="authoritative_final_transcript"
+                                                                                                                ? 120
+                                                                                                                : Number(this.m5b2jLearnerTurnSilenceMs||900);
                                                                                                             this.m5b2jLearnerTurnTimer=setTimeout(()=>{
                                                                                                               this.m5b2jLearnerTurnTimer=null;
                                                                                                               if(this.m5b2jPedroSpeaking||this.learnerMicSpeaking||this.learnerSpeaking){
@@ -6779,7 +6787,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                 return;
                                                                                                               }
                                                                                                               this.flushM5B2JLearnerTurn(reason);
-                                                                                                            },Number(this.m5b2jLearnerTurnSilenceMs||900));
+                                                                                                            },commitDelayMs);
                                                                                                           }
 
                                                                                                           flushM5B2JLearnerTurn(reason="silence_complete") {
@@ -6798,6 +6806,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                             this.m5b2jLastFlushedAt=now;
                                                                                                             this.cancelM5B2OFastTurnTimer();
                                                                                                             this.m5b2nLearnerTurnArmed=false;
+                                                                                                            this.m5b3lH1AwaitingFinalTranscript=false;
                                                                                                             console.log("NEXIVRA M5B-2N COMPLETE LEARNER TURN:",{
                                                                                                               text,
                                                                                                               fragments:fragments.length,
@@ -6912,24 +6921,17 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                             if(!this.m5b2nLearnerTurnArmed||this.m5b2jPedroSpeaking)return;
                                                                                                             const interimNow=String(this.m5b2oLatestInterimText||"").trim();
                                                                                                             if(!interimNow)return;
+
                                                                                                             const boundary=this.classifyM5B3D2TurnBoundary(interimNow);
-                                                                                                            const graceMs=Number(boundary.graceMs||650);
-                                                                                                            console.log("NEXIVRA M5B-3D2 TURN BOUNDARY:",{
+                                                                                                            this.m5b3lH1AwaitingFinalTranscript=true;
+
+                                                                                                            console.log("NEXIVRA M5B-3L-H1 WAITING FOR AUTHORITATIVE FINAL TRANSCRIPT:",{
                                                                                                               text:interimNow,
                                                                                                               classification:boundary.classification,
-                                                                                                              graceMs,
-                                                                                                              wordCount:boundary.wordCount
+                                                                                                              previousGraceMs:Number(boundary.graceMs||650),
+                                                                                                              finalWaitMs:Number(this.m5b3lH1FinalTranscriptWaitMs||1850)
                                                                                                             });
-                                                                                                            if(
-                                                                                                              boundary.classification==="LIKELY_CONTINUATION" ||
-                                                                                                              boundary.classification==="STRONG_CONTINUATION"
-                                                                                                            ){
-                                                                                                              console.log("NEXIVRA M5B-3D2 LEARNER TURN HELD FOR CONTINUATION:",{
-                                                                                                                text:interimNow,
-                                                                                                                classification:boundary.classification,
-                                                                                                                graceMs
-                                                                                                              });
-                                                                                                            }
+
                                                                                                             this.m5b2oFastTurnTimer=setTimeout(()=>{
                                                                                                               this.m5b2oFastTurnTimer=null;
                                                                                                               if(
@@ -6940,23 +6942,27 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                 this.learnerMicSpeaking||
                                                                                                                 this.learnerSpeaking
                                                                                                               )return;
+
+                                                                                                              // Chrome occasionally never emits a final result.
+                                                                                                              // Only then may the latest interim become the bounded fallback.
                                                                                                               const interim=String(this.m5b2oLatestInterimText||"").trim();
                                                                                                               if(!interim)return;
-                                                                                                              console.log("NEXIVRA M5B-3D2 SEMANTIC TURN RELEASED:",{
+
+                                                                                                              this.m5b3lH1AwaitingFinalTranscript=false;
+                                                                                                              console.warn("NEXIVRA M5B-3L-H1 FINAL TRANSCRIPT TIMEOUT — USING LATEST INTERIM FALLBACK:",{
                                                                                                                 text:interim,
-                                                                                                                audioStopToFastTurnMs:this.m5b2nLearnerAudioStoppedAtMs
-                                                                                                                  ? Date.now()-this.m5b2nLearnerAudioStoppedAtMs
-                                                                                                                  : null,
+                                                                                                                waitMs:Number(this.m5b3lH1FinalTranscriptWaitMs||1850),
                                                                                                                 interimAgeMs:this.m5b2oLatestInterimAtMs
                                                                                                                   ? Date.now()-this.m5b2oLatestInterimAtMs
                                                                                                                   : null
                                                                                                               });
+
                                                                                                               this.m5b2jPendingLearnerFragments=[];
                                                                                                               this.queueM5B2JLearnerFragment(interim);
-                                                                                                              this.flushM5B2JLearnerTurn("semantic_turn_boundary");
+                                                                                                              this.flushM5B2JLearnerTurn("final_transcript_timeout_fallback");
                                                                                                               this.m5b2oLatestInterimText="";
                                                                                                               this.m5b2oLatestInterimAtMs=0;
-                                                                                                            },graceMs);
+                                                                                                            },Number(this.m5b3lH1FinalTranscriptWaitMs||1850));
                                                                                                           }
 
                                                                                                           startLearnerTranscriptCapture() {
@@ -7106,9 +7112,19 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                   continue;
                                                 }
                                                 this.cancelM5B2OFastTurnTimer();
+                                                this.m5b3lH1AwaitingFinalTranscript=false;
                                                 this.m5b2oLatestInterimText="";
                                                 this.m5b2oLatestInterimAtMs=0;
-                                                this.queueM5B2JLearnerFragment(text);
+
+                                                // H1: the browser's final transcript replaces interim/fallback
+                                                // material for this learner turn. Pedro receives exactly one
+                                                // authoritative learner utterance.
+                                                this.m5b2jPendingLearnerFragments=[text];
+                                                console.log("NEXIVRA M5B-3L-H1 AUTHORITATIVE FINAL TRANSCRIPT COMMITTED:",{
+                                                  text,
+                                                  fragmentCount:1
+                                                });
+                                                this.scheduleM5B2JLearnerTurnFlush("authoritative_final_transcript");
                                                 continue;
                                               }
 
