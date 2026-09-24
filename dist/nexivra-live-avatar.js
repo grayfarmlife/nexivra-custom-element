@@ -30087,15 +30087,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b3gGuestTokenGeneration = 0;
     this.m5b3gGuestStartPromise = null;
     this.m5b3gGuestStopPromise = null;
-    this.m5b3lChromaFrame = null;
-    this.m5b3lChromaOffscreen = null;
-    this.m5b3lChromaOffscreenCtx = null;
-    this.m5b3lChromaLastWidth = 0;
-    this.m5b3lChromaLastHeight = 0;
-    this.m5b3lChromaRunning = false;
-    this.m5b3lChromaFrameCount = 0;
-    this.m5b3lChromaLastRenderAt = 0;
-    this.m5b3lChromaTargetIntervalMs = 40;
     this.m5b2RolePlayStageActive = false;
     this.m5b2GuestStartRequested = false;
     this.m5b2GuestResponseQueue = [];
@@ -30123,6 +30114,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2nLearnerTurnArmed = false;
     this.m5b2nLearnerFloorOpenedAtMs = 0;
     this.m5b2nLearnerSpeechStartedAtMs = 0;
+    this.m5b3lPostPedroLearnerGraceUntilMs = 0;
     this.m5b2nLearnerAudioStoppedAtMs = 0;
     this.m5b2oLatestInterimText = "";
     this.m5b2oLatestInterimAtMs = 0;
@@ -30589,7 +30581,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-E1-OPTIMIZED-PEDRO-CHROMA"
+      "PACKAGE3-M5B3L-F-NATIVE-PEDRO-CONVERSATION-STABILIZATION"
     );
     const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
     const activeCourseId = String(
@@ -31782,147 +31774,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:", error);
     }
   }
-  startM5B3LPedroChromaKey() {
-    if (this.m5b3lChromaRunning) return true;
-    const video = this.shadowRoot?.getElementById("guestAvatarVideo");
-    const canvas = this.shadowRoot?.getElementById("m5b3lPedroChromaCanvas");
-    const wrap = this.shadowRoot?.querySelector(".wrap");
-    if (!video || !canvas || !wrap) {
-      console.error("NEXIVRA M5B-3L-E CHROMA SURFACE MISSING");
-      return false;
-    }
-    const ctx = canvas.getContext("2d", { alpha: true, willReadFrequently: true });
-    if (!ctx) {
-      console.error("NEXIVRA M5B-3L-E CHROMA CONTEXT UNAVAILABLE");
-      return false;
-    }
-    if (!this.m5b3lChromaOffscreen) {
-      this.m5b3lChromaOffscreen = document.createElement("canvas");
-      this.m5b3lChromaOffscreenCtx = this.m5b3lChromaOffscreen.getContext(
-        "2d",
-        { alpha: true, willReadFrequently: true }
-      );
-    }
-    const offscreen = this.m5b3lChromaOffscreen;
-    const offctx = this.m5b3lChromaOffscreenCtx;
-    if (!offscreen || !offctx) {
-      console.error("NEXIVRA M5B-3L-E CHROMA OFFSCREEN CONTEXT UNAVAILABLE");
-      return false;
-    }
-    this.m5b3lChromaRunning = true;
-    this.m5b3lChromaFrameCount = 0;
-    this.m5b3lChromaLastRenderAt = 0;
-    this.m5b3lChromaTargetIntervalMs = 40;
-    wrap.classList.add("m5b3l-chroma-active");
-    canvas.style.display = "block";
-    console.log("NEXIVRA M5B-3L-E PEDRO CHROMA KEY STARTED:", {
-      backgroundReady: Boolean(this.m5b3lRolePlayBackgroundUrl),
-      sourceVideoUntouched: true,
-      instructorUntouched: true,
-      processingResolution: "640x360",
-      targetFps: 25
-    });
-    const render = () => {
-      if (!this.m5b3lChromaRunning) return;
-      try {
-        const now = performance.now();
-        if (this.m5b3lChromaLastRenderAt && now - this.m5b3lChromaLastRenderAt < this.m5b3lChromaTargetIntervalMs) {
-          this.m5b3lChromaFrame = requestAnimationFrame(render);
-          return;
-        }
-        this.m5b3lChromaLastRenderAt = now;
-        const vw = video.videoWidth || 0;
-        const vh2 = video.videoHeight || 0;
-        const width = 640;
-        const height = 360;
-        if (canvas.width !== width || canvas.height !== height) {
-          canvas.width = width;
-          canvas.height = height;
-        }
-        if (offscreen.width !== width || offscreen.height !== height) {
-          offscreen.width = width;
-          offscreen.height = height;
-        }
-        ctx.clearRect(0, 0, width, height);
-        offctx.clearRect(0, 0, width, height);
-        if (vw > 1 && vh2 > 1 && video.readyState >= 2) {
-          const scale = Math.max(width / vw, height / vh2);
-          const drawW = vw * scale;
-          const drawH = vh2 * scale;
-          const dx = (width - drawW) / 2;
-          const dy = (height - drawH) / 2;
-          offctx.drawImage(video, dx, dy, drawW, drawH);
-          const frame = offctx.getImageData(0, 0, width, height);
-          const data = frame.data;
-          for (let i3 = 0; i3 < data.length; i3 += 4) {
-            const r4 = data[i3];
-            const g3 = data[i3 + 1];
-            const b3 = data[i3 + 2];
-            const greenDominant = g3 > 72 && g3 - r4 > 20 && g3 - b3 > 16 && g3 > r4 * 1.16 && g3 > b3 * 1.1;
-            if (greenDominant) {
-              const dominance = Math.min(g3 - r4, g3 - b3);
-              if (dominance >= 52) {
-                data[i3 + 3] = 0;
-              } else {
-                const alpha = Math.max(
-                  0,
-                  Math.min(
-                    255,
-                    Math.round(255 * (52 - dominance) / 32)
-                  )
-                );
-                data[i3 + 3] = Math.min(data[i3 + 3], alpha);
-                data[i3 + 1] = Math.min(
-                  data[i3 + 1],
-                  Math.max(r4, b3) + 18
-                );
-              }
-            }
-          }
-          ctx.putImageData(frame, 0, 0);
-          this.m5b3lChromaFrameCount += 1;
-          if (this.m5b3lChromaFrameCount === 1) {
-            console.log("NEXIVRA M5B-3L-E FIRST KEYED PEDRO FRAME RENDERED:", {
-              width,
-              height,
-              videoWidth: vw,
-              videoHeight: vh2
-            });
-          }
-        }
-      } catch (error) {
-        console.error("NEXIVRA M5B-3L-E CHROMA FRAME ERROR:", error);
-        this.stopM5B3LPedroChromaKey("frame_error");
-        return;
-      }
-      this.m5b3lChromaFrame = requestAnimationFrame(render);
-    };
-    this.m5b3lChromaFrame = requestAnimationFrame(render);
-    return true;
-  }
-  stopM5B3LPedroChromaKey(reason = "manual") {
-    if (this.m5b3lChromaFrame) {
-      cancelAnimationFrame(this.m5b3lChromaFrame);
-      this.m5b3lChromaFrame = null;
-    }
-    const canvas = this.shadowRoot?.getElementById("m5b3lPedroChromaCanvas");
-    const wrap = this.shadowRoot?.querySelector(".wrap");
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      try {
-        ctx?.clearRect(0, 0, canvas.width, canvas.height);
-      } catch (error) {
-      }
-      canvas.style.display = "none";
-    }
-    wrap?.classList.remove("m5b3l-chroma-active");
-    const wasRunning = this.m5b3lChromaRunning;
-    this.m5b3lChromaRunning = false;
-    this.m5b3lChromaLastRenderAt = 0;
-    if (wasRunning) {
-      console.log("NEXIVRA M5B-3L-E PEDRO CHROMA KEY STOPPED:", reason);
-    }
-  }
   enterM5B2RolePlayStage(command = {}) {
     if (this.m5b2RolePlayStageActive) return;
     const wrap = this.shadowRoot?.querySelector(".wrap");
@@ -31940,14 +31791,13 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       const backgroundUrl = String(this.m5b3lRolePlayBackgroundUrl || "").trim();
       rolePlayBackgroundLayer.style.backgroundImage = backgroundUrl ? `url("${backgroundUrl.replace(/"/g, "%22")}")` : "none";
       rolePlayBackgroundLayer.style.display = backgroundUrl ? "block" : "none";
-      console.log("NEXIVRA M5B-3L-A5 PEDRO BACKGROUND LAYER:", {
+      console.log("NEXIVRA M5B-3L-F PEDRO BACKGROUND ASSET AVAILABLE \u2014 NATIVE VIDEO PRESERVED:", {
         resolved: Boolean(backgroundUrl),
-        videoElementMutated: false,
-        instructorElementMutated: false
+        appliedToPedro: false,
+        nativeGreenScreenPreserved: true,
+        reason: "OCT8_DEMO_STABILITY"
       });
-    }
-    if (this.guestInfrastructureReady) {
-      this.startM5B3LPedroChromaKey();
+      rolePlayBackgroundLayer.style.display = "none";
     }
     const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
     if (stageBadge) stageBadge.textContent = "ROLE-PLAY";
@@ -31972,7 +31822,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     this.m5b2GuestStartRequested = false;
     this.m5b2FloorOwner = "ELENORA";
     console.log("NEXIVRA M5B-2D FLOOR OWNER: ELENORA");
-    this.stopM5B3LPedroChromaKey("role_play_exit");
     const wrap = this.shadowRoot?.querySelector(".wrap");
     if (wrap) wrap.classList.remove("m5b2-roleplay-stage");
     const stageBadge = this.shadowRoot?.getElementById("unifiedTrainingStage");
@@ -32827,22 +32676,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   background-size: cover;
                                                                                                                   background-repeat: no-repeat;
                                                                                                                   pointer-events: none;
-                                                                                                                }
-
-                                                                                                                .wrap.m5b2-roleplay-stage #m5b3lPedroChromaCanvas {
-                                                                                                                  display: block;
-                                                                                                                  position: absolute;
-                                                                                                                  inset: 0;
-                                                                                                                  z-index: 2;
-                                                                                                                  width: 100%;
-                                                                                                                  height: 100%;
-                                                                                                                  pointer-events: none;
-                                                                                                                }
-
-                                                                                                                .wrap.m5b2-roleplay-stage.m5b3l-chroma-active #guestAvatarVideo {
-                                                                                                                  opacity: 0 !important;
-                                                                                                                  visibility: visible !important;
-                                                                                                                  pointer-events: none !important;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #guestAvatarVideo {
@@ -34569,11 +34402,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                     aria-hidden="true"
                                                                                                                     style="position:absolute; inset:0; z-index:0; background:#000 center center / cover no-repeat; display:none; pointer-events:none;">
                                                                                                                   </div>
-                                                                                                                  <canvas
-                                                                                                                    id="m5b3lPedroChromaCanvas"
-                                                                                                                    aria-label="Pedro role-play video"
-                                                                                                                    style="display:none; position:absolute; inset:0; z-index:2; width:100%; height:100%; pointer-events:none;">
-                                                                                                                  </canvas>
                                                                                                                   <video
                                                                                                                     id="guestAvatarVideo"
                                                                                                                     autoplay
@@ -35129,6 +34957,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
             this.m5b2nLearnerTurnArmed = false;
             this.m5b2nLearnerFloorOpenedAtMs = Date.now();
             this.m5b2nLearnerSpeechStartedAtMs = 0;
+            this.m5b3lPostPedroLearnerGraceUntilMs = Date.now() + 2200;
             if (this.m5b2mCompleteAfterPedroSpeaks && this.rolePlayActive) {
               const completionReason = this.m5b2mCompletionReason || "explicit_close";
               this.m5b2mCompleteAfterPedroSpeaks = false;
@@ -35184,9 +35013,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
             this.guestInfrastructureReady = true;
             video.play().catch(() => {
             });
-            if (this.m5b2RolePlayStageActive) {
-              this.startM5B3LPedroChromaKey();
-            }
             console.log("NEXIVRA M5B GUEST AVATAR READY:", {
               avatarId: this.guestAvatarId,
               tracks: tracks.length,
@@ -35278,7 +35104,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       const retiringSession = this.guestSession;
       const retiringToken = this.guestSessionToken;
       console.log("NEXIVRA M5B GUEST AVATAR STOP START:", reason);
-      this.stopM5B3LPedroChromaKey(`guest_stop_${reason}`);
       this.guestSession = null;
       this.guestInfrastructureReady = false;
       try {
@@ -35599,19 +35424,19 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     const embeddedQuestion = /\b(?:what|where|when|why|who|which|how)\b.*\b(?:you|your|name|account|transaction|fee|rate|issue|problem|need|prefer|like)\b/i.test(normalized);
     const completeAction = /\b(?:i(?:'ll| will| can)|we(?:'ll| will| can))\b.+\b(?:help|check|call|send|contact|have|get|look|take care|follow up|find out|bring|move|fix|resolve)\b/i.test(normalized) && wordCount >= 6;
     let classification = "NORMAL";
-    let graceMs = Number(this.m5b3d2TurnGraceNormalMs || 650);
+    let graceMs = Number(this.m5b3d2TurnGraceNormalMs || 500);
     if (strongContinuation) {
       classification = "STRONG_CONTINUATION";
       graceMs = Number(this.m5b3d2TurnGraceStrongContinuationMs || 1450);
     } else if (acknowledgmentLead || shortAmbiguous) {
       classification = "LIKELY_CONTINUATION";
-      graceMs = Number(this.m5b3d2TurnGraceContinuationMs || 1200);
+      graceMs = Number(this.m5b3d2TurnGraceContinuationMs || 850);
     } else if (directQuestion || embeddedQuestion) {
       classification = "FAST_QUESTION";
-      graceMs = Number(this.m5b3d2TurnGraceFastMs || 350);
+      graceMs = Number(this.m5b3d2TurnGraceFastMs || 300);
     } else if (completeAction) {
       classification = "COMPLETE_ACTION";
-      graceMs = Number(this.m5b3d2TurnGraceNormalMs || 650);
+      graceMs = Number(this.m5b3d2TurnGraceNormalMs || 500);
     }
     return {
       classification,
@@ -35707,7 +35532,18 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
             learnerContinuity = dx <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && dy <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && scaleDelta <= Number(this.m5b3d1FaceScaleTolerance || 0.55);
           }
           const learnerSpeakerSupported = faceVisible && Boolean(this.m5b3d1FaceVisibleAtSpeechStart) && mouthActivity && Boolean(currentAnchor) && learnerContinuity;
-          if (this.m5b3cInputRouterActive && !learnerSpeakerSupported) {
+          const postPedroLearnerGraceActive = this.rolePlayActive && this.m5b2FloorOwner === "PEDRO" && !this.m5b2jPedroSpeaking && Date.now() <= Number(this.m5b3lPostPedroLearnerGraceUntilMs || 0) && Boolean(faceVisible || this.m5b3d1FaceVisibleAtSpeechStart || learnerContinuity);
+          const learnerSpeakerAccepted = learnerSpeakerSupported || postPedroLearnerGraceActive;
+          if (this.m5b3cInputRouterActive && !learnerSpeakerSupported && postPedroLearnerGraceActive) {
+            console.log("NEXIVRA M5B-3L-F POST-PEDRO LEARNER SPEECH ACCEPTED BY FLOOR GRACE:", {
+              text,
+              faceVisible,
+              faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
+              mouthActivity,
+              learnerContinuity
+            });
+          }
+          if (this.m5b3cInputRouterActive && !learnerSpeakerAccepted) {
             console.log("NEXIVRA M5B-3D1 BACKGROUND/UNVERIFIED SPEECH REJECTED:", {
               text,
               faceVisible,
@@ -37441,7 +37277,6 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     );
   }
   disconnectedCallback() {
-    this.stopM5B3LPedroChromaKey("element_disconnected");
     this.stopGuestInfrastructureTest("element_disconnected").catch(() => {
     });
     if (this.attachTimer) {
