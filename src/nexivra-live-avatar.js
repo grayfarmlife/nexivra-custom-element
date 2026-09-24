@@ -66,6 +66,8 @@
                                                                                                             this.m5b3lChromaLastHeight = 0;
                                                                                                             this.m5b3lChromaRunning = false;
                                                                                                             this.m5b3lChromaFrameCount = 0;
+                                                                                                            this.m5b3lChromaLastRenderAt = 0;
+                                                                                                            this.m5b3lChromaTargetIntervalMs = 40;
 
                                                                                                             // Package 3 M5B-2 — real multi-avatar stage handoff.
                                                                                                             this.m5b2RolePlayStageActive = false;
@@ -713,7 +715,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-E-PEDRO-CHROMA-KEY-COMPOSITOR"
+                                                                                                              "PACKAGE3-M5B3L-E1-OPTIMIZED-PEDRO-CHROMA"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -2338,26 +2340,41 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                     this.m5b3lChromaRunning=true;
                                     this.m5b3lChromaFrameCount=0;
+                                    this.m5b3lChromaLastRenderAt=0;
+                                    this.m5b3lChromaTargetIntervalMs=40;
                                     wrap.classList.add("m5b3l-chroma-active");
                                     canvas.style.display="block";
 
                                     console.log("NEXIVRA M5B-3L-E PEDRO CHROMA KEY STARTED:",{
                                       backgroundReady:Boolean(this.m5b3lRolePlayBackgroundUrl),
                                       sourceVideoUntouched:true,
-                                      instructorUntouched:true
+                                      instructorUntouched:true,
+                                      processingResolution:"640x360",
+                                      targetFps:25
                                     });
 
                                     const render=()=>{
                                       if(!this.m5b3lChromaRunning)return;
 
                                       try{
-                                        const panel=this.shadowRoot?.getElementById("guestInfraPanel");
-                                        const rect=panel?.getBoundingClientRect?.();
-                                        const cssWidth=Math.max(2,Math.round(rect?.width||video.clientWidth||1280));
-                                        const cssHeight=Math.max(2,Math.round(rect?.height||video.clientHeight||720));
-                                        const dpr=Math.min(1.5,Math.max(1,window.devicePixelRatio||1));
-                                        const width=Math.max(2,Math.round(cssWidth*dpr));
-                                        const height=Math.max(2,Math.round(cssHeight*dpr));
+                                        const now=performance.now();
+                                        if(
+                                          this.m5b3lChromaLastRenderAt &&
+                                          now-this.m5b3lChromaLastRenderAt < this.m5b3lChromaTargetIntervalMs
+                                        ){
+                                          this.m5b3lChromaFrame=requestAnimationFrame(render);
+                                          return;
+                                        }
+                                        this.m5b3lChromaLastRenderAt=now;
+
+                                        const vw=video.videoWidth||0;
+                                        const vh=video.videoHeight||0;
+
+                                        // E.1: process at a fixed lightweight 16:9 working resolution.
+                                        // CSS/GPU scales the finished transparent canvas to the stage.
+                                        // This cuts pixel work by ~84% versus the previous full display-size canvas.
+                                        const width=640;
+                                        const height=360;
 
                                         if(canvas.width!==width||canvas.height!==height){
                                           canvas.width=width;
@@ -2367,9 +2384,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                           offscreen.width=width;
                                           offscreen.height=height;
                                         }
-
-                                        const vw=video.videoWidth||0;
-                                        const vh=video.videoHeight||0;
 
                                         ctx.clearRect(0,0,width,height);
                                         offctx.clearRect(0,0,width,height);
@@ -2469,6 +2483,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                     const wasRunning=this.m5b3lChromaRunning;
                                     this.m5b3lChromaRunning=false;
+                                    this.m5b3lChromaLastRenderAt=0;
 
                                     if(wasRunning){
                                       console.log("NEXIVRA M5B-3L-E PEDRO CHROMA KEY STOPPED:",reason);
