@@ -30580,7 +30580,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-C-COURSE-AUTHORITY-ROLE-LOCK"
+      "PACKAGE3-M5B3L-D-RESTORE-PEDRO-PREWARM-RETRY"
     );
     const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
     const activeCourseId = String(
@@ -30705,7 +30705,15 @@ ${tail}`;
           rolePlayActive: this.rolePlayActive
         }
       );
-      if (this.isConnected && this.rolePlayActive && this.m5b2RolePlayStageActive) {
+      if (this.isConnected && (this.rolePlayActive && this.m5b2RolePlayStageActive || this.m5b2fRolePlayPreparing)) {
+        console.log(
+          "NEXIVRA M5B-3L-D FRESH PEDRO TOKEN AUTO-RETRY:",
+          {
+            generation: this.m5b3gGuestTokenGeneration,
+            rolePlayActive: this.rolePlayActive,
+            handoffPreparing: this.m5b2fRolePlayPreparing
+          }
+        );
         this.startGuestInfrastructureTest();
       }
       return;
