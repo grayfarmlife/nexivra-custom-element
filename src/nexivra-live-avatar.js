@@ -57,6 +57,16 @@
                                                                                                             this.m5b3gGuestStartPromise = null;
                                                                                                             this.m5b3gGuestStopPromise = null;
 
+                                                                                                            // M5B-3L-E — Pedro-only chroma-key presentation.
+                                                                                                            // The LiveAvatar video remains the untouched media source.
+                                                                                                            this.m5b3lChromaFrame = null;
+                                                                                                            this.m5b3lChromaOffscreen = null;
+                                                                                                            this.m5b3lChromaOffscreenCtx = null;
+                                                                                                            this.m5b3lChromaLastWidth = 0;
+                                                                                                            this.m5b3lChromaLastHeight = 0;
+                                                                                                            this.m5b3lChromaRunning = false;
+                                                                                                            this.m5b3lChromaFrameCount = 0;
+
                                                                                                             // Package 3 M5B-2 — real multi-avatar stage handoff.
                                                                                                             this.m5b2RolePlayStageActive = false;
                                                                                                             this.m5b2GuestStartRequested = false;
@@ -703,7 +713,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-D-RESTORE-PEDRO-PREWARM-RETRY"
+                                                                                                              "PACKAGE3-M5B3L-E-PEDRO-CHROMA-KEY-COMPOSITOR"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -2292,6 +2302,180 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                     }catch(error){this.m5b2GuestSpeaking=false;console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:",error);}
                                   }
 
+                                  startM5B3LPedroChromaKey() {
+                                    if(this.m5b3lChromaRunning)return true;
+
+                                    const video=this.shadowRoot?.getElementById("guestAvatarVideo");
+                                    const canvas=this.shadowRoot?.getElementById("m5b3lPedroChromaCanvas");
+                                    const wrap=this.shadowRoot?.querySelector(".wrap");
+
+                                    if(!video||!canvas||!wrap){
+                                      console.error("NEXIVRA M5B-3L-E CHROMA SURFACE MISSING");
+                                      return false;
+                                    }
+
+                                    const ctx=canvas.getContext("2d",{alpha:true,willReadFrequently:true});
+                                    if(!ctx){
+                                      console.error("NEXIVRA M5B-3L-E CHROMA CONTEXT UNAVAILABLE");
+                                      return false;
+                                    }
+
+                                    if(!this.m5b3lChromaOffscreen){
+                                      this.m5b3lChromaOffscreen=document.createElement("canvas");
+                                      this.m5b3lChromaOffscreenCtx=
+                                        this.m5b3lChromaOffscreen.getContext(
+                                          "2d",
+                                          {alpha:true,willReadFrequently:true}
+                                        );
+                                    }
+
+                                    const offscreen=this.m5b3lChromaOffscreen;
+                                    const offctx=this.m5b3lChromaOffscreenCtx;
+                                    if(!offscreen||!offctx){
+                                      console.error("NEXIVRA M5B-3L-E CHROMA OFFSCREEN CONTEXT UNAVAILABLE");
+                                      return false;
+                                    }
+
+                                    this.m5b3lChromaRunning=true;
+                                    this.m5b3lChromaFrameCount=0;
+                                    wrap.classList.add("m5b3l-chroma-active");
+                                    canvas.style.display="block";
+
+                                    console.log("NEXIVRA M5B-3L-E PEDRO CHROMA KEY STARTED:",{
+                                      backgroundReady:Boolean(this.m5b3lRolePlayBackgroundUrl),
+                                      sourceVideoUntouched:true,
+                                      instructorUntouched:true
+                                    });
+
+                                    const render=()=>{
+                                      if(!this.m5b3lChromaRunning)return;
+
+                                      try{
+                                        const panel=this.shadowRoot?.getElementById("guestInfraPanel");
+                                        const rect=panel?.getBoundingClientRect?.();
+                                        const cssWidth=Math.max(2,Math.round(rect?.width||video.clientWidth||1280));
+                                        const cssHeight=Math.max(2,Math.round(rect?.height||video.clientHeight||720));
+                                        const dpr=Math.min(1.5,Math.max(1,window.devicePixelRatio||1));
+                                        const width=Math.max(2,Math.round(cssWidth*dpr));
+                                        const height=Math.max(2,Math.round(cssHeight*dpr));
+
+                                        if(canvas.width!==width||canvas.height!==height){
+                                          canvas.width=width;
+                                          canvas.height=height;
+                                        }
+                                        if(offscreen.width!==width||offscreen.height!==height){
+                                          offscreen.width=width;
+                                          offscreen.height=height;
+                                        }
+
+                                        const vw=video.videoWidth||0;
+                                        const vh=video.videoHeight||0;
+
+                                        ctx.clearRect(0,0,width,height);
+                                        offctx.clearRect(0,0,width,height);
+
+                                        if(vw>1&&vh>1&&video.readyState>=2){
+                                          // Match object-fit: cover used by the proven Pedro stage.
+                                          const scale=Math.max(width/vw,height/vh);
+                                          const drawW=vw*scale;
+                                          const drawH=vh*scale;
+                                          const dx=(width-drawW)/2;
+                                          const dy=(height-drawH)/2;
+
+                                          offctx.drawImage(video,dx,dy,drawW,drawH);
+
+                                          const frame=offctx.getImageData(0,0,width,height);
+                                          const data=frame.data;
+
+                                          for(let i=0;i<data.length;i+=4){
+                                            const r=data[i];
+                                            const g=data[i+1];
+                                            const b=data[i+2];
+
+                                            // Pedro's studio background is green. Use a conservative
+                                            // dominance key so skin, blue shirt, eyes and dark edges remain.
+                                            const greenDominant=
+                                              g>72 &&
+                                              g-r>20 &&
+                                              g-b>16 &&
+                                              g>r*1.16 &&
+                                              g>b*1.10;
+
+                                            if(greenDominant){
+                                              const dominance=Math.min(g-r,g-b);
+                                              if(dominance>=52){
+                                                data[i+3]=0;
+                                              }else{
+                                                // Feather edge pixels to avoid a hard green halo.
+                                                const alpha=Math.max(
+                                                  0,
+                                                  Math.min(
+                                                    255,
+                                                    Math.round(255*(52-dominance)/32)
+                                                  )
+                                                );
+                                                data[i+3]=Math.min(data[i+3],alpha);
+                                                // Mild green spill suppression on retained edge pixels.
+                                                data[i+1]=Math.min(
+                                                  data[i+1],
+                                                  Math.max(r,b)+18
+                                                );
+                                              }
+                                            }
+                                          }
+
+                                          ctx.putImageData(frame,0,0);
+                                          this.m5b3lChromaFrameCount+=1;
+
+                                          if(this.m5b3lChromaFrameCount===1){
+                                            console.log("NEXIVRA M5B-3L-E FIRST KEYED PEDRO FRAME RENDERED:",{
+                                              width,
+                                              height,
+                                              videoWidth:vw,
+                                              videoHeight:vh
+                                            });
+                                          }
+                                        }
+                                      }catch(error){
+                                        console.error("NEXIVRA M5B-3L-E CHROMA FRAME ERROR:",error);
+                                        this.stopM5B3LPedroChromaKey("frame_error");
+                                        return;
+                                      }
+
+                                      this.m5b3lChromaFrame=requestAnimationFrame(render);
+                                    };
+
+                                    this.m5b3lChromaFrame=requestAnimationFrame(render);
+                                    return true;
+                                  }
+
+
+                                  stopM5B3LPedroChromaKey(reason="manual") {
+                                    if(this.m5b3lChromaFrame){
+                                      cancelAnimationFrame(this.m5b3lChromaFrame);
+                                      this.m5b3lChromaFrame=null;
+                                    }
+
+                                    const canvas=this.shadowRoot?.getElementById("m5b3lPedroChromaCanvas");
+                                    const wrap=this.shadowRoot?.querySelector(".wrap");
+
+                                    if(canvas){
+                                      const ctx=canvas.getContext("2d");
+                                      try{ctx?.clearRect(0,0,canvas.width,canvas.height);}catch(error){}
+                                      canvas.style.display="none";
+                                    }
+
+                                    wrap?.classList.remove("m5b3l-chroma-active");
+
+                                    const wasRunning=this.m5b3lChromaRunning;
+                                    this.m5b3lChromaRunning=false;
+
+                                    if(wasRunning){
+                                      console.log("NEXIVRA M5B-3L-E PEDRO CHROMA KEY STOPPED:",reason);
+                                    }
+                                  }
+
+
                                   enterM5B2RolePlayStage(command={}) {
                                     if(this.m5b2RolePlayStageActive)return;
 
@@ -2317,6 +2501,10 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                         videoElementMutated:false,
                                         instructorElementMutated:false
                                       });
+                                    }
+
+                                    if(this.guestInfrastructureReady){
+                                      this.startM5B3LPedroChromaKey();
                                     }
 
                                     const stageBadge=this.shadowRoot?.getElementById("unifiedTrainingStage");
@@ -2346,6 +2534,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                     this.m5b2GuestStartRequested=false;
                                     this.m5b2FloorOwner="ELENORA";
                                     console.log("NEXIVRA M5B-2D FLOOR OWNER: ELENORA");
+                                    this.stopM5B3LPedroChromaKey("role_play_exit");
 
                                     const wrap=this.shadowRoot?.querySelector(".wrap");
                                     if(wrap)wrap.classList.remove("m5b2-roleplay-stage");
@@ -3689,6 +3878,22 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   background-size: cover;
                                                                                                                   background-repeat: no-repeat;
                                                                                                                   pointer-events: none;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage #m5b3lPedroChromaCanvas {
+                                                                                                                  display: block;
+                                                                                                                  position: absolute;
+                                                                                                                  inset: 0;
+                                                                                                                  z-index: 2;
+                                                                                                                  width: 100%;
+                                                                                                                  height: 100%;
+                                                                                                                  pointer-events: none;
+                                                                                                                }
+
+                                                                                                                .wrap.m5b2-roleplay-stage.m5b3l-chroma-active #guestAvatarVideo {
+                                                                                                                  opacity: 0 !important;
+                                                                                                                  visibility: visible !important;
+                                                                                                                  pointer-events: none !important;
                                                                                                                 }
 
                                                                                                                 .wrap.m5b2-roleplay-stage #guestAvatarVideo {
@@ -5415,6 +5620,11 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                     aria-hidden="true"
                                                                                                                     style="position:absolute; inset:0; z-index:0; background:#000 center center / cover no-repeat; display:none; pointer-events:none;">
                                                                                                                   </div>
+                                                                                                                  <canvas
+                                                                                                                    id="m5b3lPedroChromaCanvas"
+                                                                                                                    aria-label="Pedro role-play video"
+                                                                                                                    style="display:none; position:absolute; inset:0; z-index:2; width:100%; height:100%; pointer-events:none;">
+                                                                                                                  </canvas>
                                                                                                                   <video
                                                                                                                     id="guestAvatarVideo"
                                                                                                                     autoplay
@@ -6207,6 +6417,10 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                     this.guestInfrastructureReady = true;
                                                                                                                     video.play().catch(() => {});
 
+                                                                                                                    if(this.m5b2RolePlayStageActive){
+                                                                                                                      this.startM5B3LPedroChromaKey();
+                                                                                                                    }
+
                                                                                                                     console.log("NEXIVRA M5B GUEST AVATAR READY:", {
                                                                                                                       avatarId: this.guestAvatarId,
                                                                                                                       tracks: tracks.length,
@@ -6309,6 +6523,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                               const retiringToken=this.guestSessionToken;
 
                                                                                                               console.log("NEXIVRA M5B GUEST AVATAR STOP START:",reason);
+                                                                                                              this.stopM5B3LPedroChromaKey(`guest_stop_${reason}`);
                                                                                                               this.guestSession=null;
                                                                                                               this.guestInfrastructureReady=false;
 
@@ -10168,6 +10383,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
 
                                                                                                           disconnectedCallback() {
+                                                                                                            this.stopM5B3LPedroChromaKey("element_disconnected");
                                                                                                             this.stopGuestInfrastructureTest("element_disconnected").catch(() => {});
 
                                                                                                             if (this.attachTimer) {
