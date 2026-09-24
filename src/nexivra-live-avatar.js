@@ -663,7 +663,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-A-COURSE-ASSET-RUNTIME"
+                                                                                                              "PACKAGE3-M5B3L-A3-VISUAL-RENDER-SAFETY"
                                                                                                             );
                                                                                                             this.render();
                                                                                                             this.bindControls();
@@ -3412,22 +3412,36 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                             const setImage=(id,url)=>{const el=this.shadowRoot?.getElementById(id);if(!el)return;el.hidden=!url;if(url)el.src=url;};
                                                                                                             setImage("clientLogo",b.logoUrl);
                                                                                                             setImage("journeyBrandImage",b.journeyImageUrl);
-                                                                                                            const avatarVideo=this.shadowRoot?.getElementById("avatarVideo");
-                                                                                                            if(avatarVideo && b.instructorBackgroundUrl){
-                                                                                                              avatarVideo.parentElement.style.backgroundImage=`url("${b.instructorBackgroundUrl}")`;
-                                                                                                              avatarVideo.parentElement.style.backgroundSize="cover";
-                                                                                                              avatarVideo.parentElement.style.backgroundPosition="center";
-                                                                                                            }
+                                                                                                            /*
+                                                                                                              M5B-3L-A.3 VISUAL RENDER SAFETY
+                                                                                                              Course assets are presentation data only.
+                                                                                                              Never mutate the LiveAvatar video element or its
+                                                                                                              immediate rendering parent. The instructor stage
+                                                                                                              remains exactly on the proven pre-asset path.
+                                                                                                            */
                                                                                                             const guestPanel=this.shadowRoot?.getElementById("guestInfraPanel");
                                                                                                             if(guestPanel){
-                                                                                                              guestPanel.style.backgroundImage=b.rolePlayBackgroundUrl ? `url("${b.rolePlayBackgroundUrl}")` : "none";
-                                                                                                              guestPanel.style.backgroundSize="cover";
-                                                                                                              guestPanel.style.backgroundPosition="center";
+                                                                                                              guestPanel.style.setProperty(
+                                                                                                                "--nexivra-roleplay-background",
+                                                                                                                b.rolePlayBackgroundUrl
+                                                                                                                  ? `url("${b.rolePlayBackgroundUrl}")`
+                                                                                                                  : "none"
+                                                                                                              );
+                                                                                                              guestPanel.dataset.rolePlayBackgroundReady =
+                                                                                                                b.rolePlayBackgroundUrl ? "true" : "false";
                                                                                                             }
-                                                                                                            const guestVideo=this.shadowRoot?.getElementById("guestAvatarVideo");
-                                                                                                            if(guestVideo && b.rolePlayBackgroundUrl){
-                                                                                                              guestVideo.style.backgroundColor="transparent";
-                                                                                                            }
+
+                                                                                                            console.log(
+                                                                                                              "NEXIVRA M5B-3L-A3 COURSE ASSET RESOLUTION:",
+                                                                                                              {
+                                                                                                                courseAssets: Array.isArray(this.dashboardData?.courseAssets)
+                                                                                                                  ? this.dashboardData.courseAssets.length
+                                                                                                                  : 0,
+                                                                                                                instructorBackgroundResolved: Boolean(b.instructorBackgroundUrl),
+                                                                                                                rolePlayBackgroundResolved: Boolean(b.rolePlayBackgroundUrl),
+                                                                                                                instructorVideoMutation: false
+                                                                                                              }
+                                                                                                            );
 
                                                                                                             const hero=this.shadowRoot?.getElementById("learnerHero");
                                                                                                             if(hero) hero.style.backgroundImage=b.heroImageUrl ? `linear-gradient(90deg,rgba(2,9,18,.95),rgba(2,9,18,.18)),url("${b.heroImageUrl}")` : "linear-gradient(90deg,#03101b,#082033)";
