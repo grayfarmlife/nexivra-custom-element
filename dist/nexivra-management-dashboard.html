@@ -770,7 +770,8 @@ tr:last-child td {
 }
 
 .status.draft,
-.status.processing {
+.status.processing,
+.status.pending_review {
   color: #ffdc92;
 
   background:
@@ -2221,7 +2222,7 @@ textarea {
             class="btn btn-primary"
             onclick="openUploadModal()"
           >
-            + Register Knowledge Source
+            + Upload Document
           </button>
 
         </div>
@@ -2878,7 +2879,7 @@ textarea {
     <div class="modal-header">
 
       <div class="modal-title">
-        Register Knowledge Source
+        Upload Knowledge Document
       </div>
 
       <button
@@ -2931,24 +2932,65 @@ textarea {
 
         <div>
           <label>
-            File Name
+            Document File
           </label>
 
           <input
-            id="uploadFileName"
-            placeholder="Example: Retail Service Standards.pdf"
+            id="uploadFileInput"
+            type="file"
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            style="padding:10px;"
           >
+
+          <div
+            id="uploadFileHelp"
+            style="
+              margin-top:8px;
+              color:var(--muted);
+              font-size:11px;
+              line-height:1.55;
+            "
+          >
+            Supported for this build: PDF, DOCX, and TXT. Select the actual file from your computer; NEXIVRA will upload and register it automatically.
+          </div>
+
+          <div
+            id="uploadFileStatus"
+            style="
+              display:none;
+              margin-top:10px;
+              padding:10px 12px;
+              border-radius:10px;
+              border:1px solid rgba(0,200,255,.16);
+              background:rgba(0,200,255,.035);
+              color:var(--muted);
+              font-size:11px;
+              line-height:1.5;
+            "
+          ></div>
         </div>
 
         <div>
           <label>
-            File URL
+            Module
           </label>
 
-          <input
-            id="uploadFileUrl"
-            placeholder="https://..."
+          <select id="uploadModule">
+            <option value="">
+              Optional module relationship
+            </option>
+          </select>
+
+          <div
+            style="
+              margin-top:7px;
+              color:var(--muted);
+              font-size:11px;
+              line-height:1.5;
+            "
           >
+            If you select a module and approve the source, NEXIVRA will connect the document to that module after registration.
+          </div>
         </div>
 
         <div class="form-row">
@@ -3084,7 +3126,7 @@ textarea {
         class="btn btn-primary"
         onclick="registerUpload()"
       >
-        Register Knowledge Source
+        Upload & Register Document
       </button>
 
     </div>
@@ -3654,6 +3696,11 @@ const state = {
   selectedModuleArea: null,
   knowledgeModules: [],
   selectedKnowledgeSourceId: null,
+  pendingKnowledgeFile: null,
+  pendingKnowledgeUploadRequestId: null,
+  pendingKnowledgeRegistration: null,
+  pendingKnowledgePreferredModuleId: '',
+  knowledgeUploadInProgress: false,
   access: {
     role: 'nexivra_admin',
     organizationId: '',
@@ -3957,6 +4004,14 @@ function handleWixMessage(
 
       renderKnowledgeModuleRelationships();
 
+      populateUploadModuleSelect(
+        state.pendingKnowledgePreferredModuleId ||
+        ''
+      );
+
+      state.pendingKnowledgePreferredModuleId =
+        '';
+
       break;
 
     case 'ASSIGNMENTS_DATA':
@@ -4123,6 +4178,22 @@ function handleWixMessage(
 
       break;
     }
+
+    case 'KNOWLEDGE_UPLOAD_URL_READY':
+
+      handleKnowledgeUploadUrlReady(
+        payload || {}
+      );
+
+      break;
+
+    case 'KNOWLEDGE_UPLOAD_REGISTERED':
+
+      handleKnowledgeUploadRegistered(
+        payload || {}
+      );
+
+      break;
 
     case 'ACTION_SUCCESS':
 
@@ -5085,8 +5156,24 @@ function renderKnowledgeWorkspace(
             "
           >
             Approved organizational sources connected to this
-            module will appear here. Actual document connections
-            will be managed through Knowledge Uploads.
+            module will appear here. Upload company documents directly
+            into NEXIVRA and control which approved sources this module may use.
+          </div>
+
+          <div
+            style="
+              display:flex;
+              justify-content:flex-end;
+              margin-bottom:14px;
+            "
+          >
+            <button
+              type="button"
+              class="btn btn-primary"
+              onclick="openModuleKnowledgeUpload('${escapeAttribute(module.id)}')"
+            >
+              + Upload Documents
+            </button>
           </div>
 
           <div
@@ -5124,25 +5211,64 @@ function renderKnowledgeWorkspace(
 
                     ${approvedSourceIds
                       .map(
-                        sourceId => `
+                        sourceId => {
 
-                          <div
-                            style="
-                              padding:10px 12px;
-                              border-radius:10px;
-                              border:1px solid rgba(0,200,255,.15);
-                              background:rgba(0,200,255,.035);
-                              color:var(--muted);
-                              font-size:11px;
-                              word-break:break-all;
-                            "
-                          >
-                            ${escapeHTML(
-                              sourceId
-                            )}
-                          </div>
+                          const source =
+                            state.uploads.find(
+                              item =>
+                                item.id === sourceId
+                            );
 
-                        `
+                          const metadata =
+                            getKnowledgeMetadata(
+                              source
+                            );
+
+                          const title =
+                            metadata.sourceTitle ||
+                            source?.fileName ||
+                            sourceId;
+
+                          const version =
+                            metadata.version ||
+                            '';
+
+                          return `
+
+                            <div
+                              style="
+                                padding:11px 12px;
+                                border-radius:10px;
+                                border:1px solid rgba(0,200,255,.15);
+                                background:rgba(0,200,255,.035);
+                              "
+                            >
+                              <div
+                                style="
+                                  color:#fff;
+                                  font-size:12px;
+                                  font-weight:800;
+                                "
+                              >
+                                ${escapeHTML(title)}
+                              </div>
+
+                              <div
+                                style="
+                                  margin-top:4px;
+                                  color:var(--muted);
+                                  font-size:10px;
+                                  word-break:break-all;
+                                "
+                              >
+                                ${escapeHTML(source?.fileName || sourceId)}
+                                ${version ? ` • v${escapeHTML(version)}` : ''}
+                              </div>
+                            </div>
+
+                          `;
+
+                        }
                       )
                       .join('')}
 
@@ -9475,7 +9601,7 @@ function renderUploads() {
     container.innerHTML =
       emptyState(
         'No knowledge sources',
-        'Register the first approved source for NEXIVRA.'
+        'Upload the first company knowledge document into NEXIVRA.'
       );
 
     return;
@@ -11314,57 +11440,69 @@ function createModule() {
 
 function registerUpload() {
 
+  if (
+    state.knowledgeUploadInProgress
+  ) {
+    return;
+  }
+
   const organizationId =
     document
       .getElementById(
         'uploadOrganization'
       )
-      .value;
+      ?.value ||
+    '';
 
   const courseId =
     document
       .getElementById(
         'uploadCourse'
       )
-      .value;
+      ?.value ||
+    '';
+
+  const moduleId =
+    document
+      .getElementById(
+        'uploadModule'
+      )
+      ?.value ||
+    '';
 
   const sourceTitle =
     document
       .getElementById(
         'uploadSourceTitle'
       )
-      .value
-      .trim();
+      ?.value
+      .trim() ||
+    '';
 
-  const fileName =
-    document
-      .getElementById(
-        'uploadFileName'
-      )
-      .value
-      .trim();
+  const fileInput =
+    document.getElementById(
+      'uploadFileInput'
+    );
 
-  const fileUrl =
-    document
-      .getElementById(
-        'uploadFileUrl'
-      )
-      .value
-      .trim();
+  const file =
+    fileInput?.files?.[0] ||
+    state.pendingKnowledgeFile ||
+    null;
 
   const sourceType =
     document
       .getElementById(
         'uploadSourceType'
       )
-      .value;
+      ?.value ||
+    'other';
 
   const version =
     document
       .getElementById(
         'uploadVersion'
       )
-      .value
+      ?.value
       .trim() ||
     '1.0';
 
@@ -11373,14 +11511,15 @@ function registerUpload() {
       .getElementById(
         'uploadEffectiveDate'
       )
-      .value;
+      ?.value ||
+    '';
 
   const approvalStatus =
     document
       .getElementById(
         'uploadApprovalStatus'
       )
-      .value ||
+      ?.value ||
     'draft';
 
   const notes =
@@ -11388,62 +11527,834 @@ function registerUpload() {
       .getElementById(
         'uploadNotes'
       )
-      .value
-      .trim();
+      ?.value
+      .trim() ||
+    '';
 
   const isCurrent =
     document
       .getElementById(
         'uploadIsCurrent'
       )
-      .checked !==
+      ?.checked !==
     false;
 
-  if (
-    !organizationId ||
-    !sourceTitle ||
-    !fileName ||
-    !fileUrl
-  ) {
+  if (!organizationId) {
 
     showToast(
-      'Organization, source title, file name, and URL are required.',
+      'Select an organization.',
       'error'
     );
 
     return;
+  }
+
+  if (!sourceTitle) {
+
+    showToast(
+      'Source title is required.',
+      'error'
+    );
+
+    return;
+  }
+
+  if (!file) {
+
+    showToast(
+      'Choose a PDF, DOCX, or TXT document to upload.',
+      'error'
+    );
+
+    return;
+  }
+
+  const extension =
+    String(file.name || '')
+      .split('.')
+      .pop()
+      .toLowerCase();
+
+  if (
+    ![
+      'pdf',
+      'docx',
+      'txt'
+    ].includes(extension)
+  ) {
+
+    showToast(
+      'This build supports PDF, DOCX, and TXT knowledge documents.',
+      'error'
+    );
+
+    return;
+  }
+
+  const maxBytes =
+    25 *
+    1024 *
+    1024;
+
+  if (
+    Number(file.size || 0) >
+    maxBytes
+  ) {
+
+    showToast(
+      'For this build, knowledge documents must be 25 MB or smaller.',
+      'error'
+    );
+
+    return;
+  }
+
+  if (
+    moduleId &&
+    !courseId
+  ) {
+
+    showToast(
+      'A module relationship requires a course.',
+      'error'
+    );
+
+    return;
+  }
+
+  const requestId =
+    createKnowledgeUploadRequestId();
+
+  state.pendingKnowledgeFile =
+    file;
+
+  state.pendingKnowledgeUploadRequestId =
+    requestId;
+
+  state.pendingKnowledgeRegistration = {
+    requestId,
+    organizationId,
+    courseId,
+    moduleId,
+    sourceTitle,
+    sourceType,
+    version,
+    effectiveDate,
+    approvalStatus,
+    notes,
+    isCurrent,
+    fileName:
+      file.name,
+    mimeType:
+      normalizeKnowledgeMimeType(
+        file
+      ),
+    fileSize:
+      Number(file.size || 0)
+  };
+
+  setKnowledgeUploadBusy(
+    true,
+    `Preparing secure upload for ${file.name}...`
+  );
+
+  sendToWix(
+    'REQUEST_KNOWLEDGE_UPLOAD_URL',
+    {
+      requestId,
+      organizationId,
+      courseId,
+      moduleId,
+      fileName:
+        file.name,
+      mimeType:
+        normalizeKnowledgeMimeType(
+          file
+        ),
+      fileSize:
+        Number(file.size || 0)
+    }
+  );
+
+}
+
+
+function createKnowledgeUploadRequestId() {
+
+  return (
+    'knowledge-' +
+    Date.now() +
+    '-' +
+    Math.random()
+      .toString(36)
+      .slice(2, 10)
+  );
+
+}
+
+
+function normalizeKnowledgeMimeType(
+  file
+) {
+
+  const current =
+    String(
+      file?.type ||
+      ''
+    ).trim();
+
+  if (current) {
+    return current;
+  }
+
+  const extension =
+    String(
+      file?.name ||
+      ''
+    )
+      .split('.')
+      .pop()
+      .toLowerCase();
+
+  const map = {
+    pdf:
+      'application/pdf',
+
+    docx:
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+
+    txt:
+      'text/plain'
+  };
+
+  return (
+    map[extension] ||
+    'application/octet-stream'
+  );
+
+}
+
+
+function setKnowledgeUploadBusy(
+  busy,
+  message = ''
+) {
+
+  state.knowledgeUploadInProgress =
+    busy === true;
+
+  const button =
+    document.querySelector(
+      '#uploadModal .modal-footer .btn-primary'
+    );
+
+  if (button) {
+
+    button.disabled =
+      state.knowledgeUploadInProgress;
+
+    button.textContent =
+      state.knowledgeUploadInProgress
+        ? 'Uploading...'
+        : 'Upload & Register Document';
+  }
+
+  setKnowledgeUploadStatus(
+    message,
+    busy
+      ? 'working'
+      : 'idle'
+  );
+
+}
+
+
+function setKnowledgeUploadStatus(
+  message,
+  status = 'idle'
+) {
+
+  const element =
+    document.getElementById(
+      'uploadFileStatus'
+    );
+
+  if (!element) {
+    return;
+  }
+
+  if (!message) {
+    element.style.display =
+      'none';
+    element.textContent =
+      '';
+    return;
+  }
+
+  element.style.display =
+    'block';
+
+  element.textContent =
+    message;
+
+  if (status === 'error') {
+    element.style.borderColor =
+      'rgba(255,98,98,.38)';
+    element.style.color =
+      '#ffb2b2';
+  } else if (
+    status === 'success'
+  ) {
+    element.style.borderColor =
+      'rgba(73,213,151,.38)';
+    element.style.color =
+      '#b9f4d8';
+  } else {
+    element.style.borderColor =
+      'rgba(0,200,255,.24)';
+    element.style.color =
+      'var(--muted)';
+  }
+
+}
+
+
+async function handleKnowledgeUploadUrlReady(
+  payload
+) {
+
+  const pending =
+    state.pendingKnowledgeRegistration;
+
+  const file =
+    state.pendingKnowledgeFile;
+
+  if (
+    !pending ||
+    !file
+  ) {
+    return;
+  }
+
+  if (
+    payload?.requestId &&
+    payload.requestId !==
+      pending.requestId
+  ) {
+    return;
+  }
+
+  const uploadUrl =
+    payload?.uploadUrl ||
+    payload?.url ||
+    '';
+
+  if (!uploadUrl) {
+
+    setKnowledgeUploadBusy(
+      false,
+      ''
+    );
+
+    setKnowledgeUploadStatus(
+      'NEXIVRA could not create a secure upload URL.',
+      'error'
+    );
+
+    showToast(
+      'Unable to prepare document upload.',
+      'error'
+    );
+
+    return;
+  }
+
+  try {
+
+    setKnowledgeUploadStatus(
+      `Uploading ${file.name} to NEXIVRA secure storage...`,
+      'working'
+    );
+
+    const uploadTarget =
+      ensureKnowledgeUploadFilename(
+        uploadUrl,
+        file.name
+      );
+
+    const response =
+      await fetch(
+        uploadTarget,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type':
+              normalizeKnowledgeMimeType(
+                file
+              )
+          },
+          body:
+            file
+        }
+      );
+
+    if (!response.ok) {
+
+      const body =
+        await response
+          .text()
+          .catch(
+            () => ''
+          );
+
+      console.error(
+        'NEXIVRA KNOWLEDGE FILE UPLOAD FAILED:',
+        response.status,
+        body
+      );
+
+      throw new Error(
+        'FILE_UPLOAD_FAILED'
+      );
+    }
+
+    let uploaded =
+      null;
+
+    try {
+      uploaded =
+        await response.json();
+    } catch {
+      uploaded =
+        null;
+    }
+
+    const uploadedFile =
+      uploaded?.file ||
+      uploaded?.files?.[0] ||
+      uploaded?.upload?.file ||
+      uploaded ||
+      {};
+
+    const mediaId =
+      uploadedFile?.id ||
+      uploadedFile?._id ||
+      uploadedFile?.fileId ||
+      uploaded?.fileId ||
+      '';
+
+    const returnedUrl =
+      uploadedFile?.url ||
+      uploadedFile?.fileUrl ||
+      uploadedFile?.media?.url ||
+      uploaded?.url ||
+      uploaded?.fileUrl ||
+      '';
+
+    setKnowledgeUploadStatus(
+      'Document uploaded. Registering knowledge source...',
+      'working'
+    );
+
+    sendToWix(
+      'REGISTER_UPLOADED_KNOWLEDGE',
+      {
+        ...pending,
+        mediaId,
+        uploadedUrl:
+          returnedUrl,
+        uploadResponse:
+          sanitizeUploadResponse(
+            uploaded
+          )
+      }
+    );
+
+  } catch (error) {
+
+    console.error(
+      'NEXIVRA KNOWLEDGE UPLOAD ERROR:',
+      error
+    );
+
+    setKnowledgeUploadBusy(
+      false,
+      ''
+    );
+
+    setKnowledgeUploadStatus(
+      'The document could not be uploaded. Please try again.',
+      'error'
+    );
+
+    showToast(
+      'Knowledge document upload failed.',
+      'error'
+    );
 
   }
 
-  sendToWix(
-    'REGISTER_UPLOAD',
-    {
-      organizationId,
-      courseId,
-      fileName,
-      fileUrl,
-      fileType:
-        sourceType,
-      sourceType,
+}
 
-      metadata: {
-        sourceTitle,
-        sourceType,
-        version,
-        effectiveDate,
-        approvalStatus,
-        isCurrent,
-        notes,
-        moduleIds: []
+
+function ensureKnowledgeUploadFilename(
+  uploadUrl,
+  fileName
+) {
+
+  try {
+
+    const url =
+      new URL(
+        uploadUrl
+      );
+
+    if (
+      !url.searchParams.has(
+        'filename'
+      )
+    ) {
+      url.searchParams.set(
+        'filename',
+        fileName
+      );
+    }
+
+    return url.toString();
+
+  } catch {
+
+    const separator =
+      uploadUrl.includes('?')
+        ? '&'
+        : '?';
+
+    return (
+      uploadUrl +
+      separator +
+      'filename=' +
+      encodeURIComponent(
+        fileName
+      )
+    );
+
+  }
+
+}
+
+
+function sanitizeUploadResponse(
+  value
+) {
+
+  if (
+    !value ||
+    typeof value !== 'object'
+  ) {
+    return {};
+  }
+
+  const safe = {};
+
+  [
+    'id',
+    '_id',
+    'fileId',
+    'url',
+    'fileUrl',
+    'displayName',
+    'mimeType',
+    'mediaType'
+  ].forEach(
+    key => {
+      if (
+        typeof value[key] ===
+          'string'
+      ) {
+        safe[key] =
+          value[key];
       }
     }
   );
 
-  closeModal(
-    'uploadModal'
+  const nestedFile =
+    value.file &&
+    typeof value.file ===
+      'object'
+      ? value.file
+      : null;
+
+  if (nestedFile) {
+    safe.file =
+      sanitizeUploadResponse(
+        nestedFile
+      );
+  }
+
+  return safe;
+
+}
+
+
+function handleKnowledgeUploadRegistered(
+  payload
+) {
+
+  if (
+    payload?.requestId &&
+    state.pendingKnowledgeUploadRequestId &&
+    payload.requestId !==
+      state.pendingKnowledgeUploadRequestId
+  ) {
+    return;
+  }
+
+  const fileName =
+    state.pendingKnowledgeRegistration
+      ?.fileName ||
+    'Document';
+
+  setKnowledgeUploadBusy(
+    false,
+    ''
+  );
+
+  setKnowledgeUploadStatus(
+    `${fileName} uploaded and registered successfully.`,
+    'success'
+  );
+
+  state.pendingKnowledgeFile =
+    null;
+
+  state.pendingKnowledgeUploadRequestId =
+    null;
+
+  state.pendingKnowledgeRegistration =
+    null;
+
+  showToast(
+    payload?.message ||
+    'Knowledge document uploaded successfully.',
+    'success'
+  );
+
+  setTimeout(
+    () => {
+      closeModal(
+        'uploadModal'
+      );
+
+      sendToWix(
+        'LIST_UPLOADS',
+        {}
+      );
+
+      if (
+        state.selectedCourseId
+      ) {
+        sendToWix(
+          'LIST_MODULES',
+          {
+            courseId:
+              state.selectedCourseId
+          }
+        );
+      }
+    },
+    650
   );
 
 }
+
+
+function handleKnowledgeFileSelection() {
+
+  const input =
+    document.getElementById(
+      'uploadFileInput'
+    );
+
+  const file =
+    input?.files?.[0] ||
+    null;
+
+  state.pendingKnowledgeFile =
+    file;
+
+  if (!file) {
+    setKnowledgeUploadStatus(
+      '',
+      'idle'
+    );
+    return;
+  }
+
+  const sourceTitle =
+    document.getElementById(
+      'uploadSourceTitle'
+    );
+
+  if (
+    sourceTitle &&
+    !sourceTitle.value.trim()
+  ) {
+    sourceTitle.value =
+      file.name
+        .replace(
+          /\.[^.]+$/,
+          ''
+        )
+        .replace(
+          /[_-]+/g,
+          ' '
+        );
+  }
+
+  const sizeMb =
+    Number(file.size || 0) /
+    1024 /
+    1024;
+
+  setKnowledgeUploadStatus(
+    `${file.name} selected • ${sizeMb.toFixed(2)} MB`,
+    'idle'
+  );
+
+}
+
+
+function populateUploadModuleSelect(
+  preferredModuleId = ''
+) {
+
+  const select =
+    document.getElementById(
+      'uploadModule'
+    );
+
+  if (!select) {
+    return;
+  }
+
+  const courseId =
+    document.getElementById(
+      'uploadCourse'
+    )?.value ||
+    '';
+
+  if (!courseId) {
+
+    select.innerHTML =
+      '<option value="">Optional module relationship</option>';
+
+    select.disabled =
+      true;
+
+    return;
+  }
+
+  const modules =
+    state.knowledgeModules ||
+    [];
+
+  select.disabled =
+    false;
+
+  select.innerHTML =
+    '<option value="">Optional module relationship</option>' +
+    modules.map(
+      module => `
+        <option value="${escapeAttribute(module.id)}">
+          ${escapeHTML(module.title)}
+        </option>
+      `
+    ).join('');
+
+  if (
+    preferredModuleId &&
+    modules.some(
+      module =>
+        module.id ===
+        preferredModuleId
+    )
+  ) {
+    select.value =
+      preferredModuleId;
+  }
+
+}
+
+
+function requestUploadModulesForCourse(
+  preferredModuleId = ''
+) {
+
+  const courseId =
+    document.getElementById(
+      'uploadCourse'
+    )?.value ||
+    '';
+
+  state.pendingKnowledgePreferredModuleId =
+    preferredModuleId ||
+    '';
+
+  state.knowledgeModules =
+    [];
+
+  populateUploadModuleSelect();
+
+  if (!courseId) {
+    return;
+  }
+
+  sendToWix(
+    'LIST_KNOWLEDGE_MODULES',
+    {
+      courseId
+    }
+  );
+
+}
+
+
+function openModuleKnowledgeUpload(
+  moduleId
+) {
+
+  const module =
+    state.modules.find(
+      item =>
+        item.id === moduleId
+    );
+
+  const course =
+    state.courses.find(
+      item =>
+        item.id ===
+        module?.courseId
+    );
+
+  openUploadModal({
+    organizationId:
+      course?.organizationId ||
+      '',
+    courseId:
+      course?.id ||
+      module?.courseId ||
+      '',
+    moduleId:
+      module?.id ||
+      ''
+  });
+
+}
+
+
+window.openModuleKnowledgeUpload =
+  openModuleKnowledgeUpload;
+
 
 
 /* ======================================================
@@ -11868,23 +12779,31 @@ function openModuleModal() {
 
 }
 
-function openUploadModal() {
+function openUploadModal(
+  defaults = {}
+) {
 
   populateOrganizationSelects();
   populateCourseSelects();
 
+  state.pendingKnowledgeFile =
+    null;
+
+  state.pendingKnowledgeUploadRequestId =
+    null;
+
+  state.pendingKnowledgeRegistration =
+    null;
+
+  state.knowledgeUploadInProgress =
+    false;
+
+  state.pendingKnowledgePreferredModuleId =
+    defaults?.moduleId ||
+    '';
+
   setFieldValue(
     'uploadSourceTitle',
-    ''
-  );
-
-  setFieldValue(
-    'uploadFileName',
-    ''
-  );
-
-  setFieldValue(
-    'uploadFileUrl',
     ''
   );
 
@@ -11905,13 +12824,51 @@ function openUploadModal() {
 
   setFieldValue(
     'uploadApprovalStatus',
-    'draft'
+    'pending_review'
   );
 
   setFieldValue(
     'uploadSourceType',
-    'policy'
+    'training_material'
   );
+
+  if (
+    defaults?.organizationId
+  ) {
+    setFieldValue(
+      'uploadOrganization',
+      defaults.organizationId
+    );
+  } else if (
+    state.access?.isCompanyAdmin &&
+    state.access.organizationId
+  ) {
+    setFieldValue(
+      'uploadOrganization',
+      state.access.organizationId
+    );
+  } else {
+    setFieldValue(
+      'uploadOrganization',
+      ''
+    );
+  }
+
+  setFieldValue(
+    'uploadCourse',
+    defaults?.courseId ||
+    ''
+  );
+
+  const fileInput =
+    document.getElementById(
+      'uploadFileInput'
+    );
+
+  if (fileInput) {
+    fileInput.value =
+      '';
+  }
 
   const currentCheckbox =
     document.getElementById(
@@ -11923,8 +12880,60 @@ function openUploadModal() {
       true;
   }
 
+  setKnowledgeUploadStatus(
+    '',
+    'idle'
+  );
+
+  setKnowledgeUploadBusy(
+    false,
+    ''
+  );
+
   openModal(
     'uploadModal'
+  );
+
+  setTimeout(
+    () => {
+
+      document
+        .getElementById(
+          'uploadFileInput'
+        )
+        ?.addEventListener(
+          'change',
+          handleKnowledgeFileSelection,
+          {
+            once: true
+          }
+        );
+
+      const courseSelect =
+        document.getElementById(
+          'uploadCourse'
+        );
+
+      if (courseSelect) {
+        courseSelect.onchange =
+          () => {
+            requestUploadModulesForCourse();
+          };
+      }
+
+      if (
+        defaults?.courseId
+      ) {
+        requestUploadModulesForCourse(
+          defaults?.moduleId ||
+          ''
+        );
+      } else {
+        populateUploadModuleSelect();
+      }
+
+    },
+    0
   );
 
 }
