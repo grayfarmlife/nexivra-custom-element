@@ -1672,6 +1672,11 @@ textarea {
         <span>Knowledge Sources</span>
       </button>
 
+      <button class="nav-button" data-section="assets">
+        <span class="nav-icon">▧</span>
+        <span>Course Assets</span>
+      </button>
+
       <button class="nav-button" data-section="users">
         <span class="nav-icon">◎</span>
         <span>Users</span>
@@ -2257,6 +2262,22 @@ textarea {
 
         </div>
 
+      </section>
+
+      <section class="section" id="section-assets">
+        <div class="section-header">
+          <div class="section-heading">
+            <div class="eyebrow">VISUAL EXPERIENCE</div>
+            <h1>Course Assets</h1>
+            <p>Upload approved images for learner dashboards, course visuals, branding, and role-play environments.</p>
+          </div>
+          <button class="btn btn-primary" onclick="openUploadModal({recordKind:'course_asset'})">+ Upload Image</button>
+        </div>
+        <div id="courseAssetMetrics" class="metric-grid"></div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Course Asset Library</div><div class="card-subtitle">Approved current assets are resolved by organization, course, module, and purpose.</div></div></div>
+          <div class="table-wrap" id="assetsContainer"></div>
+        </div>
       </section>
 
       <section
@@ -2920,7 +2941,33 @@ textarea {
         </div>
 
         <div>
-          <label>
+          <label>Upload Category</label>
+          <select id="uploadRecordKind" onchange="syncUploadKindUI()">
+            <option value="knowledge_source">Knowledge Document</option>
+            <option value="course_asset">Course Asset / Image</option>
+          </select>
+        </div>
+
+        <div id="uploadAssetPurposeWrap" style="display:none;">
+          <label>Asset Purpose</label>
+          <select id="uploadAssetPurpose">
+            <option value="role_play_background">Role-Play Background</option>
+            <option value="instructor_background">Instructor Background</option>
+            <option value="course_cover">Course Cover Image</option>
+            <option value="module_image">Module Image</option>
+            <option value="teaching_image">Teaching / Lesson Image</option>
+            <option value="practice_image">Practice Image</option>
+            <option value="role_play_image">Role-Play Image</option>
+            <option value="evaluation_image">Evaluation Image</option>
+            <option value="completion_image">Completion / Certificate Image</option>
+            <option value="organization_logo">Organization Logo</option>
+            <option value="organization_brand_asset">Organization Brand Asset</option>
+            <option value="general_course_asset">General Course Asset</option>
+          </select>
+        </div>
+
+        <div>
+          <label id="uploadTitleLabel">
             Source Title
           </label>
 
@@ -2938,7 +2985,7 @@ textarea {
           <input
             id="uploadFileInput"
             type="file"
-            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            accept=".pdf,.docx,.txt,.png,.jpg,.jpeg,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg,image/webp"
             style="padding:10px;"
           >
 
@@ -2951,7 +2998,7 @@ textarea {
               line-height:1.55;
             "
           >
-            Supported for this build: PDF, DOCX, and TXT. Select the actual file from your computer; NEXIVRA will upload and register it automatically.
+            Knowledge: PDF, DOCX, TXT. Course Assets: PNG, JPG/JPEG, WEBP. NEXIVRA will upload and register the selected file automatically.
           </div>
 
           <div
@@ -3691,6 +3738,7 @@ const state = {
   courses: [],
   modules: [],
   uploads: [],
+  assets: [],
   users: [],
   assignments: [],
   selectedModuleArea: null,
@@ -4192,6 +4240,16 @@ function handleWixMessage(
       handleKnowledgeUploadRegistered(
         payload || {}
       );
+
+      break;
+
+    case 'COURSE_ASSETS_DATA':
+
+      state.assets =
+        payload?.assets ||
+        [];
+
+      renderAssets();
 
       break;
 
@@ -9470,6 +9528,70 @@ window.saveNexivraUser =
 
 
 /* ======================================================
+   COURSE ASSETS — M5B-3L-A
+====================================================== */
+
+function assetPurposeLabel(value) {
+  const labels = {
+    role_play_background:'Role-Play Background',
+    instructor_background:'Instructor Background',
+    course_cover:'Course Cover Image',
+    module_image:'Module Image',
+    teaching_image:'Teaching / Lesson Image',
+    practice_image:'Practice Image',
+    role_play_image:'Role-Play Image',
+    evaluation_image:'Evaluation Image',
+    completion_image:'Completion / Certificate Image',
+    organization_logo:'Organization Logo',
+    organization_brand_asset:'Organization Brand Asset',
+    general_course_asset:'General Course Asset'
+  };
+  return labels[value] || value || 'Course Asset';
+}
+
+function renderAssets() {
+  const container =
+    document.getElementById('assetsContainer');
+  const metrics =
+    document.getElementById('courseAssetMetrics');
+  if (!container) return;
+
+  const assets =
+    state.assets || [];
+
+  if (metrics) {
+    metrics.innerHTML = `
+      <div class="metric-card"><div class="metric-label">Assets</div><div class="metric-value">${assets.length}</div><div class="metric-sub">Registered visuals</div></div>
+      <div class="metric-card"><div class="metric-label">Approved</div><div class="metric-value">${assets.filter(x=>x.approvalStatus==='approved').length}</div><div class="metric-sub">Cleared for use</div></div>
+      <div class="metric-card"><div class="metric-label">Current</div><div class="metric-value">${assets.filter(x=>x.isCurrent!==false).length}</div><div class="metric-sub">Current versions</div></div>
+    `;
+  }
+
+  if (!assets.length) {
+    container.innerHTML =
+      '<div class="empty-state"><strong>No course assets yet.</strong><span>Upload learner dashboard images and role-play backgrounds here.</span></div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="data-table">
+      <thead><tr><th>Preview</th><th>Asset</th><th>Purpose</th><th>Version</th><th>Status</th><th>Current</th></tr></thead>
+      <tbody>
+        ${assets.map(x=>`
+          <tr>
+            <td><div style="width:90px;height:54px;border-radius:8px;overflow:hidden;background:#071523">${x.fileUrl?`<img src="${escapeHtml(x.fileUrl)}" style="width:100%;height:100%;object-fit:cover">`:''}</div></td>
+            <td><strong>${escapeHtml(x.assetTitle||x.fileName||'Asset')}</strong><div class="table-sub">${escapeHtml(x.fileName||'')}</div></td>
+            <td>${escapeHtml(assetPurposeLabel(x.assetPurpose))}</td>
+            <td>${escapeHtml(x.version||'1.0')}</td>
+            <td>${escapeHtml(x.approvalStatus||'draft')}</td>
+            <td>${x.isCurrent!==false?'✓':'—'}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+
+/* ======================================================
    UPLOADS
 ====================================================== */
 
@@ -11479,6 +11601,22 @@ function registerUpload() {
       .trim() ||
     '';
 
+  const recordKind =
+    document
+      .getElementById(
+        'uploadRecordKind'
+      )
+      ?.value ||
+    'knowledge_source';
+
+  const assetPurpose =
+    document
+      .getElementById(
+        'uploadAssetPurpose'
+      )
+      ?.value ||
+    '';
+
   const fileInput =
     document.getElementById(
       'uploadFileInput'
@@ -11575,16 +11713,32 @@ function registerUpload() {
       .pop()
       .toLowerCase();
 
+  const allowedExtensions =
+    recordKind ===
+      'course_asset'
+      ? [
+          'png',
+          'jpg',
+          'jpeg',
+          'webp'
+        ]
+      : [
+          'pdf',
+          'docx',
+          'txt'
+        ];
+
   if (
-    ![
-      'pdf',
-      'docx',
-      'txt'
-    ].includes(extension)
+    !allowedExtensions.includes(
+      extension
+    )
   ) {
 
     showToast(
-      'This build supports PDF, DOCX, and TXT knowledge documents.',
+      recordKind ===
+        'course_asset'
+        ? 'Course assets support PNG, JPG/JPEG, and WEBP images.'
+        : 'Knowledge supports PDF, DOCX, and TXT documents.',
       'error'
     );
 
@@ -11638,6 +11792,10 @@ function registerUpload() {
     moduleId,
     sourceTitle,
     sourceType,
+    recordKind,
+    assetPurpose,
+    assetTitle:
+      sourceTitle,
     version,
     effectiveDate,
     approvalStatus,
@@ -11724,7 +11882,19 @@ function normalizeKnowledgeMimeType(
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 
     txt:
-      'text/plain'
+      'text/plain',
+
+    png:
+      'image/png',
+
+    jpg:
+      'image/jpeg',
+
+    jpeg:
+      'image/jpeg',
+
+    webp:
+      'image/webp'
   };
 
   return (
@@ -12147,6 +12317,11 @@ function handleKnowledgeUploadRegistered(
 
       sendToWix(
         'LIST_UPLOADS',
+        {}
+      );
+
+      sendToWix(
+        'LIST_COURSE_ASSETS',
         {}
       );
 
@@ -12779,6 +12954,110 @@ function openModuleModal() {
 
 }
 
+function syncUploadKindUI() {
+
+  const kind =
+    document
+      .getElementById(
+        'uploadRecordKind'
+      )
+      ?.value ||
+    'knowledge_source';
+
+  const isAsset =
+    kind ===
+    'course_asset';
+
+  const purposeWrap =
+    document.getElementById(
+      'uploadAssetPurposeWrap'
+    );
+
+  if (purposeWrap) {
+    purposeWrap.style.display =
+      isAsset
+        ? 'block'
+        : 'none';
+  }
+
+  const titleLabel =
+    document.getElementById(
+      'uploadTitleLabel'
+    );
+
+  if (titleLabel) {
+    titleLabel.textContent =
+      isAsset
+        ? 'Asset Title'
+        : 'Source Title';
+  }
+
+  const fileInput =
+    document.getElementById(
+      'uploadFileInput'
+    );
+
+  if (fileInput) {
+    fileInput.accept =
+      isAsset
+        ? '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp'
+        : '.pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain';
+  }
+}
+
+
+function syncUploadKindUI() {
+
+  const kind =
+    document
+      .getElementById(
+        'uploadRecordKind'
+      )
+      ?.value ||
+    'knowledge_source';
+
+  const isAsset =
+    kind ===
+    'course_asset';
+
+  const wrap =
+    document.getElementById(
+      'uploadAssetPurposeWrap'
+    );
+
+  if (wrap) {
+    wrap.style.display =
+      isAsset
+        ? 'block'
+        : 'none';
+  }
+
+  const label =
+    document.getElementById(
+      'uploadTitleLabel'
+    );
+
+  if (label) {
+    label.textContent =
+      isAsset
+        ? 'Asset Title'
+        : 'Source Title';
+  }
+
+  const input =
+    document.getElementById(
+      'uploadFileInput'
+    );
+
+  if (input) {
+    input.accept =
+      isAsset
+        ? '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp'
+        : '.pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain';
+  }
+}
+
+
 function openUploadModal(
   defaults = {}
 ) {
@@ -12801,6 +13080,30 @@ function openUploadModal(
   state.pendingKnowledgePreferredModuleId =
     defaults?.moduleId ||
     '';
+
+  setFieldValue(
+    'uploadRecordKind',
+    defaults?.recordKind ||
+    'knowledge_source'
+  );
+
+  setFieldValue(
+    'uploadAssetPurpose',
+    defaults?.assetPurpose ||
+    'role_play_background'
+  );
+
+  setFieldValue(
+    'uploadRecordKind',
+    defaults?.recordKind ||
+    'knowledge_source'
+  );
+
+  setFieldValue(
+    'uploadAssetPurpose',
+    defaults?.assetPurpose ||
+    'role_play_background'
+  );
 
   setFieldValue(
     'uploadSourceTitle',
@@ -12890,6 +13193,10 @@ function openUploadModal(
     ''
   );
 
+  syncUploadKindUI();
+
+  syncUploadKindUI();
+
   openModal(
     'uploadModal'
   );
@@ -12969,6 +13276,38 @@ window.openModuleModal =
 
 window.openUploadModal =
   openUploadModal;
+
+window.syncUploadKindUI =
+  syncUploadKindUI;
+
+document
+  .querySelector(
+    '[data-section="assets"]'
+  )
+  ?.addEventListener(
+    'click',
+    () =>
+      sendToWix(
+        'LIST_COURSE_ASSETS',
+        {}
+      )
+  );
+
+window.syncUploadKindUI =
+  syncUploadKindUI;
+
+document
+  .querySelector(
+    '[data-section="assets"]'
+  )
+  ?.addEventListener(
+    'click',
+    () =>
+      sendToWix(
+        'LIST_COURSE_ASSETS',
+        {}
+      )
+  );
 
 window.openModal =
   openModal;
