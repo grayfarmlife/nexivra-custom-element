@@ -1,4 +1,4 @@
-          import {
+    import {
                                                                                                           LiveAvatarSession,
                                                                                                           AgentEventsEnum
                                                                                                         } from "@heygen/liveavatar-web-sdk";
@@ -716,7 +716,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-P-ADAPTIVE-TURN-COMPLETION"
+                                                                                                              "PACKAGE3-M5B3L-Q-OUTPUT-INTEGRITY-HARD-ELENORA-RETURN"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -933,29 +933,36 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                 newValue;
 
                                                                                                               if(this.m5b3nAwaitingFreshInstructorToken){
-                                                                                                                console.log("NEXIVRA M5B-3L-N FRESH ELENORA TOKEN RECEIVED");
+                                                                                                                console.log("NEXIVRA M5B-3L-Q FRESH ELENORA TOKEN RECEIVED");
                                                                                                                 this.session=null;
                                                                                                                 this.avatarStarted=false;
                                                                                                                 this.runtimeLifecycleState="IDLE";
                                                                                                                 this.runtimeLifecycleToken=null;
                                                                                                                 this.runtimeStartPromise=null;
+
                                                                                                                 this.startNexivra().then(async()=>{
                                                                                                                   const video=this.shadowRoot?.getElementById("avatarVideo");
                                                                                                                   const started=Date.now();
-                                                                                                                  while(Date.now()-started<5000){
+
+                                                                                                                  while(Date.now()-started<7000){
                                                                                                                     const tracks=video?.srcObject?.getTracks?.().filter(track=>track.readyState!=="ended").length||0;
+
                                                                                                                     if(tracks>0){
-                                                                                                                      console.log("NEXIVRA M5B-3L-N FRESH ELENORA TRACKS READY:",{tracks});
+                                                                                                                      console.log("NEXIVRA M5B-3L-Q FRESH ELENORA TRACKS READY:",{tracks});
                                                                                                                       this.m5b3nResolveFreshInstructor?.(true);
                                                                                                                       return;
                                                                                                                     }
+
                                                                                                                     await new Promise(resolve=>setTimeout(resolve,100));
                                                                                                                   }
+
+                                                                                                                  console.error("NEXIVRA M5B-3L-Q FRESH ELENORA TOKEN PRODUCED NO MEDIA");
                                                                                                                   this.m5b3nResolveFreshInstructor?.(false);
                                                                                                                 }).catch(error=>{
-                                                                                                                  console.error("NEXIVRA M5B-3L-N FRESH ELENORA START ERROR:",error);
+                                                                                                                  console.error("NEXIVRA M5B-3L-Q FRESH ELENORA START ERROR:",error);
                                                                                                                   this.m5b3nResolveFreshInstructor?.(false);
                                                                                                                 });
+
                                                                                                                 return;
                                                                                                               }
 
@@ -1180,21 +1187,7 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                     return;
                                                                                                                   }
                                                                                                                   if(command?.type==="role-play-evaluation-ready"&&command?.evaluation){
-                                                                                                                    this.m5b3aEvaluationPending=false;
-                                                                                                                    const evaluation=command.evaluation||{},debrief=String(evaluation.debrief||"").trim(),nextAction=String(evaluation.nextAction||"continue_course");
-                                                                                                                    const instruction=`The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction==="repeat_role_play"?"explain that another practice attempt will help and prepare the learner for another attempt":nextAction==="targeted_coaching"?"give one brief targeted coaching point and then continue forward":"continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro.`;
-                                                                                                                    this.sendLiveAvatarMessageSafely(instruction,"m5b3a-structured-role-play-debrief");
-                                                                                                                    console.log("NEXIVRA M5B-3B STRUCTURED DEBRIEF DISPATCHED:",{nextAction,competencies:Array.isArray(evaluation.competencyResults)?evaluation.competencyResults.length:0});
-                                                                                                                    setTimeout(()=>{
-                                                                                                                      if(!this.rolePlayActive){
-                                                                                                                        this.dispatchRuntimeEvent("nexivra-m5b3g-refresh-guest-token",{
-                                                                                                                          sessionId:this.runtimeSessionId,
-                                                                                                                          reason:"post_elenora_debrief",
-                                                                                                                          previousGeneration:this.m5b3gGuestTokenGeneration
-                                                                                                                        });
-                                                                                                                        console.log("NEXIVRA M5B-3L-K DEFERRED PEDRO REFRESH RELEASED");
-                                                                                                                      }
-                                                                                                                    },5000);
+                                                                                                                    this.deliverM5B3QRolePlayEvaluation(command);
                                                                                                                     return;
                                                                                                                   }
 
@@ -2304,8 +2297,106 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                     // the microphone/input owner after the role-play.
                                     console.log("NEXIVRA M5B-3C ELENORA ROUTER RESTORED — AUTONOMOUS MIC REMAINS OFF");
                                   }
+                                  sanitizeM5B3QPedroSpeech(text=""){
+                                    const original=String(text||"").trim();
+                                    if(!original)return "";
+
+                                    // October demo language lock: English speech only.
+                                    // Keep normal English/Latin punctuation and remove unexpected
+                                    // scripts/control garbage before LiveAvatar TTS receives it.
+                                    let cleaned=original
+                                      .normalize("NFKC")
+                                      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g," ")
+                                      .replace(/[^\x20-\x7E\u00C0-\u024F\u2018\u2019\u201C\u201D\u2013\u2014\u2026]/g," ")
+                                      .replace(/\s+/g," ")
+                                      .trim();
+
+                                    // Remove obvious code/serialization debris if a malformed model tail
+                                    // ever slips through again.
+                                    cleaned=cleaned
+                                      .replace(/\b(?:undefined|null|NaN|Object|Array|function|return|const|let|var|constructor|prototype)\b\s*[{}[\]():;,]*/gi," ")
+                                      .replace(/[{}[\]<>]{2,}/g," ")
+                                      .replace(/\s+/g," ")
+                                      .trim();
+
+                                    const removedChars=Math.max(0,original.length-cleaned.length);
+
+                                    // If a corrupt multilingual/garbage tail was removed, stop at the
+                                    // last clean complete English sentence when available.
+                                    if(removedChars>=4){
+                                      const sentenceMatches=cleaned.match(/.*?[.!?](?=\s|$)/g);
+                                      if(sentenceMatches?.length){
+                                        cleaned=sentenceMatches.join(" ").trim();
+                                      }
+                                    }
+
+                                    if(!cleaned){
+                                      cleaned="Thanks. I appreciate your help.";
+                                    }
+
+                                    console.log("NEXIVRA M5B-3L-Q PEDRO OUTPUT INTEGRITY:",{
+                                      originalChars:original.length,
+                                      cleanedChars:cleaned.length,
+                                      sanitized:cleaned!==original,
+                                      demoLanguage:"en-US"
+                                    });
+
+                                    return cleaned;
+                                  }
+
+                                  deliverM5B3QRolePlayEvaluation(command={}){
+                                    const evaluation=command?.evaluation||{};
+                                    if(!evaluation||!Object.keys(evaluation).length)return false;
+
+                                    const video=this.shadowRoot?.getElementById("avatarVideo");
+                                    const tracks=video?.srcObject?.getTracks?.().filter(track=>track.readyState!=="ended").length||0;
+
+                                    if(
+                                      this.m5b3qElenoraRecoveryInProgress ||
+                                      !this.session ||
+                                      tracks<=0
+                                    ){
+                                      this.m5b3qPendingEvaluationCommand=command;
+                                      console.log("NEXIVRA M5B-3L-Q DEBRIEF HELD — WAITING FOR VISIBLE ELENORA:",{
+                                        recoveryInProgress:Boolean(this.m5b3qElenoraRecoveryInProgress),
+                                        sessionExists:Boolean(this.session),
+                                        tracks
+                                      });
+                                      return false;
+                                    }
+
+                                    this.m5b3qPendingEvaluationCommand=null;
+                                    this.m5b3aEvaluationPending=false;
+
+                                    const debrief=String(evaluation.debrief||"").trim();
+                                    const nextAction=String(evaluation.nextAction||"continue_course");
+
+                                    const instruction=`The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction==="repeat_role_play"?"explain that another practice attempt will help and prepare the learner for another attempt":nextAction==="targeted_coaching"?"give one brief targeted coaching point and then continue forward":"continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro. Speak in English.`;
+
+                                    this.sendLiveAvatarMessageSafely(instruction,"m5b3a-structured-role-play-debrief");
+
+                                    console.log("NEXIVRA M5B-3L-Q STRUCTURED DEBRIEF DISPATCHED TO LIVE ELENORA:",{
+                                      nextAction,
+                                      competencies:Array.isArray(evaluation.competencyResults)?evaluation.competencyResults.length:0,
+                                      tracks
+                                    });
+
+                                    setTimeout(()=>{
+                                      if(!this.rolePlayActive){
+                                        this.dispatchRuntimeEvent("nexivra-m5b3g-refresh-guest-token",{
+                                          sessionId:this.runtimeSessionId,
+                                          reason:"post_elenora_debrief",
+                                          previousGeneration:this.m5b3gGuestTokenGeneration
+                                        });
+                                        console.log("NEXIVRA M5B-3L-K DEFERRED PEDRO REFRESH RELEASED");
+                                      }
+                                    },5000);
+
+                                    return true;
+                                  }
+
                                   queuePedroGuestResponse(text,latency={},options={}){
-                                    const v=String(text||"").trim();if(!v)return;
+                                    const v=this.sanitizeM5B3QPedroSpeech(text);if(!v)return;
                                     const queuedAtMs=Date.now();
                                     this.m5b2GuestResponseQueue.push({
                                       text:v,latency:latency||{},queuedAtMs,
@@ -2440,42 +2531,110 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                   async ensureElenoraMediaAfterRolePlay(){
                                     const video=this.shadowRoot?.getElementById("avatarVideo");
                                     const trackCount=()=>video?.srcObject?.getTracks?.().filter(track=>track.readyState!=="ended").length||0;
+
                                     if(this.session&&trackCount()>0){
-                                      console.log("NEXIVRA M5B-3L-N ELENORA MEDIA HEALTHY:",{tracks:trackCount()});
+                                      console.log("NEXIVRA M5B-3L-Q ELENORA MEDIA ALREADY HEALTHY:",{tracks:trackCount()});
                                       return true;
                                     }
 
-                                    console.warn("NEXIVRA M5B-3L-N ELENORA ZOMBIE SESSION DETECTED:",{
-                                      sessionExists:Boolean(this.session),tracks:trackCount()
+                                    this.m5b3qElenoraRecoveryInProgress=true;
+
+                                    console.warn("NEXIVRA M5B-3L-Q ELENORA HARD RECOVERY REQUIRED:",{
+                                      sessionExists:Boolean(this.session),
+                                      tracks:trackCount()
                                     });
 
-                                    try{if(this.session?.stop)await this.session.stop();}catch(error){}
-                                    try{if(video){video.srcObject=null;}}catch(error){}
+                                    // Zombie instructor sessions are never restarted. Retire locally first.
+                                    try{if(this.session?.stop)await this.session.stop();}catch(error){
+                                      console.warn("NEXIVRA M5B-3L-Q OLD ELENORA STOP WARNING:",error?.message||error);
+                                    }
+
+                                    try{
+                                      if(video){
+                                        try{video.pause?.();}catch(error){}
+                                        try{video.srcObject=null;}catch(error){}
+                                      }
+                                    }catch(error){}
+
                                     this.session=null;
                                     this.avatarStarted=false;
                                     this.runtimeLifecycleState="IDLE";
                                     this.runtimeLifecycleToken=null;
                                     this.runtimeStartPromise=null;
-                                    this.m5b3nAwaitingFreshInstructorToken=true;
 
-                                    const recovered=await new Promise(resolve=>{
-                                      let done=false;
-                                      const finish=value=>{if(done)return;done=true;resolve(Boolean(value));};
-                                      this.m5b3nResolveFreshInstructor=finish;
-                                      setTimeout(()=>finish(false),9000);
-                                      console.log("NEXIVRA M5B-3L-N REQUESTING FRESH ELENORA SESSION");
-                                      this.dispatchRuntimeEvent("nexivra-refresh-instructor-session",{
-                                        sessionId:this.runtimeSessionId||"",
-                                        reason:"post_role_play_zero_tracks"
+                                    const requestAttempt=async attempt=>{
+                                      this.m5b3nAwaitingFreshInstructorToken=true;
+
+                                      const recovered=await new Promise(resolve=>{
+                                        let finished=false;
+                                        const finish=value=>{
+                                          if(finished)return;
+                                          finished=true;
+                                          resolve(Boolean(value));
+                                        };
+
+                                        this.m5b3nResolveFreshInstructor=finish;
+                                        setTimeout(()=>finish(false),8500);
+
+                                        console.log("NEXIVRA M5B-3L-Q REQUESTING FRESH ELENORA VIA PROVEN PAGE ROUTE:",{attempt});
+
+                                        // This event is already a proven Wix page bridge. The page code
+                                        // special-cases postRolePlayInstructorRecovery and does NOT end
+                                        // the learner's training session.
+                                        this.dispatchRuntimeEvent("nexivra-session-ended",{
+                                          sessionId:this.runtimeSessionId||"",
+                                          postRolePlayInstructorRecovery:true,
+                                          recoveryAttempt:attempt,
+                                          reason:"post_role_play_instructor_recovery"
+                                        });
                                       });
-                                    });
 
-                                    this.m5b3nResolveFreshInstructor=null;
-                                    this.m5b3nAwaitingFreshInstructorToken=false;
-                                    console.log("NEXIVRA M5B-3L-N FRESH ELENORA RECOVERY RESULT:",{
-                                      recovered,tracks:trackCount()
-                                    });
-                                    return recovered&&trackCount()>0;
+                                      this.m5b3nResolveFreshInstructor=null;
+                                      this.m5b3nAwaitingFreshInstructorToken=false;
+                                      return recovered&&trackCount()>0;
+                                    };
+
+                                    let recovered=false;
+
+                                    // Up to three fresh instructor sessions. Attempts 2/3 run only if
+                                    // the provider/session actually failed to produce visible media.
+                                    for(let attempt=1;attempt<=3;attempt++){
+                                      recovered=await requestAttempt(attempt);
+
+                                      console.log("NEXIVRA M5B-3L-Q ELENORA RECOVERY ATTEMPT RESULT:",{
+                                        attempt,
+                                        recovered,
+                                        tracks:trackCount()
+                                      });
+
+                                      if(recovered)break;
+
+                                      this.session=null;
+                                      this.avatarStarted=false;
+                                      this.runtimeLifecycleState="IDLE";
+                                      this.runtimeLifecycleToken=null;
+                                      this.runtimeStartPromise=null;
+                                    }
+
+                                    this.m5b3qElenoraRecoveryInProgress=false;
+
+                                    if(recovered){
+                                      console.log("NEXIVRA M5B-3L-Q ELENORA PHYSICALLY RESTORED:",{
+                                        tracks:trackCount()
+                                      });
+
+                                      // Deliver any evaluation that arrived while Elenora was reconnecting.
+                                      if(this.m5b3qPendingEvaluationCommand){
+                                        const pending=this.m5b3qPendingEvaluationCommand;
+                                        this.m5b3qPendingEvaluationCommand=null;
+                                        setTimeout(()=>this.deliverM5B3QRolePlayEvaluation(pending),150);
+                                      }
+
+                                      return true;
+                                    }
+
+                                    console.error("NEXIVRA M5B-3L-Q ELENORA HARD RECOVERY FAILED AFTER 3 ATTEMPTS");
+                                    return false;
                                   }
 
 
@@ -2501,15 +2660,35 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                     if(reason==="role_play_complete"){
                                       const elenoraRecovered=await this.ensureElenoraMediaAfterRolePlay();
-                                      console.log("NEXIVRA M5B-3L-N ELENORA RETURN HEALTH:",{recovered:elenoraRecovered});
-                                      if(elenoraRecovered&&this.session&&typeof this.session.repeat==="function"){
+
+                                      console.log("NEXIVRA M5B-3L-Q ELENORA RETURN HEALTH:",{
+                                        recovered:elenoraRecovered
+                                      });
+
+                                      if(!elenoraRecovered){
+                                        console.error("NEXIVRA M5B-3L-Q ELENORA NOT RETURNED — STAGE HELD FOR RECOVERY");
+                                        this.m5b2FloorOwner="NONE";
+                                        return;
+                                      }
+
+                                      await this.restoreElenoraVoiceAfterM5B2RolePlay();
+
+                                      if(this.session&&typeof this.session.repeat==="function"){
                                         try{
                                           await this.session.repeat("Nice work. Give me just a moment to review that interaction.");
-                                          console.log("NEXIVRA M5B-3L-N ELENORA IMMEDIATE RETURN BRIDGE SENT");
+                                          console.log("NEXIVRA M5B-3L-Q ELENORA VISIBLE RETURN BRIDGE SENT");
                                         }catch(error){
-                                          console.warn("NEXIVRA M5B-3L-K ELENORA RETURN BRIDGE WARNING:",error?.message||error);
+                                          console.warn("NEXIVRA M5B-3L-Q ELENORA RETURN BRIDGE WARNING:",error?.message||error);
                                         }
                                       }
+
+                                      console.log("NEXIVRA M5B-2 STAGE RETURN:",{
+                                        main:"ELENORA",
+                                        guest:"PEDRO_EXITED",
+                                        reason
+                                      });
+
+                                      return;
                                     }
 
                                     await this.restoreElenoraVoiceAfterM5B2RolePlay();
@@ -2708,9 +2887,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                                                                                               }
                                                                                                             }
-
-
-                                                                                                            this.stopVisualAnalysis();
+                                                                                                                          this.stopVisualAnalysis();
 
                                                                                                             this.emitProgressCheckpoint(
                                                                                                               "session_end"
@@ -2782,7 +2959,8 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                               learner:
                                                                                                                 this.dashboardData?.learner ||
                                                                                                                 null,
-                                                                                                                 metrics:
+
+                                                                                                              metrics:
                                                                                                                 this.dashboardData?.metrics ||
                                                                                                                 null,
 
@@ -5145,7 +5323,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   right:18px;
                                                                                                                   z-index:9999;
                                                                                                                   min-height:38px;
-                                                                                                                  padding:0 15px;
+                                                                                                                           padding:0 15px;
                                                                                                                   border:1px solid #2b617b;
                                                                                                                   border-radius:9px;
                                                                                                                   background:#061522;
@@ -5183,7 +5361,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                     </div>
 
                                                                                                                     <div class="learner-course-progress">
-                                                                                                                     <div
+                                                                                                                      <div
                                                                                                                         class="learner-course-progress-fill"
                                                                                                                         id="topCourseProgress">
                                                                                                                       </div>
@@ -7661,7 +7839,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                       height: {
                                                                                                                         ideal: 720
                                                                                                                       }
-                                                                                                                    }
+                                                                                                                                                           }
                                                                                                                   });
 
 
@@ -7688,7 +7866,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                     this.runtimeSessionId,
 
                                                                                                                   audioTracks:
-                                                                                                                       stream
+                                                                                                                    stream
                                                                                                                       .getAudioTracks()
                                                                                                                       .length,
 
