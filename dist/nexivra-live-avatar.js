@@ -30590,7 +30590,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-R1-OCT8-DEMO-NATIVE-DASHBOARD-NAV"
+      "PACKAGE3-M5B3L-R2-OCT8-DEMO-LEARNER-CENTER"
     );
     const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
     const activeCourseId = String(
@@ -30679,31 +30679,104 @@ ${tail}`;
     if (view === "training") {
       panel.style.display = "none";
       training.style.display = "";
-      console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD VIEW: training");
+      this.renderUnifiedDashboard?.();
+      console.log("NEXIVRA M5B-3L-R2 NATIVE DASHBOARD VIEW: training");
       return;
     }
     training.style.display = "none";
     panel.style.display = "block";
-    const esc = (v3) => String(v3 ?? "").replace(/[&<>"']/g, (m3) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[m3]);
-    const learner = payload?.learner || {};
-    const course = payload?.course || {};
-    const certs = Array.isArray(payload?.certificates) ? payload.certificates : [];
-    const resources = Array.isArray(payload?.resources) ? payload.resources : [];
+    const data = this.dashboardData || {}, learner = { ...data.learner || {}, ...payload?.learner || {} };
+    const assignments = Array.isArray(data.assignments) ? data.assignments : [];
+    const skills = Array.isArray(data.learnerSkills) ? data.learnerSkills.filter((x3) => x3?.learnerVisible === true) : [];
+    const resources = Array.isArray(data.learnerResources) ? data.learnerResources : Array.isArray(data.resources) ? data.resources : [];
+    const esc = (v3) => this.escapeUnifiedHtml?.(String(v3 ?? "")) || String(v3 ?? "");
     if (view === "skills") {
-      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>My Skills</strong></div><div class="learner-momentum-copy">Skills NEXIVRA has observed and is helping you develop.</div></div><section class="learner-panel"><div class="learner-panel-inner"><div id="m5b3rSkillsMirror"></div></div></section>`;
-      const source = this.shadowRoot?.getElementById("learnerSkillsList");
-      const target = panel.querySelector("#m5b3rSkillsMirror");
-      if (target) target.innerHTML = source?.innerHTML || `<p class="learner-panel-subtitle">NEXIVRA is learning how you work. Skills will appear once there is meaningful evidence to share.</p>`;
+      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>My Skills</strong></div><div class="learner-momentum-copy">Skills NEXIVRA has observed and is helping you develop.</div></div><section class="learner-panel"><div class="learner-panel-inner" id="r2Skills"></div></section>`;
+      const target = panel.querySelector("#r2Skills");
+      target.innerHTML = skills.length ? skills.map((skill) => {
+        const description = skill.learnerDescription || skill.description || skill.definition || skill.skillDescription || "A detailed description will appear when it is added to the competency or Knowledge definition.";
+        return `<div style="padding:18px 0;border-bottom:1px solid rgba(255,255,255,.12)"><div class="skill-name" style="font-size:18px">${esc(skill.name || "Observed Skill")}</div><div class="skill-note" style="margin-top:8px">${esc(description)}</div><div class="skill-status" style="margin-top:10px">${esc(String(skill.status || "In Progress").replaceAll("_", " "))}</div></div>`;
+      }).join("") : `<div class="skill-empty"><strong>NEXIVRA is learning how you work.</strong><span>Skills will appear once there is meaningful evidence to share.</span></div>`;
     } else if (view === "profile") {
-      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>My Profile</strong></div><div class="learner-momentum-copy">Your NEXIVRA learner identity and current learning path.</div></div><div class="dashboard-lower-grid"><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Learner Profile</h3><p><b>Name:</b> ${esc(learner.name || this.learnerFirstName || "Learner")}</p><p><b>Organization:</b> ${esc(learner.company || this.clientName || "Client Organization")}</p><p><b>Role:</b> ${esc(learner.role || "Learner")}</p><p><b>Learning Path:</b> ${esc(course.title || "Hospitality Foundations")}</p></div></section><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Learning Status</h3><p class="learner-panel-subtitle">Active learner</p><p>Your training, practice, skill evidence and certifications stay connected to this learner profile.</p></div></section></div>`;
+      const saved = this.getM5B3R2SavedProfile(), systemName = [learner.firstName, learner.lastName].filter(Boolean).join(" ") || learner.displayName || learner.name || "Learner";
+      const systemEmail = learner.email || learner.loginEmail || learner.memberEmail || "";
+      const input = `width:100%;box-sizing:border-box;margin-top:7px;padding:12px;border-radius:8px;border:1px solid #315063;background:#071722;color:white;`;
+      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>My Profile</strong></div><div class="learner-momentum-copy">Manage the information NEXIVRA uses to personalize your learning experience.</div></div><section class="learner-panel"><div class="learner-panel-inner"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+                                <label><b>Name</b><input value="${esc(systemName)}" readonly style="${input}background:#0a1d29;color:#9fb3c2"></label>
+                                <label><b>Preferred Name</b><input id="r2Preferred" value="${esc(saved.preferredName || learner.preferredName || "")}" placeholder="What should NEXIVRA call you?" style="${input}"></label>
+                                <label><b>Email</b><input id="r2Email" type="email" value="${esc(saved.email || systemEmail)}" placeholder="Email address" style="${input}"></label>
+                                <label><b>Phone Number</b><input id="r2Phone" type="tel" value="${esc(saved.phone || learner.phone || learner.phoneNumber || "")}" placeholder="Phone number" style="${input}"></label>
+                                <label><b>Organization</b><input value="${esc(learner.organizationName || learner.companyName || learner.organizationId || "Centier Bank")}" readonly style="${input}background:#0a1d29;color:#9fb3c2"></label>
+                                <label><b>Role / Title</b><input id="r2Role" value="${esc(saved.role || learner.title || learner.roleTitle || learner.role || "Learner")}" style="${input}"></label>
+                              </div><div style="margin-top:20px;display:flex;align-items:center;gap:14px"><button id="r2SaveProfile" class="final-resume-button">Save Changes</button><span id="r2SaveStatus" class="learner-panel-subtitle"></span></div></div></section>`;
+      panel.querySelector("#r2SaveProfile")?.addEventListener("click", () => this.saveM5B3R2ProfileFromView());
     } else if (view === "certificates") {
-      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>Certificates</strong></div><div class="learner-momentum-copy">Your completed NEXIVRA certifications and current certification progress.</div></div><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Hospitality Foundations</h3>${certs.length ? certs.map((c3) => `<div style="padding:14px 0;border-top:1px solid rgba(255,255,255,.12)"><b>${esc(c3.title || "Certificate")}</b><div>${esc(c3.status || "Earned")}</div></div>`).join("") : `<p class="learner-panel-subtitle">Certification in progress.</p><p>Your certificate becomes available when the required learning, practice and evaluation criteria are completed.</p>`}</div></section>`;
+      const completed = assignments.filter((a3) => String(a3.status || "").toLowerCase() === "completed");
+      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>Certificates</strong></div><div class="learner-momentum-copy">Your completed NEXIVRA certifications.</div></div><section class="learner-panel"><div class="learner-panel-inner">${completed.length ? completed.map((a3, i3) => `<div style="padding:18px 0;border-bottom:1px solid rgba(255,255,255,.12)"><h3 class="learner-panel-title">${esc(a3.courseTitle || a3.title || "Completed Course")}</h3><div class="final-assignment-status"><span class="final-status-dot"></span>Status: Certified</div>${a3.completedAt || a3.completionDate ? `<p class="learner-panel-subtitle">Completed: ${esc(this.formatM5B3R2CertificateDate(a3.completedAt || a3.completionDate))}</p>` : ""}<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px"><button class="final-resume-button" data-r2-view="${i3}">View Certificate</button><button class="final-resume-button" data-r2-download="${i3}">Download Certificate</button></div></div>`).join("") : `<p class="learner-panel-subtitle">No earned certificates are available yet.</p>`}</div></section>`;
+      completed.forEach((a3, i3) => {
+        panel.querySelector(`[data-r2-view="${i3}"]`)?.addEventListener("click", () => this.viewM5B3R2Certificate(a3, learner));
+        panel.querySelector(`[data-r2-download="${i3}"]`)?.addEventListener("click", () => this.downloadM5B3R2Certificate(a3, learner));
+      });
     } else if (view === "resources") {
-      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>Resources</strong></div><div class="learner-momentum-copy">Reference material connected to your company and learning path.</div></div><section class="learner-panel"><div class="learner-panel-inner">${resources.length ? resources.map((r4) => `<div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,.12)"><b>${esc(r4.title || "Resource")}</b><div class="learner-panel-subtitle">${esc(r4.description || "Course resource")}</div></div>`).join("") : `<h3 class="learner-panel-title">Hospitality Foundations Resources</h3><p class="learner-panel-subtitle">Approved learner reference material and course resources will appear here.</p><h3 class="learner-panel-title" style="margin-top:24px;">Role-Play Practice</h3><p class="learner-panel-subtitle">Practice realistic guest conversations and hospitality behaviors with NEXIVRA.</p>`}</div></section>`;
+      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>Resources</strong></div><div class="learner-momentum-copy">Reference material connected to your organization and learning path.</div></div><section class="learner-panel"><div class="learner-panel-inner">${resources.length ? resources.map((r4) => `<div style="padding:16px 0;border-bottom:1px solid rgba(255,255,255,.12)"><h3 class="learner-panel-title">${esc(r4.title || r4.name || "Resource")}</h3><p class="learner-panel-subtitle">${esc(r4.description || r4.summary || "Learner resource")}</p>${r4.url ? `<a href="${esc(r4.url)}" target="_blank" rel="noopener" style="color:#2aa9ff">Open Resource</a>` : ""}</div>`).join("") : `<h3 class="learner-panel-title">Hospitality Foundations Resources</h3><p class="learner-panel-subtitle">Learner-visible Knowledge resources will appear here when they are published for this course.</p>`}</div></section>`;
     } else {
-      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>Help</strong></div><div class="learner-momentum-copy">Help using NEXIVRA and your learning experience.</div></div><div class="dashboard-lower-grid"><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">AI Instructor</h3><p>Speak naturally. NEXIVRA teaches, practices and evaluates conversationally.</p><h3 class="learner-panel-title">Camera & Microphone</h3><p>Allow browser camera and microphone permissions before starting training.</p></div></section><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Role-Play</h3><p>Treat the guest like a real client. Ask questions, listen, respond naturally and close when appropriate.</p><h3 class="learner-panel-title">Support</h3><p>Contact your company or NEXIVRA administrator for account and course assistance.</p></div></section></div>`;
+      panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>Help</strong></div><div class="learner-momentum-copy">Help using NEXIVRA and your learning experience.</div></div><div class="dashboard-lower-grid"><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Using Your AI Instructor</h3><p>Speak naturally. NEXIVRA teaches, practices and evaluates conversationally.</p><h3 class="learner-panel-title">Camera & Microphone</h3><p>Allow browser camera and microphone permissions before starting training.</p></div></section><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Role-Play</h3><p>Treat the guest like a real client. Ask questions, listen, respond naturally and close when appropriate.</p><h3 class="learner-panel-title">Certificates</h3><p>Completed certification-eligible courses appear in Certificates.</p><h3 class="learner-panel-title">Support</h3><p>Contact your company or NEXIVRA administrator for account or course assistance.</p></div></section></div>`;
     }
-    console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD VIEW:", view);
+    console.log("NEXIVRA M5B-3L-R2 NATIVE DASHBOARD VIEW:", view);
+  }
+  getM5B3R2ProfileStorageKey() {
+    const learner = this.dashboardData?.learner || {};
+    return `nexivra:r2:profile:${String(learner.id || learner._id || learner.memberId || learner.email || learner.displayName || "learner")}`;
+  }
+  getM5B3R2SavedProfile() {
+    try {
+      return JSON.parse(localStorage.getItem(this.getM5B3R2ProfileStorageKey()) || "{}") || {};
+    } catch (error) {
+      return {};
+    }
+  }
+  saveM5B3R2ProfileFromView() {
+    const panel = this.shadowRoot?.getElementById("m5b3rNativeDashboardView");
+    if (!panel) return;
+    const profile = { preferredName: String(panel.querySelector("#r2Preferred")?.value || "").trim(), email: String(panel.querySelector("#r2Email")?.value || "").trim(), phone: String(panel.querySelector("#r2Phone")?.value || "").trim(), role: String(panel.querySelector("#r2Role")?.value || "").trim(), updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    try {
+      localStorage.setItem(this.getM5B3R2ProfileStorageKey(), JSON.stringify(profile));
+    } catch (error) {
+    }
+    if (profile.preferredName) this.setUnifiedText?.("learnerMomentumFirstName", profile.preferredName);
+    const status = panel.querySelector("#r2SaveStatus");
+    if (status) status.textContent = "Saved.";
+    this.dispatchRuntimeEvent("nexivra-m5b3r2-profile-updated", { profile });
+    console.log("NEXIVRA M5B-3L-R2 PROFILE SAVED");
+  }
+  formatM5B3R2CertificateDate(value) {
+    try {
+      const d3 = new Date(value);
+      return Number.isNaN(d3.getTime()) ? String(value) : d3.toLocaleDateString();
+    } catch (error) {
+      return String(value || "");
+    }
+  }
+  buildM5B3R2CertificateHtml(a3 = {}, learner = {}) {
+    const systemName = [learner.firstName, learner.lastName].filter(Boolean).join(" ") || learner.displayName || learner.name || "Learner", saved = this.getM5B3R2SavedProfile(), name = saved.preferredName || systemName, title = a3.courseTitle || a3.title || "Hospitality Foundations", date = this.formatM5B3R2CertificateDate(a3.completedAt || a3.completionDate || a3.updatedAt || /* @__PURE__ */ new Date());
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${this.escapeUnifiedHtml(title)} Certificate</title><style>body{font-family:Arial,sans-serif;background:#061520;color:#fff;padding:60px}.cert{max-width:900px;margin:auto;border:2px solid #1fa9ff;padding:60px;text-align:center}.brand{letter-spacing:4px;color:#1fa9ff}.name{font-size:42px;margin:28px}.course{font-size:28px}.meta{margin-top:30px;color:#b8c8d3}</style></head><body><div class="cert"><div class="brand">NEXIVRA</div><h1>Certificate of Completion</h1><p>This certifies that</p><div class="name">${this.escapeUnifiedHtml(name)}</div><p>has successfully completed</p><div class="course">${this.escapeUnifiedHtml(title)}</div><div class="meta">Completed ${this.escapeUnifiedHtml(date)}<br>Centier Bank \u2022 NEXIVRA Learning Platform</div></div></body></html>`;
+  }
+  viewM5B3R2Certificate(a3, learner) {
+    const w3 = window.open("", "_blank");
+    if (w3) {
+      w3.document.open();
+      w3.document.write(this.buildM5B3R2CertificateHtml(a3, learner));
+      w3.document.close();
+    }
+  }
+  downloadM5B3R2Certificate(a3, learner) {
+    const blob = new Blob([this.buildM5B3R2CertificateHtml(a3, learner)], { type: "text/html" }), url = URL.createObjectURL(blob), link = document.createElement("a");
+    link.href = url;
+    link.download = `${String(a3.courseTitle || "NEXIVRA-Certificate").replace(/[^a-z0-9]+/gi, "-")}-Certificate.html`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1e3);
   }
   bindM5B3RNativeDashboardNavigation() {
     const buttons = Array.from(this.shadowRoot?.querySelectorAll(".dashboard-nav-item[data-dashboard-view]") || []);
@@ -32369,9 +32442,10 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     const firstName = String(
       learner.firstName || learner.displayName || learner.name || "Learner"
     ).trim().split(/\s+/)[0];
+    const savedProfile = this.getM5B3R2SavedProfile?.() || {};
     this.setUnifiedText(
       "learnerMomentumFirstName",
-      firstName
+      savedProfile.preferredName || firstName
     );
     const list = this.shadowRoot.getElementById(
       "unifiedAssignmentList"
