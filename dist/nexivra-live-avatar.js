@@ -30121,6 +30121,11 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b2oFastTurnTimer = null;
     this.m5b2oFastTurnGraceMs = 300;
     this.m5b3lH1FinalTranscriptWaitMs = 900;
+    this.m5b3pFallbackFastMs = 800;
+    this.m5b3pFallbackNormalMs = 1250;
+    this.m5b3pFallbackLikelyMs = 1800;
+    this.m5b3pFallbackStrongMs = 2600;
+    this.m5b3pSpeakSafetyGateMs = 75;
     this.m5b3lH1AwaitingFinalTranscript = false;
     this.m5b3bIncompleteTurnGraceMs = 1250;
     this.m5b3d2TurnGraceFastMs = 350;
@@ -30583,7 +30588,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-O1-AUTHORITATIVE-TURN-IDENTITY"
+      "PACKAGE3-M5B3L-P-ADAPTIVE-TURN-COMPLETION"
     );
     const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
     const activeCourseId = String(
@@ -31808,11 +31813,11 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       this.m5b3oSpeakGateTurnId = turnId;
       this.m5b3oSpeakGateActive = true;
       this.m5b3o1SpeakGateCancelled = false;
-      console.log("NEXIVRA M5B-3L-O1 PEDRO SPEAK GATE ARMED:", {
+      console.log("NEXIVRA M5B-3L-P PEDRO SAFETY GATE ARMED:", {
         turnId,
-        gateMs: 300
+        gateMs: Number(this.m5b3pSpeakSafetyGateMs || 75)
       });
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await new Promise((resolve) => setTimeout(resolve, Number(this.m5b3pSpeakSafetyGateMs || 75)));
       const cancelled = Boolean(this.m5b3o1SpeakGateCancelled) || Boolean(turnId) && (this.m5b3nCancelledTurnIds?.has?.(turnId) || this.m5b3oSpeakGateCancelledTurnIds?.has?.(turnId));
       this.m5b3oSpeakGateActive = false;
       this.m5b3oSpeakGateTurnId = "";
@@ -31822,7 +31827,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
         this.m5b2GuestSpeaking = false;
         this.m5b3nCancelledTurnIds?.delete?.(turnId);
         this.m5b3oSpeakGateCancelledTurnIds?.delete?.(turnId);
-        console.log("NEXIVRA M5B-3L-O1 PEDRO SPEAK CANCELLED \u2014 LEARNER CONTINUED:", { turnId });
+        console.log("NEXIVRA M5B-3L-P PEDRO SPEAK CANCELLED \u2014 LEARNER CONTINUED:", { turnId });
         this.flushPedroGuestResponseQueue();
         return;
       }
@@ -33376,7 +33381,8 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   padding:9px 18px;
                                                                                                                   background:linear-gradient(90deg,#020b14,#061725);
                                                                                                                 }
-              .unified-brand {
+
+                                                                                                                .unified-brand {
                                                                                                                   display:flex;
                                                                                                                   align-items:center;
                                                                                                                   gap:10px;
@@ -34150,7 +34156,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                     </div>
 
                                                                                                                     <div class="learner-course-progress">
-                                                                                                                      <div
+                                                                                                                     <div
                                                                                                                         class="learner-course-progress-fill"
                                                                                                                         id="topCourseProgress">
                                                                                                                       </div>
@@ -34160,7 +34166,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                       class="learner-course-progress-copy"
                                                                                                                       id="topCourseProgressCopy">
                                                                                                                       Ready to learn
-                                                                                                                                 </div>
+                                                                                                                    </div>
 
                                                                                                                   </div>
 
@@ -35081,7 +35087,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
             this.m5b3nPendingTurnId = "";
             this.m5b3nPendingTurnText = "";
             this.m5b3oSpeakingTurnId = "";
-            console.log("NEXIVRA M5B-3L-O1 RECLAIM WINDOW CLOSED \u2014 PEDRO ACTUALLY SPEAKING:", { turnId: spokenTurnId });
+            console.log("NEXIVRA M5B-3L-P TURN FINALIZED \u2014 PEDRO ACTUALLY SPEAKING:", { turnId: spokenTurnId });
             this.cancelM5B2JLearnerTurnTimer();
             this.m5b2jPendingLearnerFragments = [];
             this.cancelM5B2OFastTurnTimer();
@@ -35549,7 +35555,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     });
     this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
     if (this.isM5B3ONaturalFarewell(text)) {
-      console.log("NEXIVRA M5B-3L-O1 LOCAL FAREWELL CLOSE \u2014 RETURNING TO ELENORA:", text);
+      console.log("NEXIVRA M5B-3L-P LOCAL FAREWELL CLOSE \u2014 RETURNING TO ELENORA:", text);
       this.m5b3nPendingTurnId = "";
       this.m5b3nPendingTurnText = "";
       this.m5b2GuestResponseQueue = [];
@@ -35596,7 +35602,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     const normalized = raw.toLowerCase().replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
     const words = normalized ? normalized.split(" ") : [];
     const wordCount = words.length;
-    const strongContinuation = /\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should| gonna)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|because|although|unless|until|while|when|if|so that|in order to|and then|but then)\s*$/i.test(normalized) || /\b(?:to|for|with|and|but|or|because|so|if|when|while|the|a|an|your|my|our|their)\s*$/i.test(normalized);
+    const strongContinuation = /\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should| gonna)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|because|although|unless|until|while|when|if|so that|in order to|and then|but then)\s*$/i.test(normalized) || /\b(?:to|for|with|and|but|or|because|so|if|when|while|the|a|an|your|my|our|their|is|are|was|were|be|being|been|this|that|which|who|whose|it|will|would|can|could|should|may|might|has|have|had|then|as|at|from|into|of|on|in|by)\s*$/i.test(normalized) || /\b(?:this is|that is|which is|what is|what are|there is|there are|i have|we have|i would|we would|i can|we can|i could|we could|i should|we should)\s*$/i.test(normalized);
     const acknowledgmentLead = /^(?:oh\s+)?(?:okay|ok|all right|alright|absolutely|sure|certainly|great|thank you|thanks|i understand|i see)(?:\s+(?:mr|mrs|ms|miss|sir|ma'am|maam)\.?\s+[a-z'-]+)?$/i.test(raw.replace(/[,.!?]+$/g, "").trim()) || /^(?:oh\s+)?(?:okay|ok|all right|alright)\s+(?:mr|mrs|ms|miss)\.?\s+[a-z'-]+$/i.test(raw.replace(/[,.!?]+$/g, "").trim());
     const shortAmbiguous = wordCount <= 5 && !/^(?:yes|no|nope|yep|yeah|correct|right|thanks|thank you|okay|ok|sure)$/i.test(normalized);
     const directQuestion = /^(?:what|where|when|why|who|whose|which|how|do|does|did|is|are|was|were|can|could|would|will|have|has|had|may|might|should)\b/i.test(normalized) && wordCount >= 3;
@@ -35629,6 +35635,19 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       completeAction
     };
   }
+  getM5B3PFallbackWaitMs(boundary = {}) {
+    const classification = String(boundary?.classification || "NORMAL");
+    if (classification === "STRONG_CONTINUATION") {
+      return Number(this.m5b3pFallbackStrongMs || 2600);
+    }
+    if (classification === "LIKELY_CONTINUATION") {
+      return Number(this.m5b3pFallbackLikelyMs || 1800);
+    }
+    if (classification === "FAST_QUESTION" || classification === "COMPLETE_ACTION") {
+      return Number(this.m5b3pFallbackFastMs || 800);
+    }
+    return Number(this.m5b3pFallbackNormalMs || 1250);
+  }
   scheduleM5B2OFastInterimFlush() {
     this.cancelM5B2OFastTurnTimer();
     if (!this.rolePlayActive || !this.formalRolePlaySessionId) return;
@@ -35636,30 +35655,44 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     const interimNow = String(this.m5b2oLatestInterimText || "").trim();
     if (!interimNow) return;
     const boundary = this.classifyM5B3D2TurnBoundary(interimNow);
+    const fallbackWaitMs = this.getM5B3PFallbackWaitMs(boundary);
     this.m5b3lH1AwaitingFinalTranscript = true;
-    console.log("NEXIVRA M5B-3L-H1 WAITING FOR AUTHORITATIVE FINAL TRANSCRIPT:", {
+    console.log("NEXIVRA M5B-3L-P ADAPTIVE COMPLETION WAIT:", {
       text: interimNow,
       classification: boundary.classification,
-      previousGraceMs: Number(boundary.graceMs || 650),
-      finalWaitMs: Number(this.m5b3lH1FinalTranscriptWaitMs || 1850)
+      fallbackWaitMs,
+      authoritativeFinalPreferred: true
     });
     this.m5b2oFastTurnTimer = setTimeout(() => {
       this.m5b2oFastTurnTimer = null;
       if (!this.rolePlayActive || !this.formalRolePlaySessionId || !this.m5b2nLearnerTurnArmed || this.m5b2jPedroSpeaking || this.learnerMicSpeaking || this.learnerSpeaking) return;
       const interim = String(this.m5b2oLatestInterimText || "").trim();
       if (!interim) return;
+      const latestBoundary = this.classifyM5B3D2TurnBoundary(interim);
+      const latestWaitMs = this.getM5B3PFallbackWaitMs(latestBoundary);
+      if (latestWaitMs > fallbackWaitMs && interim !== interimNow) {
+        console.log("NEXIVRA M5B-3L-P CONTINUATION EXTENDED \u2014 KEEPING LEARNER FLOOR:", {
+          previousText: interimNow,
+          currentText: interim,
+          classification: latestBoundary.classification,
+          nextWaitMs: latestWaitMs
+        });
+        this.scheduleM5B2OFastInterimFlush();
+        return;
+      }
       this.m5b3lH1AwaitingFinalTranscript = false;
-      console.warn("NEXIVRA M5B-3L-H1 FINAL TRANSCRIPT TIMEOUT \u2014 USING LATEST INTERIM FALLBACK:", {
+      console.warn("NEXIVRA M5B-3L-P FALLBACK COMMIT \u2014 NO AUTHORITATIVE FINAL:", {
         text: interim,
-        waitMs: Number(this.m5b3lH1FinalTranscriptWaitMs || 1850),
+        classification: latestBoundary.classification,
+        waitMs: fallbackWaitMs,
         interimAgeMs: this.m5b2oLatestInterimAtMs ? Date.now() - this.m5b2oLatestInterimAtMs : null
       });
       this.m5b2jPendingLearnerFragments = [];
       this.queueM5B2JLearnerFragment(interim);
-      this.flushM5B2JLearnerTurn("final_transcript_timeout_fallback");
+      this.flushM5B2JLearnerTurn("adaptive_fallback_complete");
       this.m5b2oLatestInterimText = "";
       this.m5b2oLatestInterimAtMs = 0;
-    }, Number(this.m5b3lH1FinalTranscriptWaitMs || 1850));
+    }, fallbackWaitMs);
   }
   startLearnerTranscriptCapture() {
     if (this.speechRecognitionActive) return;
@@ -37094,7 +37127,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                   this.cancelM5B2OFastTurnTimer();
                   if (this.m5b3oSpeakGateActive && !this.m5b2jPedroSpeaking) {
                     this.m5b3o1SpeakGateCancelled = true;
-                    console.log("NEXIVRA M5B-3L-O1 SPEAK GATE CANCELLED BY LIVE LEARNER AUDIO");
+                    console.log("NEXIVRA M5B-3L-P SAFETY GATE CANCELLED BY LIVE LEARNER AUDIO");
                   }
                   if (!this.m5b2jPedroSpeaking && this.m5b3nPendingTurnId) {
                     const reclaimedTurnId = this.m5b3nPendingTurnId;
