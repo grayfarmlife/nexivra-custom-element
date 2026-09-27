@@ -30583,7 +30583,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-O-NATURAL-FLOOR-RELIABLE-CLOSE"
+      "PACKAGE3-M5B3L-O1-AUTHORITATIVE-TURN-IDENTITY"
     );
     const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
     const activeCourseId = String(
@@ -31807,19 +31807,22 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       const gateStartedAtMs = Date.now();
       this.m5b3oSpeakGateTurnId = turnId;
       this.m5b3oSpeakGateActive = true;
-      console.log("NEXIVRA M5B-3L-O PEDRO SPEAK GATE ARMED:", {
+      this.m5b3o1SpeakGateCancelled = false;
+      console.log("NEXIVRA M5B-3L-O1 PEDRO SPEAK GATE ARMED:", {
         turnId,
         gateMs: 300
       });
       await new Promise((resolve) => setTimeout(resolve, 300));
-      const cancelled = Boolean(turnId) && (this.m5b3nCancelledTurnIds?.has?.(turnId) || this.m5b3oSpeakGateCancelledTurnIds?.has?.(turnId));
+      const cancelled = Boolean(this.m5b3o1SpeakGateCancelled) || Boolean(turnId) && (this.m5b3nCancelledTurnIds?.has?.(turnId) || this.m5b3oSpeakGateCancelledTurnIds?.has?.(turnId));
       this.m5b3oSpeakGateActive = false;
       this.m5b3oSpeakGateTurnId = "";
+      const gateWasCancelled = Boolean(this.m5b3o1SpeakGateCancelled);
+      this.m5b3o1SpeakGateCancelled = false;
       if (cancelled) {
         this.m5b2GuestSpeaking = false;
         this.m5b3nCancelledTurnIds?.delete?.(turnId);
         this.m5b3oSpeakGateCancelledTurnIds?.delete?.(turnId);
-        console.log("NEXIVRA M5B-3L-O PEDRO SPEAK CANCELLED \u2014 LEARNER CONTINUED:", { turnId });
+        console.log("NEXIVRA M5B-3L-O1 PEDRO SPEAK CANCELLED \u2014 LEARNER CONTINUED:", { turnId });
         this.flushPedroGuestResponseQueue();
         return;
       }
@@ -33373,8 +33376,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   padding:9px 18px;
                                                                                                                   background:linear-gradient(90deg,#020b14,#061725);
                                                                                                                 }
-
-                                                                                                                .unified-brand {
+              .unified-brand {
                                                                                                                   display:flex;
                                                                                                                   align-items:center;
                                                                                                                   gap:10px;
@@ -34158,7 +34160,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                       class="learner-course-progress-copy"
                                                                                                                       id="topCourseProgressCopy">
                                                                                                                       Ready to learn
-                                                                                                                    </div>
+                                                                                                                                 </div>
 
                                                                                                                   </div>
 
@@ -35079,7 +35081,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
             this.m5b3nPendingTurnId = "";
             this.m5b3nPendingTurnText = "";
             this.m5b3oSpeakingTurnId = "";
-            console.log("NEXIVRA M5B-3L-O RECLAIM WINDOW CLOSED \u2014 PEDRO ACTUALLY SPEAKING:", { turnId: spokenTurnId });
+            console.log("NEXIVRA M5B-3L-O1 RECLAIM WINDOW CLOSED \u2014 PEDRO ACTUALLY SPEAKING:", { turnId: spokenTurnId });
             this.cancelM5B2JLearnerTurnTimer();
             this.m5b2jPendingLearnerFragments = [];
             this.cancelM5B2OFastTurnTimer();
@@ -35547,7 +35549,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     });
     this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
     if (this.isM5B3ONaturalFarewell(text)) {
-      console.log("NEXIVRA M5B-3L-O LOCAL FAREWELL CLOSE \u2014 RETURNING TO ELENORA:", text);
+      console.log("NEXIVRA M5B-3L-O1 LOCAL FAREWELL CLOSE \u2014 RETURNING TO ELENORA:", text);
       this.m5b3nPendingTurnId = "";
       this.m5b3nPendingTurnText = "";
       this.m5b2GuestResponseQueue = [];
@@ -37090,6 +37092,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                 if (this.rolePlayActive) {
                   this.cancelM5B2JLearnerTurnTimer();
                   this.cancelM5B2OFastTurnTimer();
+                  if (this.m5b3oSpeakGateActive && !this.m5b2jPedroSpeaking) {
+                    this.m5b3o1SpeakGateCancelled = true;
+                    console.log("NEXIVRA M5B-3L-O1 SPEAK GATE CANCELLED BY LIVE LEARNER AUDIO");
+                  }
                   if (!this.m5b2jPedroSpeaking && this.m5b3nPendingTurnId) {
                     const reclaimedTurnId = this.m5b3nPendingTurnId;
                     console.log("NEXIVRA M5B-3L-N LEARNER RECLAIMED TENTATIVE TURN:", {
