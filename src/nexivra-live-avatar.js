@@ -1,4 +1,4 @@
-    import {
+       import {
                                                                                                           LiveAvatarSession,
                                                                                                           AgentEventsEnum
                                                                                                         } from "@heygen/liveavatar-web-sdk";
@@ -105,6 +105,7 @@
                                                                                                             this.m5b3pFallbackLikelyMs = 1800;
                                                                                                             this.m5b3pFallbackStrongMs = 2600;
                                                                                                             this.m5b3pSpeakSafetyGateMs = 75;
+                                                                                                            this.m5b3rFallbackConfirmationMs = 650;
                                                                                                             this.m5b3lH1AwaitingFinalTranscript = false;
                                                                                                             // M5B-3B — obvious incomplete utterances get a longer
                                                                                                             // grace window so natural pauses do not split one thought.
@@ -711,12 +712,40 @@ The next instructor response must teach, practice, check understanding, or trans
                               return true;
                             }catch(error){console.error("NEXIVRA LIVEAVATAR MESSAGE ERROR:",{label,error});return false;}
                           }
+                          ensureM5B3RLearnerCenter(){
+                            if(this.shadowRoot?.getElementById("m5b3rLearnerCenter"))return;
+                            const wrap=document.createElement("div");
+                            wrap.id="m5b3rLearnerCenter";
+                            wrap.style.cssText="position:absolute;right:16px;top:16px;z-index:10020;font-family:Arial,sans-serif;";
+                            wrap.innerHTML=`<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;">
+                              <button data-r="profile">My Profile</button><button data-r="certificates">Certificates</button><button data-r="resources">Resources</button><button data-r="help">Help</button>
+                            </div><div id="m5b3rPanel" style="display:none;margin-top:10px;width:min(560px,82vw);max-height:70vh;overflow:auto;background:rgba(8,12,22,.97);color:white;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:20px;"></div>`;
+                            this.shadowRoot.appendChild(wrap);
+                            wrap.querySelectorAll("button[data-r]").forEach(btn=>{
+                              btn.style.cssText="border:1px solid rgba(255,255,255,.25);background:rgba(8,12,22,.82);color:white;border-radius:8px;padding:8px 11px;cursor:pointer;font-size:12px;";
+                              btn.addEventListener("click",()=>this.openM5B3RLearnerCenter(btn.dataset.r));
+                            });
+                          }
+
+                          openM5B3RLearnerCenter(section="profile"){
+                            this.ensureM5B3RLearnerCenter();
+                            const panel=this.shadowRoot?.getElementById("m5b3rPanel"); if(!panel)return;
+                            const close=`<button id="m5b3rClosePanel" style="float:right;background:transparent;color:white;border:1px solid #666;border-radius:7px;padding:6px 10px;">Close</button>`;
+                            if(section==="profile") panel.innerHTML=close+`<h2>My Profile</h2><p><b>Company:</b> Centier Bank</p><p><b>Learning Path:</b> Hospitality Foundations</p><p><b>Status:</b> Active Learner</p>`;
+                            else if(section==="certificates") panel.innerHTML=close+`<h2>Certificates</h2><div><b>Hospitality Foundations</b><p>Certificate becomes available when certification requirements are completed.</p></div>`;
+                            else if(section==="resources") panel.innerHTML=close+`<h2>Resources</h2><p><b>Hospitality Foundations</b> — approved learner reference material.</p><p><b>Role-Play Practice</b> — realistic guest-conversation practice.</p>`;
+                            else panel.innerHTML=close+`<h2>Help</h2><p><b>AI Instructor:</b> Speak naturally.</p><p><b>Camera & microphone:</b> Allow browser permissions.</p><p><b>Role-play:</b> Treat the guest like a real client.</p><p><b>Support:</b> Contact your company or NEXIVRA administrator.</p>`;
+                            panel.style.display="block";
+                            panel.querySelector("#m5b3rClosePanel")?.addEventListener("click",()=>panel.style.display="none");
+                            console.log("NEXIVRA M5B-3L-R LEARNER CENTER OPEN:",section);
+                          }
+
 
 
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-Q-OUTPUT-INTEGRITY-HARD-ELENORA-RETURN"
+                                                                                                              "PACKAGE3-M5B3L-R-OCT8-DEMO-RELEASE-CANDIDATE"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -2576,14 +2605,13 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                         this.m5b3nResolveFreshInstructor=finish;
                                         setTimeout(()=>finish(false),8500);
 
-                                        console.log("NEXIVRA M5B-3L-Q REQUESTING FRESH ELENORA VIA PROVEN PAGE ROUTE:",{attempt});
+                                        console.log("NEXIVRA M5B-3L-R REQUESTING FRESH ELENORA SESSION:",{attempt});
 
                                         // This event is already a proven Wix page bridge. The page code
                                         // special-cases postRolePlayInstructorRecovery and does NOT end
                                         // the learner's training session.
-                                        this.dispatchRuntimeEvent("nexivra-session-ended",{
+                                        this.dispatchRuntimeEvent("nexivra-m5b3r-refresh-instructor-session",{
                                           sessionId:this.runtimeSessionId||"",
-                                          postRolePlayInstructorRecovery:true,
                                           recoveryAttempt:attempt,
                                           reason:"post_role_play_instructor_recovery"
                                         });
@@ -2619,7 +2647,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                     this.m5b3qElenoraRecoveryInProgress=false;
 
                                     if(recovered){
-                                      console.log("NEXIVRA M5B-3L-Q ELENORA PHYSICALLY RESTORED:",{
+                                      console.log("NEXIVRA M5B-3L-R ELENORA PHYSICALLY RESTORED:",{
                                         tracks:trackCount()
                                       });
 
@@ -2887,7 +2915,9 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                                                                                               }
                                                                                                             }
-                                                                                                                          this.stopVisualAnalysis();
+
+
+                                                                                                            this.stopVisualAnalysis();
 
                                                                                                             this.emitProgressCheckpoint(
                                                                                                               "session_end"
@@ -5323,7 +5353,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   right:18px;
                                                                                                                   z-index:9999;
                                                                                                                   min-height:38px;
-                                                                                                                           padding:0 15px;
+                                                                                                                  padding:0 15px;
                                                                                                                   border:1px solid #2b617b;
                                                                                                                   border-radius:9px;
                                                                                                                   background:#061522;
@@ -7376,11 +7406,27 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   : null
                                                                                                               });
 
-                                                                                                              this.m5b2jPendingLearnerFragments=[];
-                                                                                                              this.queueM5B2JLearnerFragment(interim);
-                                                                                                              this.flushM5B2JLearnerTurn("adaptive_fallback_complete");
-                                                                                                              this.m5b2oLatestInterimText="";
-                                                                                                              this.m5b2oLatestInterimAtMs=0;
+                                                                                                              const candidateText=interim;
+                                                                                                              const confirmationMs=Number(this.m5b3rFallbackConfirmationMs||650);
+                                                                                                              console.log("NEXIVRA M5B-3L-R FALLBACK CANDIDATE — CONFIRMING QUIET:",{text:candidateText,classification:latestBoundary.classification,confirmationMs});
+                                                                                                              setTimeout(()=>{
+                                                                                                                if(!this.rolePlayActive||!this.formalRolePlaySessionId||!this.m5b2nLearnerTurnArmed||this.m5b2jPedroSpeaking||this.learnerMicSpeaking||this.learnerSpeaking){
+                                                                                                                  console.log("NEXIVRA M5B-3L-R FALLBACK SPEAK AUTHORITY CANCELLED — LEARNER RESUMED");
+                                                                                                                  return;
+                                                                                                                }
+                                                                                                                const latestText=String(this.m5b2oLatestInterimText||"").trim();
+                                                                                                                if(latestText&&latestText!==candidateText){
+                                                                                                                  console.log("NEXIVRA M5B-3L-R FALLBACK CANDIDATE CHANGED — KEEPING LEARNER FLOOR:",{previousText:candidateText,currentText:latestText});
+                                                                                                                  this.scheduleM5B2OFastInterimFlush();
+                                                                                                                  return;
+                                                                                                                }
+                                                                                                                this.m5b2jPendingLearnerFragments=[];
+                                                                                                                this.queueM5B2JLearnerFragment(candidateText);
+                                                                                                                this.flushM5B2JLearnerTurn("r_confirmed_fallback_complete");
+                                                                                                                this.m5b2oLatestInterimText="";
+                                                                                                                this.m5b2oLatestInterimAtMs=0;
+                                                                                                                console.log("NEXIVRA M5B-3L-R FALLBACK TURN CONFIRMED AFTER QUIET");
+                                                                                                              },confirmationMs);
                                                                                                             },fallbackWaitMs);
                                                                                                           }
 
@@ -7839,7 +7885,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                       height: {
                                                                                                                         ideal: 720
                                                                                                                       }
-                                                                                                                                                           }
+                                                                                                                    }
                                                                                                                   });
 
 
