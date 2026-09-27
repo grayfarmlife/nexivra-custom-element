@@ -1,4 +1,4 @@
-                  import {
+                 import {
                                                                                                           LiveAvatarSession,
                                                                                                           AgentEventsEnum
                                                                                                         } from "@heygen/liveavatar-web-sdk";
@@ -718,7 +718,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-R-OCT8-DEMO-RELEASE-CANDIDATE"
+                                                                                                              "PACKAGE3-M5B3L-R1-OCT8-DEMO-NATIVE-DASHBOARD-NAV"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -845,31 +845,66 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               );
                                                                                                             }
                                                                                                           }
-                          ensureM5B3RDashboardViewHost(){
-                            if(this.shadowRoot?.getElementById("m5b3rDashboardViewHost"))return;
-                            const host=document.createElement("div");
-                            host.id="m5b3rDashboardViewHost";
-                            host.style.cssText="position:absolute;inset:0;z-index:10010;background:#061520;color:#fff;padding:32px;overflow:auto;display:none;font-family:Arial,sans-serif;";
-                            this.shadowRoot.appendChild(host);
+                          setM5B3RDashboardActiveNav(view="training"){
+                            this.shadowRoot?.querySelectorAll(".dashboard-nav-item[data-dashboard-view]").forEach(button=>{
+                              button.classList.toggle("active",String(button.dataset.dashboardView||"")===view);
+                            });
                           }
 
                           renderM5B3RDashboardView(view="training",payload={}){
-                            this.ensureM5B3RDashboardViewHost();
-                            const host=this.shadowRoot?.getElementById("m5b3rDashboardViewHost"); if(!host)return;
-                            if(view==="training"||view==="skills"){host.style.display="none";console.log("NEXIVRA M5B-3L-R DASHBOARD VIEW:",view);return;}
+                            const training=this.shadowRoot?.getElementById("m5b3rTrainingDashboardContent");
+                            const panel=this.shadowRoot?.getElementById("m5b3rNativeDashboardView");
+                            if(!training||!panel)return;
+
+                            this.setM5B3RDashboardActiveNav(view);
+
+                            if(view==="training"){
+                              panel.style.display="none";
+                              training.style.display="";
+                              console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD VIEW: training");
+                              return;
+                            }
+
+                            training.style.display="none";
+                            panel.style.display="block";
+
                             const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-                            const learner=payload?.learner||{},course=payload?.course||{},certs=Array.isArray(payload?.certificates)?payload.certificates:[],resources=Array.isArray(payload?.resources)?payload.resources:[];
-                            const back=`<button id="m5b3rBackTraining" style="border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;">Back to My Training</button>`;
-                            if(view==="profile") host.innerHTML=`${back}<h1>My Profile</h1><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;"><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Name</b><div>${esc(learner.name||"Learner")}</div></div><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Company</b><div>${esc(learner.company||"Centier Bank")}</div></div><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Role</b><div>${esc(learner.role||"Learner")}</div></div><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Current Course</b><div>${esc(course.title||"Hospitality Foundations")}</div></div></div>`;
-                            else if(view==="certificates") host.innerHTML=`${back}<h1>Certificates</h1>`+(certs.length?certs.map(c=>`<div style="padding:18px;margin-bottom:12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>${esc(c.title||"Certificate")}</b><div>${esc(c.status||"Earned")}</div></div>`).join(""):`<div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Hospitality Foundations</b><p>Certificate becomes available when certification requirements are completed.</p></div>`);
-                            else if(view==="resources") host.innerHTML=`${back}<h1>Resources</h1>`+(resources.length?resources.map(r=>`<div style="padding:18px;margin-bottom:12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>${esc(r.title||"Resource")}</b><div>${esc(r.description||"Course resource")}</div></div>`).join(""):`<div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Hospitality Foundations Resources</b><p>Approved learner reference material and course resources appear here.</p></div>`);
-                            else host.innerHTML=`${back}<h1>Help</h1><p><b>AI Instructor:</b> Speak naturally. NEXIVRA teaches, practices and evaluates conversationally.</p><p><b>Camera & microphone:</b> Allow browser permissions before starting training.</p><p><b>Role-play:</b> Treat the guest like a real client and close naturally.</p><p><b>Support:</b> Contact your company or NEXIVRA administrator.</p>`;
-                            host.style.display="block";
-                            host.querySelector("#m5b3rBackTraining")?.addEventListener("click",()=>{host.style.display="none";this.dispatchRuntimeEvent("nexivra-m5b3r-dashboard-view-change",{view:"training"});});
-                            console.log("NEXIVRA M5B-3L-R DASHBOARD VIEW:",view);
+                            const learner=payload?.learner||{};
+                            const course=payload?.course||{};
+                            const certs=Array.isArray(payload?.certificates)?payload.certificates:[];
+                            const resources=Array.isArray(payload?.resources)?payload.resources:[];
+
+                            if(view==="skills"){
+                              panel.innerHTML=`<div class="learner-momentum"><div class="learner-momentum-line"><strong>My Skills</strong></div><div class="learner-momentum-copy">Skills NEXIVRA has observed and is helping you develop.</div></div><section class="learner-panel"><div class="learner-panel-inner"><div id="m5b3rSkillsMirror"></div></div></section>`;
+                              const source=this.shadowRoot?.getElementById("learnerSkillsList");
+                              const target=panel.querySelector("#m5b3rSkillsMirror");
+                              if(target)target.innerHTML=source?.innerHTML||`<p class="learner-panel-subtitle">NEXIVRA is learning how you work. Skills will appear once there is meaningful evidence to share.</p>`;
+                            }else if(view==="profile"){
+                              panel.innerHTML=`<div class="learner-momentum"><div class="learner-momentum-line"><strong>My Profile</strong></div><div class="learner-momentum-copy">Your NEXIVRA learner identity and current learning path.</div></div><div class="dashboard-lower-grid"><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Learner Profile</h3><p><b>Name:</b> ${esc(learner.name||this.learnerFirstName||"Learner")}</p><p><b>Organization:</b> ${esc(learner.company||this.clientName||"Client Organization")}</p><p><b>Role:</b> ${esc(learner.role||"Learner")}</p><p><b>Learning Path:</b> ${esc(course.title||"Hospitality Foundations")}</p></div></section><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Learning Status</h3><p class="learner-panel-subtitle">Active learner</p><p>Your training, practice, skill evidence and certifications stay connected to this learner profile.</p></div></section></div>`;
+                            }else if(view==="certificates"){
+                              panel.innerHTML=`<div class="learner-momentum"><div class="learner-momentum-line"><strong>Certificates</strong></div><div class="learner-momentum-copy">Your completed NEXIVRA certifications and current certification progress.</div></div><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Hospitality Foundations</h3>${certs.length?certs.map(c=>`<div style="padding:14px 0;border-top:1px solid rgba(255,255,255,.12)"><b>${esc(c.title||"Certificate")}</b><div>${esc(c.status||"Earned")}</div></div>`).join(""):`<p class="learner-panel-subtitle">Certification in progress.</p><p>Your certificate becomes available when the required learning, practice and evaluation criteria are completed.</p>`}</div></section>`;
+                            }else if(view==="resources"){
+                              panel.innerHTML=`<div class="learner-momentum"><div class="learner-momentum-line"><strong>Resources</strong></div><div class="learner-momentum-copy">Reference material connected to your company and learning path.</div></div><section class="learner-panel"><div class="learner-panel-inner">${resources.length?resources.map(r=>`<div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,.12)"><b>${esc(r.title||"Resource")}</b><div class="learner-panel-subtitle">${esc(r.description||"Course resource")}</div></div>`).join(""):`<h3 class="learner-panel-title">Hospitality Foundations Resources</h3><p class="learner-panel-subtitle">Approved learner reference material and course resources will appear here.</p><h3 class="learner-panel-title" style="margin-top:24px;">Role-Play Practice</h3><p class="learner-panel-subtitle">Practice realistic guest conversations and hospitality behaviors with NEXIVRA.</p>`}</div></section>`;
+                            }else{
+                              panel.innerHTML=`<div class="learner-momentum"><div class="learner-momentum-line"><strong>Help</strong></div><div class="learner-momentum-copy">Help using NEXIVRA and your learning experience.</div></div><div class="dashboard-lower-grid"><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">AI Instructor</h3><p>Speak naturally. NEXIVRA teaches, practices and evaluates conversationally.</p><h3 class="learner-panel-title">Camera & Microphone</h3><p>Allow browser camera and microphone permissions before starting training.</p></div></section><section class="learner-panel"><div class="learner-panel-inner"><h3 class="learner-panel-title">Role-Play</h3><p>Treat the guest like a real client. Ask questions, listen, respond naturally and close when appropriate.</p><h3 class="learner-panel-title">Support</h3><p>Contact your company or NEXIVRA administrator for account and course assistance.</p></div></section></div>`;
+                            }
+
+                            console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD VIEW:",view);
                           }
 
-
+                          bindM5B3RNativeDashboardNavigation(){
+                            const buttons=Array.from(this.shadowRoot?.querySelectorAll(".dashboard-nav-item[data-dashboard-view]")||[]);
+                            buttons.forEach(button=>{
+                              if(button.dataset.m5b3rBound==="true")return;
+                              button.dataset.m5b3rBound="true";
+                              button.disabled=false;
+                              button.addEventListener("click",()=>{
+                                const view=String(button.dataset.dashboardView||"training");
+                                this.renderM5B3RDashboardView(view);
+                              });
+                            });
+                            console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD NAV ACTIVE:",buttons.map(b=>b.dataset.dashboardView));
+                          }
 
                                                                                                           attributeChangedCallback(name, oldValue, newValue) {
                         if(name==="resume-checkpoint"){try{this.resumeCheckpoint=newValue?JSON.parse(newValue):null;console.log("NEXIVRA RESUME CHECKPOINT ACTIVE:",this.resumeCheckpoint||"NONE");}catch(error){this.resumeCheckpoint=null;console.error("NEXIVRA RESUME CHECKPOINT PARSE ERROR:",error);}}
@@ -2856,7 +2891,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                                                                                             this.dispatchEvent(
                                                                                                               new CustomEvent(
-                                                                                                                name,
+                                                                                                                         name,
                                                                                                                 {
                                                                                                                   detail,
                                                                                                                   bubbles: true,
@@ -5460,27 +5495,27 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                       LEARNER
                                                                                                                     </div>
 
-                                                                                                                    <button class="dashboard-nav-item active">
+                                                                                                                    <button class="dashboard-nav-item active" id="dashboardNavTraining" data-dashboard-view="training">
                                                                                                                       My Training
                                                                                                                     </button>
 
-                                                                                                                    <button class="dashboard-nav-item">
+                                                                                                                    <button class="dashboard-nav-item" id="dashboardNavSkills" data-dashboard-view="skills">
                                                                                                                       My Skills
                                                                                                                     </button>
 
-                                                                                                                    <button class="dashboard-nav-item" disabled>
+                                                                                                                    <button class="dashboard-nav-item" id="dashboardNavProfile" data-dashboard-view="profile">
                                                                                                                       My Profile
                                                                                                                     </button>
 
-                                                                                                                    <button class="dashboard-nav-item" disabled>
+                                                                                                                    <button class="dashboard-nav-item" id="dashboardNavCertificates" data-dashboard-view="certificates">
                                                                                                                       Certificates
                                                                                                                     </button>
 
-                                                                                                                    <button class="dashboard-nav-item" disabled>
+                                                                                                                    <button class="dashboard-nav-item" id="dashboardNavResources" data-dashboard-view="resources">
                                                                                                                       Resources
                                                                                                                     </button>
 
-                                                                                                                    <button class="dashboard-nav-item" disabled>
+                                                                                                                    <button class="dashboard-nav-item" id="dashboardNavHelp" data-dashboard-view="help">
                                                                                                                       Help
                                                                                                                     </button>
 
@@ -5500,6 +5535,10 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
 
                                                                                                                   <main class="final-dashboard-main">
+
+                                                                                                                    <section id="m5b3rNativeDashboardView" style="display:none;"></section>
+
+                                                                                                                    <div id="m5b3rTrainingDashboardContent">
 
                                                                                                                     <div
                                                                                                                       class="learner-hero"
@@ -5631,7 +5670,9 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                                                                                                     </div>
 
-                                                                                                                  </main>
+                                                                                                                                                                                                                                      </div>
+
+</main>
 
                                                                                                                 </section>
 
@@ -5931,6 +5972,8 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
                                                                                                               }
                                                                                                             );
+
+                                                                                                            this.bindM5B3RNativeDashboardNavigation();
 
                                                                                                             const unifiedLogoutButton =
                                                                                                               this.shadowRoot.getElementById(
