@@ -30087,9 +30087,6 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b3gGuestTokenGeneration = 0;
     this.m5b3gGuestStartPromise = null;
     this.m5b3gGuestStopPromise = null;
-    this.m5b3lGuestHealthTimer = null;
-    this.m5b3lGuestMediaLostAtMs = 0;
-    this.m5b3lGuestMediaLossHandling = false;
     this.m5b2RolePlayStageActive = false;
     this.m5b2GuestStartRequested = false;
     this.m5b2GuestResponseQueue = [];
@@ -30129,7 +30126,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
     this.m5b3d2TurnGraceFastMs = 350;
     this.m5b3d2TurnGraceNormalMs = 650;
     this.m5b3d2TurnGraceContinuationMs = 1200;
-    this.m5b3d2TurnGraceStrongContinuationMs = 1750;
+    this.m5b3d2TurnGraceStrongContinuationMs = 1450;
     this.m5b3cInputRouterActive = false;
     this.m5b3cNormalTurnPending = false;
     this.m5b3dLastMouthRatio = 0;
@@ -30586,7 +30583,7 @@ ${tail}`;
   connectedCallback() {
     console.log(
       "NEXIVRA BUILD:",
-      "PACKAGE3-M5B3L-L-LIFECYCLE-STABILIZATION"
+      "PACKAGE3-M5B3L-N-NATURAL-TURN-ELENORA-RECOVERY"
     );
     const courseAssets = Array.isArray(this.dashboardData?.courseAssets) ? this.dashboardData.courseAssets : [];
     const activeCourseId = String(
@@ -30682,10 +30679,23 @@ ${tail}`;
     if (name === "role-play-guest-response") {
       if (!newValue) return;
       try {
-        const p3 = JSON.parse(newValue), t3 = String(p3?.text || "").trim(), sid = String(p3?.rolePlaySessionId || "");
+        const p3 = JSON.parse(newValue), t3 = String(p3?.text || "").trim(), sid = String(p3?.rolePlaySessionId || ""), turnId = String(p3?.turnId || "");
         if (!t3 || !this.rolePlayActive || sid !== String(this.formalRolePlaySessionId || "")) {
           console.warn("NEXIVRA M5B-2B GUEST RESPONSE IGNORED:", { sid, active: this.formalRolePlaySessionId || "" });
           return;
+        }
+        if (turnId && this.m5b3nCancelledTurnIds?.has?.(turnId)) {
+          console.log("NEXIVRA M5B-3L-N STALE PEDRO RESPONSE DISCARDED \u2014 LEARNER CONTINUED:", { turnId });
+          this.m5b3nCancelledTurnIds.delete(turnId);
+          return;
+        }
+        if (turnId && this.m5b3nPendingTurnId && turnId !== this.m5b3nPendingTurnId) {
+          console.log("NEXIVRA M5B-3L-N SUPERSEDED PEDRO RESPONSE DISCARDED:", { turnId, current: this.m5b3nPendingTurnId });
+          return;
+        }
+        if (turnId === this.m5b3nPendingTurnId) {
+          this.m5b3nPendingTurnId = "";
+          this.m5b3nPendingTurnText = "";
         }
         this.queuePedroGuestResponse(t3, p3?.latency || {}, {
           completeAfterSpeak: Boolean(p3?.rolePlayShouldComplete),
@@ -30727,6 +30737,32 @@ ${tail}`;
     if (name === "session-token") {
       const previousToken = this.sessionToken;
       this.sessionToken = newValue;
+      if (this.m5b3nAwaitingFreshInstructorToken) {
+        console.log("NEXIVRA M5B-3L-N FRESH ELENORA TOKEN RECEIVED");
+        this.session = null;
+        this.avatarStarted = false;
+        this.runtimeLifecycleState = "IDLE";
+        this.runtimeLifecycleToken = null;
+        this.runtimeStartPromise = null;
+        this.startNexivra().then(async () => {
+          const video = this.shadowRoot?.getElementById("avatarVideo");
+          const started = Date.now();
+          while (Date.now() - started < 5e3) {
+            const tracks = video?.srcObject?.getTracks?.().filter((track) => track.readyState !== "ended").length || 0;
+            if (tracks > 0) {
+              console.log("NEXIVRA M5B-3L-N FRESH ELENORA TRACKS READY:", { tracks });
+              this.m5b3nResolveFreshInstructor?.(true);
+              return;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+          this.m5b3nResolveFreshInstructor?.(false);
+        }).catch((error) => {
+          console.error("NEXIVRA M5B-3L-N FRESH ELENORA START ERROR:", error);
+          this.m5b3nResolveFreshInstructor?.(false);
+        });
+        return;
+      }
       if (this.isConnected && previousToken && previousToken !== newValue) {
         if (this.m5b3e1AwaitingManualRestart) {
           this.sessionToken = newValue;
@@ -31732,28 +31768,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     this.m5b2ElenoraVoiceSuspended = false;
     console.log("NEXIVRA M5B-3C ELENORA ROUTER RESTORED \u2014 AUTONOMOUS MIC REMAINS OFF");
   }
-  handleM5B3LGuestMediaLoss(reason = "guest_media_lost") {
-    if (this.m5b3lGuestMediaLossHandling || !this.rolePlayActive || !this.m5b2RolePlayStageActive) return;
-    this.m5b3lGuestMediaLossHandling = true;
-    this.guestInfrastructureReady = false;
-    this.m5b2GuestSpeaking = false;
-    this.m5b2jPedroSpeaking = false;
-    this.m5b2GuestResponseQueue = [];
-    if (this.m5b3lGuestHealthTimer) {
-      clearInterval(this.m5b3lGuestHealthTimer);
-      this.m5b3lGuestHealthTimer = null;
-    }
-    console.error("NEXIVRA M5B-3L-L PEDRO MEDIA LOST \u2014 FAILING FORWARD TO ELENORA:", { reason });
-    this.completeAdaptiveRolePlay({
-      outcome: "completed",
-      needsAnotherAttempt: false,
-      outcomeSummary: "Hospitality role-play ended after the guest media connection was lost. Evaluate the interaction demonstrated before the disconnect.",
-      guestOutcome: "Pedro's media connection ended before another guest response could be delivered."
-    });
-    setTimeout(() => {
-      this.m5b3lGuestMediaLossHandling = false;
-    }, 2500);
-  }
   queuePedroGuestResponse(text, latency = {}, options = {}) {
     const v3 = String(text || "").trim();
     if (!v3) return;
@@ -31809,10 +31823,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     } catch (error) {
       this.m5b2GuestSpeaking = false;
       console.error("NEXIVRA M5B-2B PEDRO SPEAK ERROR:", error);
-      const message = String(error?.message || error || "").toLowerCase();
-      if (message.includes("not connected") || message.includes("disconnected") || message.includes("session")) {
-        this.handleM5B3LGuestMediaLoss("pedro_repeat_failed");
-      }
     }
   }
   enterM5B2RolePlayStage(command = {}) {
@@ -31859,72 +31869,51 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     const video = this.shadowRoot?.getElementById("avatarVideo");
     const trackCount = () => video?.srcObject?.getTracks?.().filter((track) => track.readyState !== "ended").length || 0;
     if (this.session && trackCount() > 0) {
-      console.log("NEXIVRA M5B-3L-K ELENORA MEDIA HEALTHY:", { tracks: trackCount() });
+      console.log("NEXIVRA M5B-3L-N ELENORA MEDIA HEALTHY:", { tracks: trackCount() });
       return true;
     }
-    console.warn("NEXIVRA M5B-3L-K ELENORA MEDIA RECOVERY REQUIRED:", {
+    console.warn("NEXIVRA M5B-3L-N ELENORA ZOMBIE SESSION DETECTED:", {
       sessionExists: Boolean(this.session),
       tracks: trackCount()
     });
     try {
-      if (this.session && typeof this.session.start === "function") {
-        await this.session.start();
-        this.waitForAvatarVideo();
-        await new Promise((resolve) => setTimeout(resolve, 450));
-        if (trackCount() > 0) {
-          this.runtimeLifecycleState = "ACTIVE";
-          this.avatarStarted = true;
-          console.log("NEXIVRA M5B-3L-K ELENORA EXISTING SESSION RECONNECTED:", { tracks: trackCount() });
-          return true;
-        }
-      }
+      if (this.session?.stop) await this.session.stop();
     } catch (error) {
-      console.warn("NEXIVRA M5B-3L-K ELENORA EXISTING SESSION RECONNECT FAILED:", error?.message || error);
     }
     try {
-      try {
-        if (this.session?.stop) await this.session.stop();
-      } catch (error) {
+      if (video) {
+        video.srcObject = null;
       }
-      this.session = new LiveAvatarSession(this.sessionToken, { voiceChat: false });
-      this.session.on(
-        AgentEventsEnum.AVATAR_SPEAK_STARTED,
-        () => {
-          this.avatarSpeaking = true;
-          console.log("NEXIVRA SPEECH EVENT: avatar started speaking");
-        }
-      );
-      this.session.on(
-        AgentEventsEnum.AVATAR_SPEAK_ENDED,
-        () => {
-          this.avatarSpeaking = false;
-          console.log("NEXIVRA SPEECH EVENT: avatar stopped speaking");
-          if (this.sessionActive) {
-            this.coachVoiceTurnCount += 1;
-            this.emitProgressCheckpoint("coach_turn_completed");
-          }
-        }
-      );
-      await this.session.start();
-      this.waitForAvatarVideo();
-      this.runtimeLifecycleState = "ACTIVE";
-      this.runtimeLifecycleToken = this.sessionToken;
-      this.avatarStarted = true;
-      const startedAt = Date.now();
-      while (trackCount() === 0 && Date.now() - startedAt < 2200) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      const ok = trackCount() > 0;
-      console.log("NEXIVRA M5B-3L-K ELENORA SESSION RECREATED:", {
-        ok,
-        tracks: trackCount(),
-        recoveryMs: Date.now() - startedAt
-      });
-      return ok;
     } catch (error) {
-      console.error("NEXIVRA M5B-3L-K ELENORA MEDIA RECOVERY FAILED:", error);
-      return false;
     }
+    this.session = null;
+    this.avatarStarted = false;
+    this.runtimeLifecycleState = "IDLE";
+    this.runtimeLifecycleToken = null;
+    this.runtimeStartPromise = null;
+    this.m5b3nAwaitingFreshInstructorToken = true;
+    const recovered = await new Promise((resolve) => {
+      let done = false;
+      const finish = (value) => {
+        if (done) return;
+        done = true;
+        resolve(Boolean(value));
+      };
+      this.m5b3nResolveFreshInstructor = finish;
+      setTimeout(() => finish(false), 9e3);
+      console.log("NEXIVRA M5B-3L-N REQUESTING FRESH ELENORA SESSION");
+      this.dispatchRuntimeEvent("nexivra-refresh-instructor-session", {
+        sessionId: this.runtimeSessionId || "",
+        reason: "post_role_play_zero_tracks"
+      });
+    });
+    this.m5b3nResolveFreshInstructor = null;
+    this.m5b3nAwaitingFreshInstructorToken = false;
+    console.log("NEXIVRA M5B-3L-N FRESH ELENORA RECOVERY RESULT:", {
+      recovered,
+      tracks: trackCount()
+    });
+    return recovered && trackCount() > 0;
   }
   async exitM5B2RolePlayStage(reason = "role_play_complete") {
     if (!this.m5b2RolePlayStageActive) {
@@ -31943,11 +31932,11 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     );
     if (reason === "role_play_complete") {
       const elenoraRecovered = await this.ensureElenoraMediaAfterRolePlay();
-      console.log("NEXIVRA M5B-3L-K ELENORA RETURN HEALTH:", { recovered: elenoraRecovered });
+      console.log("NEXIVRA M5B-3L-N ELENORA RETURN HEALTH:", { recovered: elenoraRecovered });
       if (elenoraRecovered && this.session && typeof this.session.repeat === "function") {
         try {
           await this.session.repeat("Nice work. Give me just a moment to review that interaction.");
-          console.log("NEXIVRA M5B-3L-K ELENORA IMMEDIATE RETURN BRIDGE SENT");
+          console.log("NEXIVRA M5B-3L-N ELENORA IMMEDIATE RETURN BRIDGE SENT");
         } catch (error) {
           console.warn("NEXIVRA M5B-3L-K ELENORA RETURN BRIDGE WARNING:", error?.message || error);
         }
@@ -35135,23 +35124,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
             clearInterval(this.guestAttachTimer);
             this.guestAttachTimer = null;
             this.guestInfrastructureReady = true;
-            this.m5b3lGuestMediaLostAtMs = 0;
-            if (this.m5b3lGuestHealthTimer) clearInterval(this.m5b3lGuestHealthTimer);
-            this.m5b3lGuestHealthTimer = setInterval(() => {
-              if (!this.rolePlayActive || !this.m5b2RolePlayStageActive || !this.guestSession) {
-                this.m5b3lGuestMediaLostAtMs = 0;
-                return;
-              }
-              const liveTracks = (video.srcObject?.getTracks?.() || []).filter((track) => track.readyState !== "ended");
-              if (liveTracks.length > 0) {
-                this.m5b3lGuestMediaLostAtMs = 0;
-                return;
-              }
-              if (!this.m5b3lGuestMediaLostAtMs) this.m5b3lGuestMediaLostAtMs = Date.now();
-              if (Date.now() - this.m5b3lGuestMediaLostAtMs >= 1200) {
-                this.handleM5B3LGuestMediaLoss("guest_tracks_missing");
-              }
-            }, 400);
             video.play().catch(() => {
             });
             console.log("NEXIVRA M5B GUEST AVATAR READY:", {
@@ -35240,11 +35212,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
         clearInterval(this.guestAttachTimer);
         this.guestAttachTimer = null;
       }
-      if (this.m5b3lGuestHealthTimer) {
-        clearInterval(this.m5b3lGuestHealthTimer);
-        this.m5b3lGuestHealthTimer = null;
-      }
-      this.m5b3lGuestMediaLostAtMs = 0;
       const panel = this.shadowRoot.getElementById("guestInfraPanel");
       const video = this.shadowRoot.getElementById("guestAvatarVideo");
       const retiringSession = this.guestSession;
@@ -35520,11 +35487,6 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       this.flushM5B2JLearnerTurn(reason);
     }, commitDelayMs);
   }
-  isM5B3LLocalFarewell(text = "") {
-    const normalized = String(text || "").toLowerCase().replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
-    if (!normalized) return false;
-    return /\b(?:have a (?:great|good|wonderful|nice) day|have a good one|take care|see you next time|we'll see you next time|goodbye|bye for now)\b/i.test(normalized) || /\b(?:thanks|thank you)\b.*\b(?:coming in|stopping by|your time|speaking with me)\b/i.test(normalized) || /\b(?:all right|alright|okay|ok)\b.*\b(?:have a (?:great|good|wonderful|nice) day|take care|see you next time)\b/i.test(normalized);
-  }
   flushM5B2JLearnerTurn(reason = "silence_complete") {
     if (!this.rolePlayActive || !this.formalRolePlaySessionId) return;
     if (!this.m5b2nLearnerTurnArmed) return;
@@ -35550,29 +35512,22 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       speechStartToTurnMs: this.m5b2nLearnerSpeechStartedAtMs ? now - this.m5b2nLearnerSpeechStartedAtMs : null
     });
     this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
-    this.dispatchRuntimeEvent("nexivra-learner-transcript", {
-      sessionId: this.runtimeSessionId || "",
-      text,
-      observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null
-    });
-    if (this.isM5B3LLocalFarewell(text)) {
-      console.log("NEXIVRA M5B-3L-L LOCAL FAREWELL CLOSE \u2014 RETURNING TO ELENORA:", text);
-      this.m5b2mCompleteAfterPedroSpeaks = false;
-      this.m5b2mCompletionReason = "";
-      this.completeAdaptiveRolePlay({
-        outcome: "completed",
-        needsAnotherAttempt: false,
-        outcomeSummary: "Hospitality role-play reached a clear natural learner farewell.",
-        guestOutcome: "The interaction concluded naturally after the learner closed the conversation."
-      });
-      return;
-    }
+    const clientCapturedAtMs = Date.now();
+    const turnId = `turn-${clientCapturedAtMs}-${Math.random().toString(36).slice(2, 8)}`;
+    this.m5b3nPendingTurnId = turnId;
+    this.m5b3nPendingTurnText = text;
     this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", {
       rolePlaySessionId: this.formalRolePlaySessionId,
       speaker: "learner",
       text,
       scenario: this.activeRolePlayScenario || {},
-      clientCapturedAtMs: Date.now()
+      clientCapturedAtMs,
+      turnId
+    });
+    this.dispatchRuntimeEvent("nexivra-learner-transcript", {
+      sessionId: this.runtimeSessionId || "",
+      text,
+      observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null
     });
   }
   cancelM5B2OFastTurnTimer() {
@@ -35586,7 +35541,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     const normalized = raw.toLowerCase().replace(/[^a-z0-9' ]+/g, " ").replace(/\s+/g, " ").trim();
     const words = normalized ? normalized.split(" ") : [];
     const wordCount = words.length;
-    const strongContinuation = /\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should| gonna)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|because|although|unless|until|while|when|if|so that|in order to|and then|but then)\s*$/i.test(normalized) || /\b(?:to|for|with|and|but|or|because|so|if|when|while|the|a|an|your|my|our|their)\s*$/i.test(normalized) || /\b(?:which|that|this|it|they|he|she)\s+(?:will|would|can|could|should|is|are|was|were|has|have)\s*$/i.test(normalized) || /\b(?:which will|that will|this will|it will|so we can|so i can|and we can|and i can)\s*$/i.test(normalized);
+    const strongContinuation = /\b(?:i(?:'m| am| was| will| would| can| could| should| gonna)|we(?:'re| are| will| would| can| could| should| gonna)|i(?:'ll|d)|we(?:'ll|d)|going to|gonna|because|although|unless|until|while|when|if|so that|in order to|and then|but then)\s*$/i.test(normalized) || /\b(?:to|for|with|and|but|or|because|so|if|when|while|the|a|an|your|my|our|their)\s*$/i.test(normalized);
     const acknowledgmentLead = /^(?:oh\s+)?(?:okay|ok|all right|alright|absolutely|sure|certainly|great|thank you|thanks|i understand|i see)(?:\s+(?:mr|mrs|ms|miss|sir|ma'am|maam)\.?\s+[a-z'-]+)?$/i.test(raw.replace(/[,.!?]+$/g, "").trim()) || /^(?:oh\s+)?(?:okay|ok|all right|alright)\s+(?:mr|mrs|ms|miss)\.?\s+[a-z'-]+$/i.test(raw.replace(/[,.!?]+$/g, "").trim());
     const shortAmbiguous = wordCount <= 5 && !/^(?:yes|no|nope|yep|yeah|correct|right|thanks|thank you|okay|ok|sure)$/i.test(normalized);
     const directQuestion = /^(?:what|where|when|why|who|whose|which|how|do|does|did|is|are|was|were|can|could|would|will|have|has|had|may|might|should)\b/i.test(normalized) && wordCount >= 3;
@@ -35627,15 +35582,11 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     if (!interimNow) return;
     const boundary = this.classifyM5B3D2TurnBoundary(interimNow);
     this.m5b3lH1AwaitingFinalTranscript = true;
-    const adaptiveFinalWaitMs = Math.max(
-      Number(this.m5b3lH1FinalTranscriptWaitMs || 900),
-      Number(boundary.graceMs || 650)
-    );
-    console.log("NEXIVRA M5B-3L-L ADAPTIVE FINAL TRANSCRIPT WAIT:", {
+    console.log("NEXIVRA M5B-3L-H1 WAITING FOR AUTHORITATIVE FINAL TRANSCRIPT:", {
       text: interimNow,
       classification: boundary.classification,
-      boundaryGraceMs: Number(boundary.graceMs || 650),
-      adaptiveFinalWaitMs
+      previousGraceMs: Number(boundary.graceMs || 650),
+      finalWaitMs: Number(this.m5b3lH1FinalTranscriptWaitMs || 1850)
     });
     this.m5b2oFastTurnTimer = setTimeout(() => {
       this.m5b2oFastTurnTimer = null;
@@ -35645,7 +35596,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       this.m5b3lH1AwaitingFinalTranscript = false;
       console.warn("NEXIVRA M5B-3L-H1 FINAL TRANSCRIPT TIMEOUT \u2014 USING LATEST INTERIM FALLBACK:", {
         text: interim,
-        waitMs: adaptiveFinalWaitMs,
+        waitMs: Number(this.m5b3lH1FinalTranscriptWaitMs || 1850),
         interimAgeMs: this.m5b2oLatestInterimAtMs ? Date.now() - this.m5b2oLatestInterimAtMs : null
       });
       this.m5b2jPendingLearnerFragments = [];
@@ -35653,7 +35604,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
       this.flushM5B2JLearnerTurn("final_transcript_timeout_fallback");
       this.m5b2oLatestInterimText = "";
       this.m5b2oLatestInterimAtMs = 0;
-    }, adaptiveFinalWaitMs);
+    }, Number(this.m5b3lH1FinalTranscriptWaitMs || 1850));
   }
   startLearnerTranscriptCapture() {
     if (this.speechRecognitionActive) return;
@@ -36450,12 +36401,6 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     if (!video || video.readyState < 2) {
       return;
     }
-    const learnerVideoTracks = video.srcObject?.getVideoTracks?.() || [];
-    if (!learnerVideoTracks.length || learnerVideoTracks.every((track) => track.readyState === "ended")) {
-      if (this.visualRunning) console.warn("NEXIVRA M5B-3L-L VISUAL ANALYSIS PAUSED \u2014 LEARNER CAMERA TRACK UNAVAILABLE");
-      this.visualRunning = false;
-      return;
-    }
     const timestamp = performance.now();
     try {
       const faceResult = this.faceLandmarker.detectForVideo(
@@ -37092,6 +37037,22 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                 if (this.rolePlayActive) {
                   this.cancelM5B2JLearnerTurnTimer();
                   this.cancelM5B2OFastTurnTimer();
+                  if (!this.m5b2jPedroSpeaking && this.m5b3nPendingTurnId) {
+                    const reclaimedTurnId = this.m5b3nPendingTurnId;
+                    console.log("NEXIVRA M5B-3L-N LEARNER RECLAIMED TENTATIVE TURN:", {
+                      turnId: reclaimedTurnId,
+                      previousText: this.m5b3nPendingTurnText || ""
+                    });
+                    this.dispatchRuntimeEvent("nexivra-role-play-turn-reclaimed", {
+                      rolePlaySessionId: this.formalRolePlaySessionId || "",
+                      turnId: reclaimedTurnId
+                    });
+                    this.m5b3nCancelledTurnIds = this.m5b3nCancelledTurnIds || /* @__PURE__ */ new Set();
+                    this.m5b3nCancelledTurnIds.add(reclaimedTurnId);
+                    this.m5b3nPendingTurnId = "";
+                    this.m5b3nPendingTurnText = "";
+                    this.m5b2GuestResponseQueue = [];
+                  }
                   if (!this.m5b2jPedroSpeaking) {
                     if (!this.m5b2nLearnerTurnArmed) {
                       this.m5b2oLatestInterimText = "";
