@@ -1,4 +1,4 @@
-       import {
+                  import {
                                                                                                           LiveAvatarSession,
                                                                                                           AgentEventsEnum
                                                                                                         } from "@heygen/liveavatar-web-sdk";
@@ -32,7 +32,8 @@
                                                                                                               "client-tagline",
                                                                                                               "client-hero-image-url",
                                                                                                               "client-course-image-url",
-                                                                                                              "client-journey-image-url",'resume-checkpoint'];
+                                                                                                              "client-journey-image-url",'resume-checkpoint',
+                                        "learner-dashboard-view"];
                                                                                                           }
 
 
@@ -712,34 +713,6 @@ The next instructor response must teach, practice, check understanding, or trans
                               return true;
                             }catch(error){console.error("NEXIVRA LIVEAVATAR MESSAGE ERROR:",{label,error});return false;}
                           }
-                          ensureM5B3RLearnerCenter(){
-                            if(this.shadowRoot?.getElementById("m5b3rLearnerCenter"))return;
-                            const wrap=document.createElement("div");
-                            wrap.id="m5b3rLearnerCenter";
-                            wrap.style.cssText="position:absolute;right:16px;top:16px;z-index:10020;font-family:Arial,sans-serif;";
-                            wrap.innerHTML=`<div style="display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end;">
-                              <button data-r="profile">My Profile</button><button data-r="certificates">Certificates</button><button data-r="resources">Resources</button><button data-r="help">Help</button>
-                            </div><div id="m5b3rPanel" style="display:none;margin-top:10px;width:min(560px,82vw);max-height:70vh;overflow:auto;background:rgba(8,12,22,.97);color:white;border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:20px;"></div>`;
-                            this.shadowRoot.appendChild(wrap);
-                            wrap.querySelectorAll("button[data-r]").forEach(btn=>{
-                              btn.style.cssText="border:1px solid rgba(255,255,255,.25);background:rgba(8,12,22,.82);color:white;border-radius:8px;padding:8px 11px;cursor:pointer;font-size:12px;";
-                              btn.addEventListener("click",()=>this.openM5B3RLearnerCenter(btn.dataset.r));
-                            });
-                          }
-
-                          openM5B3RLearnerCenter(section="profile"){
-                            this.ensureM5B3RLearnerCenter();
-                            const panel=this.shadowRoot?.getElementById("m5b3rPanel"); if(!panel)return;
-                            const close=`<button id="m5b3rClosePanel" style="float:right;background:transparent;color:white;border:1px solid #666;border-radius:7px;padding:6px 10px;">Close</button>`;
-                            if(section==="profile") panel.innerHTML=close+`<h2>My Profile</h2><p><b>Company:</b> Centier Bank</p><p><b>Learning Path:</b> Hospitality Foundations</p><p><b>Status:</b> Active Learner</p>`;
-                            else if(section==="certificates") panel.innerHTML=close+`<h2>Certificates</h2><div><b>Hospitality Foundations</b><p>Certificate becomes available when certification requirements are completed.</p></div>`;
-                            else if(section==="resources") panel.innerHTML=close+`<h2>Resources</h2><p><b>Hospitality Foundations</b> — approved learner reference material.</p><p><b>Role-Play Practice</b> — realistic guest-conversation practice.</p>`;
-                            else panel.innerHTML=close+`<h2>Help</h2><p><b>AI Instructor:</b> Speak naturally.</p><p><b>Camera & microphone:</b> Allow browser permissions.</p><p><b>Role-play:</b> Treat the guest like a real client.</p><p><b>Support:</b> Contact your company or NEXIVRA administrator.</p>`;
-                            panel.style.display="block";
-                            panel.querySelector("#m5b3rClosePanel")?.addEventListener("click",()=>panel.style.display="none");
-                            console.log("NEXIVRA M5B-3L-R LEARNER CENTER OPEN:",section);
-                          }
-
 
 
                           connectedCallback() {
@@ -872,6 +845,30 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                               );
                                                                                                             }
                                                                                                           }
+                          ensureM5B3RDashboardViewHost(){
+                            if(this.shadowRoot?.getElementById("m5b3rDashboardViewHost"))return;
+                            const host=document.createElement("div");
+                            host.id="m5b3rDashboardViewHost";
+                            host.style.cssText="position:absolute;inset:0;z-index:10010;background:#061520;color:#fff;padding:32px;overflow:auto;display:none;font-family:Arial,sans-serif;";
+                            this.shadowRoot.appendChild(host);
+                          }
+
+                          renderM5B3RDashboardView(view="training",payload={}){
+                            this.ensureM5B3RDashboardViewHost();
+                            const host=this.shadowRoot?.getElementById("m5b3rDashboardViewHost"); if(!host)return;
+                            if(view==="training"||view==="skills"){host.style.display="none";console.log("NEXIVRA M5B-3L-R DASHBOARD VIEW:",view);return;}
+                            const esc=v=>String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+                            const learner=payload?.learner||{},course=payload?.course||{},certs=Array.isArray(payload?.certificates)?payload.certificates:[],resources=Array.isArray(payload?.resources)?payload.resources:[];
+                            const back=`<button id="m5b3rBackTraining" style="border:1px solid rgba(255,255,255,.22);background:transparent;color:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;">Back to My Training</button>`;
+                            if(view==="profile") host.innerHTML=`${back}<h1>My Profile</h1><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;"><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Name</b><div>${esc(learner.name||"Learner")}</div></div><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Company</b><div>${esc(learner.company||"Centier Bank")}</div></div><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Role</b><div>${esc(learner.role||"Learner")}</div></div><div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Current Course</b><div>${esc(course.title||"Hospitality Foundations")}</div></div></div>`;
+                            else if(view==="certificates") host.innerHTML=`${back}<h1>Certificates</h1>`+(certs.length?certs.map(c=>`<div style="padding:18px;margin-bottom:12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>${esc(c.title||"Certificate")}</b><div>${esc(c.status||"Earned")}</div></div>`).join(""):`<div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Hospitality Foundations</b><p>Certificate becomes available when certification requirements are completed.</p></div>`);
+                            else if(view==="resources") host.innerHTML=`${back}<h1>Resources</h1>`+(resources.length?resources.map(r=>`<div style="padding:18px;margin-bottom:12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>${esc(r.title||"Resource")}</b><div>${esc(r.description||"Course resource")}</div></div>`).join(""):`<div style="padding:18px;border:1px solid rgba(255,255,255,.14);border-radius:12px;"><b>Hospitality Foundations Resources</b><p>Approved learner reference material and course resources appear here.</p></div>`);
+                            else host.innerHTML=`${back}<h1>Help</h1><p><b>AI Instructor:</b> Speak naturally. NEXIVRA teaches, practices and evaluates conversationally.</p><p><b>Camera & microphone:</b> Allow browser permissions before starting training.</p><p><b>Role-play:</b> Treat the guest like a real client and close naturally.</p><p><b>Support:</b> Contact your company or NEXIVRA administrator.</p>`;
+                            host.style.display="block";
+                            host.querySelector("#m5b3rBackTraining")?.addEventListener("click",()=>{host.style.display="none";this.dispatchRuntimeEvent("nexivra-m5b3r-dashboard-view-change",{view:"training"});});
+                            console.log("NEXIVRA M5B-3L-R DASHBOARD VIEW:",view);
+                          }
+
 
 
                                                                                                           attributeChangedCallback(name, oldValue, newValue) {
@@ -1201,7 +1198,17 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                         }
 
 
-                                                                                                        if (name === "app-command") {
+                                                                                                        if(name==="learner-dashboard-view"&&newValue){
+                                                                                                              try{
+                                                                                                                const command=JSON.parse(newValue);
+                                                                                                                this.renderM5B3RDashboardView(String(command?.view||"training"),command?.payload||{});
+                                                                                                              }catch(error){
+                                                                                                                console.warn("NEXIVRA M5B-3L-R DASHBOARD VIEW COMMAND ERROR:",error?.message||error);
+                                                                                                              }
+                                                                                                              return;
+                                                                                                            }
+
+                                                                                                            if (name === "app-command") {
 
                                                                                                               if (
                                                                                                                 newValue &&
