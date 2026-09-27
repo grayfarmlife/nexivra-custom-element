@@ -1,4 +1,4 @@
-               import {
+        import {
                                                                                                           LiveAvatarSession,
                                                                                                           AgentEventsEnum
                                                                                                         } from "@heygen/liveavatar-web-sdk";
@@ -708,7 +708,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-N-NATURAL-TURN-ELENORA-RECOVERY"
+                                                                                                              "PACKAGE3-M5B3L-O-NATURAL-FLOOR-RELIABLE-CLOSE"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -868,11 +868,8 @@ The next instructor response must teach, practice, check understanding, or trans
                                                                                                                   console.log("NEXIVRA M5B-3L-N SUPERSEDED PEDRO RESPONSE DISCARDED:",{turnId,current:this.m5b3nPendingTurnId});
                                                                                                                   return;
                                                                                                                 }
-                                                                                                                if(turnId===this.m5b3nPendingTurnId){
-                                                                                                                  this.m5b3nPendingTurnId="";
-                                                                                                                  this.m5b3nPendingTurnText="";
-                                                                                                                }
                                                                                                                 this.queuePedroGuestResponse(t,p?.latency||{},{
+                                                                                                                  turnId,
                                                                                                                   completeAfterSpeak:Boolean(p?.rolePlayShouldComplete),
                                                                                                                   completionReason:String(p?.completionReason||"")
                                                                                                                 });
@@ -2304,6 +2301,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                     const queuedAtMs=Date.now();
                                     this.m5b2GuestResponseQueue.push({
                                       text:v,latency:latency||{},queuedAtMs,
+                                      turnId:String(options?.turnId||""),
                                       completeAfterSpeak:Boolean(options?.completeAfterSpeak),
                                       completionReason:String(options?.completionReason||"")
                                     });
@@ -2331,14 +2329,45 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                       });
                                       console.log("NEXIVRA M5B-3E EVALUATION PREWARM REQUESTED:",this.formalRolePlaySessionId||"");
                                     }
-                                    const repeatStartedAtMs=Date.now();
                                     this.m5b2GuestSpeaking=true;
                                     try{
+                                      const turnId=String(item?.turnId||"");
+                                      const gateStartedAtMs=Date.now();
+                                      this.m5b3oSpeakGateTurnId=turnId;
+                                      this.m5b3oSpeakGateActive=true;
+                                      console.log("NEXIVRA M5B-3L-O PEDRO SPEAK GATE ARMED:",{
+                                        turnId,
+                                        gateMs:300
+                                      });
+                                      await new Promise(resolve=>setTimeout(resolve,300));
+
+                                      const cancelled=
+                                        Boolean(turnId)&&
+                                        (
+                                          this.m5b3nCancelledTurnIds?.has?.(turnId) ||
+                                          this.m5b3oSpeakGateCancelledTurnIds?.has?.(turnId)
+                                        );
+
+                                      this.m5b3oSpeakGateActive=false;
+                                      this.m5b3oSpeakGateTurnId="";
+
+                                      if(cancelled){
+                                        this.m5b2GuestSpeaking=false;
+                                        this.m5b3nCancelledTurnIds?.delete?.(turnId);
+                                        this.m5b3oSpeakGateCancelledTurnIds?.delete?.(turnId);
+                                        console.log("NEXIVRA M5B-3L-O PEDRO SPEAK CANCELLED — LEARNER CONTINUED:",{turnId});
+                                        this.flushPedroGuestResponseQueue();
+                                        return;
+                                      }
+
+                                      const repeatStartedAtMs=Date.now();
+                                      this.m5b3oSpeakingTurnId=turnId;
                                       if(typeof this.guestSession.repeat!=="function")throw new Error("LIVEAVATAR_FULL_REPEAT_UNAVAILABLE");
                                       console.log("NEXIVRA M5B-2E PEDRO SPEAK START:",{
                                         rolePlaySessionId:this.formalRolePlaySessionId||"",
                                         chars:t.length,
                                         queueWaitMs:repeatStartedAtMs-Number(item?.queuedAtMs||repeatStartedAtMs),
+                                        speakGateMs:repeatStartedAtMs-gateStartedAtMs,
                                         transcriptToRepeatMs:Number(latency?.clientCapturedAtMs||0)?repeatStartedAtMs-Number(latency.clientCapturedAtMs):null
                                       });
                                       await this.guestSession.repeat(t);this.rolePlayConversation.push({speaker:"guest",text:t,at:new Date().toISOString()});
@@ -3572,7 +3601,8 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
 
 
                                                                                                           escapeUnifiedHtml(value) {
-                  return String(
+
+                                                                                                            return String(
                                                                                                               value ??
                                                                                                               ""
                                                                                                             )
@@ -3584,7 +3614,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                 "<",
                                                                                                                 "&lt;"
                                                                                                               )
-                                                                                                              .replaceAll(
+                                                                                                                  .replaceAll(
                                                                                                                 ">",
                                                                                                                 "&gt;"
                                                                                                               )
@@ -6233,6 +6263,15 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   AgentEventsEnum.AVATAR_SPEAK_STARTED,
                                                                                                                   () => {
                                                                                                                     this.m5b2jPedroSpeaking=true;
+                                                                                                                    const spokenTurnId=String(this.m5b3oSpeakingTurnId||this.m5b3nPendingTurnId||"");
+                                                                                                                    if(spokenTurnId){
+                                                                                                                      this.m5b3nCancelledTurnIds?.delete?.(spokenTurnId);
+                                                                                                                      this.m5b3oSpeakGateCancelledTurnIds?.delete?.(spokenTurnId);
+                                                                                                                    }
+                                                                                                                    this.m5b3nPendingTurnId="";
+                                                                                                                    this.m5b3nPendingTurnText="";
+                                                                                                                    this.m5b3oSpeakingTurnId="";
+                                                                                                                    console.log("NEXIVRA M5B-3L-O RECLAIM WINDOW CLOSED — PEDRO ACTUALLY SPEAKING:",{turnId:spokenTurnId});
                                                                                                                     this.cancelM5B2JLearnerTurnTimer();
                                                                                                                     this.m5b2jPendingLearnerFragments=[];
                                                                                                                     this.cancelM5B2OFastTurnTimer();
@@ -6785,7 +6824,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                               ) {
 
                                                                                                                 await this.session
-                                                                                                                                 .voiceChat
+                                                                                                                  .voiceChat
                                                                                                                   .stop();
                                                                                                               }
 
@@ -6815,7 +6854,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                 "NEXIVRA FAST EXIT AVATAR WARNING:",
                                                                                                                 error
                                                                                                               );
-                                                                                                            }
+             }
 
 
                                                                                                             this.sessionActive =
@@ -6899,6 +6938,24 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                             },commitDelayMs);
                                                                                                           }
 
+                                                                                                          isM5B3ONaturalFarewell(text=""){
+                                                                                                            const normalized=String(text||"")
+                                                                                                              .toLowerCase()
+                                                                                                              .replace(/[^a-z0-9'\s]/g," ")
+                                                                                                              .replace(/\s+/g," ")
+                                                                                                              .trim();
+                                                                                                            if(!normalized)return false;
+                                                                                                            return (
+                                                                                                              /\bhave (?:a )?(?:great|good|wonderful|nice) day\b/.test(normalized) ||
+                                                                                                              /\bwe(?:'ll| will) see you next time\b/.test(normalized) ||
+                                                                                                              /\bsee you next time\b/.test(normalized) ||
+                                                                                                              /\btake care\b/.test(normalized) ||
+                                                                                                              /\benjoy (?:the rest of )?your day\b/.test(normalized) ||
+                                                                                                              /\bthanks? for (?:coming|stopping) (?:in|by)\b/.test(normalized) ||
+                                                                                                              /\bgoodbye\b/.test(normalized)
+                                                                                                            );
+                                                                                                          }
+
                                                                                                           flushM5B2JLearnerTurn(reason="silence_complete") {
                                                                                                             if(!this.rolePlayActive||!this.formalRolePlaySessionId)return;
                                                                                                             if(!this.m5b2nLearnerTurnArmed)return;
@@ -6928,6 +6985,27 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                 : null
                                                                                                             });
                                                                                                             this.rolePlayConversation.push({speaker:"learner",text,at:new Date().toISOString()});
+
+                                                                                                            if(this.isM5B3ONaturalFarewell(text)){
+                                                                                                              console.log("NEXIVRA M5B-3L-O LOCAL FAREWELL CLOSE — RETURNING TO ELENORA:",text);
+                                                                                                              this.m5b3nPendingTurnId="";
+                                                                                                              this.m5b3nPendingTurnText="";
+                                                                                                              this.m5b2GuestResponseQueue=[];
+                                                                                                              this.dispatchRuntimeEvent("nexivra-role-play-evaluation-prewarm",{
+                                                                                                                rolePlaySessionId:this.formalRolePlaySessionId||"",
+                                                                                                                sessionId:this.runtimeSessionId||"",
+                                                                                                                scenario:this.activeRolePlayScenario||{},
+                                                                                                                reason:"local_natural_farewell"
+                                                                                                              });
+                                                                                                              this.completeAdaptiveRolePlay({
+                                                                                                                outcome:"completed",
+                                                                                                                needsAnotherAttempt:false,
+                                                                                                                outcomeSummary:"Hospitality role-play reached a natural learner farewell.",
+                                                                                                                guestOutcome:"The interaction ended naturally after the learner closed the conversation."
+                                                                                                              });
+                                                                                                              return;
+                                                                                                            }
+
                                                                                                             const clientCapturedAtMs=Date.now();
                                                                                                             const turnId=`turn-${clientCapturedAtMs}-${Math.random().toString(36).slice(2,8)}`;
                                                                                                             this.m5b3nPendingTurnId=turnId;
@@ -9627,6 +9705,8 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                               });
                                                                                                                               this.m5b3nCancelledTurnIds=this.m5b3nCancelledTurnIds||new Set();
                                                                                                                               this.m5b3nCancelledTurnIds.add(reclaimedTurnId);
+                                                                                                                              this.m5b3oSpeakGateCancelledTurnIds=this.m5b3oSpeakGateCancelledTurnIds||new Set();
+                                                                                                                              this.m5b3oSpeakGateCancelledTurnIds.add(reclaimedTurnId);
                                                                                                                               this.m5b3nPendingTurnId="";
                                                                                                                               this.m5b3nPendingTurnText="";
                                                                                                                               this.m5b2GuestResponseQueue=[];
