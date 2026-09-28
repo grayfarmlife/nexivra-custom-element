@@ -1,4 +1,4 @@
-              import {
+     import {
                                                                                                           LiveAvatarSession,
                                                                                                           AgentEventsEnum
                                                                                                         } from "@heygen/liveavatar-web-sdk";
@@ -718,7 +718,7 @@ The next instructor response must teach, practice, check understanding, or trans
                           connectedCallback() {
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
-                                                                                                              "PACKAGE3-M5B3L-R32-OCT8-DYNAMIC-COURSE-CERTIFICATE"
+                                                                                                              "PACKAGE3-M5B3L-R4-OCT8-ELENORA-PROVEN-RECOVERY"
                                                                                                             );
                                                                                                             const courseAssets = Array.isArray(this.dashboardData?.courseAssets)
                                                                                                               ? this.dashboardData.courseAssets
@@ -943,8 +943,8 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
 .data{position:absolute;inset:0;pointer-events:none;color:#082d5b;text-align:center}
 .recipient{position:absolute;left:25%;right:8%;top:37.2%;font-family:Georgia,serif;font-style:italic;font-size:clamp(30px,3.6vw,58px);color:#092e5d}
 .course{position:absolute;left:24%;right:5%;top:50.5%;font-family:Georgia,serif;font-weight:700;font-size:clamp(24px,3vw,48px);color:#092e5d}
-.date{position:absolute;left:22%;width:22%;top:64.8%;font-family:Georgia,serif;font-size:clamp(13px,1.45vw,23px);color:#092e5d}
-.certid{position:absolute;right:11%;width:22%;top:64.8%;font-family:Georgia,serif;font-size:clamp(13px,1.45vw,23px);color:#092e5d}
+.date{position:absolute;left:22%;width:22%;top:66.2%;font-family:Georgia,serif;font-size:clamp(13px,1.35vw,21px);color:#092e5d}
+.certid{position:absolute;right:11%;width:22%;top:66.2%;font-family:Georgia,serif;font-size:clamp(12px,1.25vw,20px);color:#092e5d}
 .actions{position:fixed;right:18px;top:18px;z-index:20;display:flex;gap:8px;pointer-events:auto}
 .actions button{background:#082d5b;color:white;border:1px solid #d2a92d;border-radius:7px;padding:10px 14px;cursor:pointer;font-weight:700}
 @media print{.actions{display:none}.page{width:100vw;height:100vh;min-height:0}}
@@ -2730,12 +2730,12 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                         this.m5b3nResolveFreshInstructor=finish;
                                         setTimeout(()=>finish(false),8500);
 
-                                        console.log("NEXIVRA M5B-3L-R REQUESTING FRESH ELENORA SESSION:",{attempt});
+                                        console.log("NEXIVRA M5B-3L-R4 REQUESTING ELENORA THROUGH PROVEN PAGE EVENT:",{attempt});
 
                                         // This event is already a proven Wix page bridge. The page code
                                         // special-cases postRolePlayInstructorRecovery and does NOT end
                                         // the learner's training session.
-                                        this.dispatchRuntimeEvent("nexivra-m5b3r-refresh-instructor-session",{
+                                        this.dispatchRuntimeEvent("nexivra-refresh-instructor-session",{
                                           sessionId:this.runtimeSessionId||"",
                                           recoveryAttempt:attempt,
                                           reason:"post_role_play_instructor_recovery"
