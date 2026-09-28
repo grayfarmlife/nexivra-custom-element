@@ -1,19 +1,5 @@
-NEXIVRA HELP
-│
-├── Branded Help interface
-├── Support Assistant area
-├── Ask NEXIVRA
-├── Voice/text conversation area
-├── Quick Help topics
-│   ├── Getting Started
-│   ├── My Profile
-│   ├── Training
-│   ├── Role-Play
-│   ├── Skills
-│   ├── Certificates
-│   ├── Resources
-│   └── Camera & Microphone
-│
-├── Coded NEXIVRA system knowledge
-│
-└── Support-avatar connection layer
+// NEXIVRA Help Application
+// Isolated support assistant runtime.
+// Full Help Core will replace this placeholder.
+
+console.log("NEXIVRA HELP BUILD: PLACEHOLDER");
