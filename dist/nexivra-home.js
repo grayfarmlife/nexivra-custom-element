@@ -1,11 +1,11 @@
 // src/nexivra-home.js
-var LOGO_URL = "https://static.wixstatic.com/media/433270_aba4225e8fc54279ba41af267bab397a~mv2.png";
-var HERO_IMAGE = "https://static.wixstatic.com/media/433270_c2c3b23a9eb9422da7d8aca2c9239840~mv2.png";
-var HOSPITALITY_IMAGE = "https://static.wixstatic.com/media/433270_a00caa15c8a64cc09e47e59ccb5a1081~mv2.png";
-var SENIOR_LIVING_IMAGE = "https://static.wixstatic.com/media/433270_eed61d022cfc4157ae2a06614a0e4ecf~mv2.png";
-var HEALTHCARE_IMAGE = "https://static.wixstatic.com/media/433270_224fec054635445987e2b072424d5f49~mv2.png";
-var CONNECTED_TEAMS_IMAGE = "https://static.wixstatic.com/media/433270_082c2ff6123241e18afb516df3af9b6b~mv2.png";
-var FINANCIAL_IMAGE = "https://static.wixstatic.com/media/433270_28132edbcc3945718e98edbcc864a722~mv2.png";
+var LOGO_URL = "https://static.wixstatic.com/media/433270_e3b37abf0524488796c381c8a6c5e025~mv2.png";
+var HERO_IMAGE = "https://static.wixstatic.com/media/433270_8657d23c372248acba93903ebe9f5843~mv2.png";
+var HOSPITALITY_IMAGE = "https://static.wixstatic.com/media/433270_7b3b256ab3f5477faff559a22adc9790~mv2.png";
+var SENIOR_LIVING_IMAGE = "https://static.wixstatic.com/media/433270_afa1f9a60edd4173a176e596b61affef~mv2.png";
+var HEALTHCARE_IMAGE = "https://static.wixstatic.com/media/433270_eb9533bfcae242c7899e6718b51c0905~mv2.png";
+var CONNECTED_TEAMS_IMAGE = "https://static.wixstatic.com/media/433270_d03ac614d9a9482fa764babbb1970379~mv2.png";
+var FINANCIAL_IMAGE = "https://static.wixstatic.com/media/433270_162ea5878a0d45ebabc35384ab067a8e~mv2.png";
 var LOGIN_URL = "https://nexivratech.com/login";
 var NexivraHome = class extends HTMLElement {
   constructor() {
@@ -944,7 +944,7 @@ a {
   <img
     class="header-logo"
     src="${LOGO_URL}"
-    alt="NEXIVRA"
+    alt="NEXSTORVEN"
   >
 
 
@@ -1021,7 +1021,7 @@ a {
 
     <p class="hero-copy">
 
-      NEXIVRA is an adaptive AI training platform
+      NEXSTORVEN is an adaptive AI training platform
       that learns the learner,
       teaches through conversation,
       creates realistic practice,
@@ -1059,7 +1059,7 @@ a {
     <img
       class="hero-image"
       src="${HERO_IMAGE}"
-      alt="NEXIVRA AI people real impact"
+      alt="NEXSTORVEN AI people real impact"
     >
 
   </div>
@@ -1079,7 +1079,7 @@ a {
   <div class="center-heading">
 
     <div class="eyebrow">
-      THE NEXIVRA DIFFERENCE
+      THE NEXSTORVEN DIFFERENCE
     </div>
 
 
@@ -1095,7 +1095,7 @@ a {
       Traditional training delivers
       the same content to everyone.
 
-      NEXIVRA learns how each person
+      NEXSTORVEN learns how each person
       communicates, responds,
       processes information,
       practices, and performs \u2014
@@ -1137,7 +1137,7 @@ a {
       </h3>
 
       <p>
-        NEXIVRA changes how it teaches
+        NEXSTORVEN changes how it teaches
         based on how the learner responds.
       </p>
 
@@ -1211,7 +1211,7 @@ a {
 
     <p>
 
-      NEXIVRA Core provides the intelligence.
+      NEXSTORVEN Core provides the intelligence.
       Your organization's knowledge,
       standards, behaviors, scenarios,
       goals, and culture shape
@@ -1413,7 +1413,7 @@ a {
 
     <p>
 
-      NEXIVRA combines adaptive AI,
+      NEXSTORVEN combines adaptive AI,
       real-time conversation,
       behavioral observation,
       realistic practice,
@@ -1438,7 +1438,7 @@ a {
 
       <p>
 
-        NEXIVRA builds an understanding
+        NEXSTORVEN builds an understanding
         of the individual and uses that
         understanding to shape
         the learning experience.
@@ -1491,7 +1491,7 @@ a {
 
       <p>
 
-        NEXIVRA evaluates demonstrated
+        NEXSTORVEN evaluates demonstrated
         performance and helps determine
         what the learner should practice next.
 
@@ -1513,7 +1513,7 @@ a {
   <div class="access-heading">
 
     <div class="eyebrow">
-      YOUR NEXIVRA ENVIRONMENT
+      YOUR NEXSTORVEN ENVIRONMENT
     </div>
 
 
@@ -1529,7 +1529,7 @@ a {
     <p>
 
       Every authorized user enters
-      NEXIVRA through one secure login.
+      NEXSTORVEN through one secure login.
 
       Your account identifies your role,
       organization, permissions,
@@ -1551,7 +1551,7 @@ a {
 
 
       <h3>
-        Sign in to NEXIVRA
+        Sign in to NEXSTORVEN
       </h3>
 
 
@@ -1560,7 +1560,7 @@ a {
         Whether you manage the platform,
         lead an organization,
         or are completing training,
-        NEXIVRA automatically connects
+        NEXSTORVEN automatically connects
         you to the correct environment
         after authentication.
 
@@ -1571,7 +1571,7 @@ a {
         class="primary"
         data-login
       >
-        Sign In to NEXIVRA \u2192
+        Sign In to NEXSTORVEN \u2192
       </button>
 
     </div>
@@ -1589,7 +1589,7 @@ a {
         <div>
 
           <strong>
-            NEXIVRA Management
+            NEXSTORVEN Management
           </strong>
 
           <span>
@@ -1724,7 +1724,7 @@ a {
       <img
         class="footer-logo"
         src="${LOGO_URL}"
-        alt="NEXIVRA"
+        alt="NEXSTORVEN"
       >
 
     </div>
@@ -1769,7 +1769,7 @@ a {
   <div class="footer-bottom">
 
     <div>
-      \xA9 2026 NEXIVRA. All rights reserved.
+      \xA9 2026 NEXSTORVEN. All rights reserved.
     </div>
 
 
