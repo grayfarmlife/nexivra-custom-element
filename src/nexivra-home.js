@@ -1,13 +1,3 @@
-/* =========================================================
-   NEXSTORVEN HOME
-   Public-facing rebrand of the existing NEXIVRA Home element.
-
-   IMPORTANT:
-   - Customer-facing branding = NEXSTORVEN
-   - Internal custom-element identity remains nexivra-home
-   - Existing login routing remains unchanged for demo safety
-   ========================================================= */
-
 const LOGO_URL =
   "https://static.wixstatic.com/media/433270_e3b37abf0524488796c381c8a6c5e025~mv2.png";
 
@@ -45,8 +35,11 @@ class NexivraHome extends HTMLElement {
 
 
   connectedCallback() {
+
     this.render();
+
     this.bindEvents();
+
   }
 
 
@@ -935,7 +928,6 @@ a {
 
 }
 
-
 @media (max-width: 850px) {
 
   .header {
@@ -970,4 +962,910 @@ a {
   }
 
   .feature-grid,
-  .platform-grid
+  .platform-grid,
+  .industry-grid,
+  .access-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .industry-content p {
+    min-height: auto;
+  }
+
+  .cta {
+    padding:
+      40px 24px;
+  }
+
+  .footer-grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+  }
+
+}
+
+</style>
+
+
+<div class="site">
+
+
+<!-- =====================================================
+     HEADER
+===================================================== -->
+
+<header class="header">
+
+  <img
+    class="header-logo"
+    src="${LOGO_URL}"
+    alt="NEXSTORVEN"
+  >
+
+
+  <nav class="nav">
+
+    <button data-scroll="platform">
+      Platform
+    </button>
+
+    <button data-scroll="industries">
+      Industries
+    </button>
+
+    <button data-scroll="about">
+      About
+    </button>
+
+    <button data-scroll="contact">
+      Contact
+    </button>
+
+    <button
+      class="login"
+      data-login
+    >
+      Login
+    </button>
+
+    <button
+      class="demo"
+      data-demo
+    >
+      Request a Demo
+    </button>
+
+  </nav>
+
+</header>
+
+
+<!-- =====================================================
+     HERO
+===================================================== -->
+
+<section class="hero">
+
+  <div>
+
+    <div class="eyebrow">
+      AI TRAINING. REAL PERFORMANCE.
+    </div>
+
+
+    <h1>
+
+      HUMAN-
+      CENTERED
+      AI TRAINING
+
+      <span class="blue">
+        FOR A
+      </span>
+
+      <span class="cyan">
+        SMARTER
+      </span>
+
+      <span class="orange">
+        TOMORROW
+      </span>
+
+    </h1>
+
+
+    <p class="hero-copy">
+
+      NEXSTORVEN is an adaptive AI training platform
+      that learns the learner,
+      teaches through conversation,
+      creates realistic practice,
+      observes performance,
+      and helps organizations turn knowledge
+      into demonstrated skill.
+
+    </p>
+
+
+    <div class="hero-actions">
+
+      <button
+        class="primary"
+        data-demo
+      >
+        Request a Demo →
+      </button>
+
+
+      <button
+        class="secondary"
+        data-scroll="platform"
+      >
+        Explore the Platform
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <div class="hero-image-wrap">
+
+    <img
+      class="hero-image"
+      src="${HERO_IMAGE}"
+      alt="NEXSTORVEN AI people real impact"
+    >
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     DIFFERENCE
+===================================================== -->
+
+<section
+  id="about"
+  class="section"
+>
+
+  <div class="center-heading">
+
+    <div class="eyebrow">
+      THE NEXSTORVEN DIFFERENCE
+    </div>
+
+
+    <h2>
+      LEARN THE LEARNER.
+      <br>
+      THEN TEACH.
+    </h2>
+
+
+    <p>
+
+      Traditional training delivers
+      the same content to everyone.
+
+      NEXSTORVEN learns how each person
+      communicates, responds,
+      processes information,
+      practices, and performs —
+      then adapts the experience around them.
+
+    </p>
+
+  </div>
+
+
+  <div class="feature-grid">
+
+    <div class="feature">
+
+      <div class="feature-icon">
+        ◎
+      </div>
+
+      <h3>
+        Conversational AI
+      </h3>
+
+      <p>
+        Natural training through real interaction
+        instead of passive content.
+      </p>
+
+    </div>
+
+
+    <div class="feature">
+
+      <div class="feature-icon">
+        ↻
+      </div>
+
+      <h3>
+        Adaptive Teaching
+      </h3>
+
+      <p>
+        NEXSTORVEN changes how it teaches
+        based on how the learner responds.
+      </p>
+
+    </div>
+
+
+    <div class="feature">
+
+      <div class="feature-icon">
+        ◉
+      </div>
+
+      <h3>
+        Realistic Practice
+      </h3>
+
+      <p>
+        Role-play, scenarios, feedback,
+        coaching, and repeated practice
+        build capability.
+      </p>
+
+    </div>
+
+
+    <div class="feature">
+
+      <div class="feature-icon">
+        ↗
+      </div>
+
+      <h3>
+        Performance Intelligence
+      </h3>
+
+      <p>
+        Measure what learners can demonstrate,
+        where they improve,
+        and what they need next.
+      </p>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     INDUSTRIES
+===================================================== -->
+
+<section
+  id="industries"
+  class="section"
+>
+
+  <div class="left-heading">
+
+    <div class="eyebrow">
+      DESIGNED AROUND YOUR ORGANIZATION
+    </div>
+
+
+    <h2>
+      TRAINING THAT SPEAKS
+      <br>
+      YOUR LANGUAGE
+    </h2>
+
+
+    <p>
+
+      NEXSTORVEN Core provides the intelligence.
+      Your organization's knowledge,
+      standards, behaviors, scenarios,
+      goals, and culture shape
+      the learning experience.
+
+    </p>
+
+  </div>
+
+
+  <div class="industry-grid">
+
+
+    <div class="industry-card">
+
+      <img
+        src="${HOSPITALITY_IMAGE}"
+        alt="Hospitality"
+      >
+
+      <div class="industry-content">
+
+        <h3>
+          Hospitality
+        </h3>
+
+        <p>
+
+          Create stronger service,
+          communication,
+          emotional awareness,
+          and memorable guest experiences.
+
+        </p>
+
+        <div class="round-arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="industry-card">
+
+      <img
+        src="${HEALTHCARE_IMAGE}"
+        alt="Healthcare"
+      >
+
+      <div class="industry-content">
+
+        <h3>
+          Healthcare
+        </h3>
+
+        <p>
+
+          Strengthen trust,
+          communication,
+          compassion,
+          service recovery,
+          and patient experience.
+
+        </p>
+
+        <div class="round-arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="industry-card">
+
+      <img
+        src="${FINANCIAL_IMAGE}"
+        alt="Financial Services"
+      >
+
+      <div class="industry-content">
+
+        <h3>
+          Financial Services
+        </h3>
+
+        <p>
+
+          Build confidence,
+          stronger conversations,
+          deeper relationships,
+          and client trust.
+
+        </p>
+
+        <div class="round-arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="industry-card">
+
+      <img
+        src="${SENIOR_LIVING_IMAGE}"
+        alt="Senior Living"
+      >
+
+      <div class="industry-content">
+
+        <h3>
+          Senior Living
+        </h3>
+
+        <p>
+
+          Develop communication
+          rooted in dignity,
+          empathy, trust,
+          connection, and respect.
+
+        </p>
+
+        <div class="round-arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <div class="industry-card">
+
+      <img
+        src="${CONNECTED_TEAMS_IMAGE}"
+        alt="Multi-Location Organizations"
+      >
+
+      <div class="industry-content">
+
+        <h3>
+          Multi-Location Organizations
+        </h3>
+
+        <p>
+
+          Create consistent capability
+          across people, locations,
+          teams, leaders, and roles.
+
+        </p>
+
+        <div class="round-arrow">
+          →
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     PLATFORM
+===================================================== -->
+
+<section
+  id="platform"
+  class="section"
+>
+
+  <div class="left-heading">
+
+    <div class="eyebrow">
+      ONE INTELLIGENT PLATFORM
+    </div>
+
+
+    <h2>
+
+      CONVERSATION.
+      <br>
+      PRACTICE.
+      <br>
+      PERFORMANCE.
+
+    </h2>
+
+
+    <p>
+
+      NEXSTORVEN combines adaptive AI,
+      real-time conversation,
+      behavioral observation,
+      realistic practice,
+      evaluation,
+      coaching,
+      and learner memory into
+      one connected development experience.
+
+    </p>
+
+  </div>
+
+
+  <div class="platform-grid">
+
+
+    <div class="platform-card">
+
+      <h3>
+        Learn the Learner
+      </h3>
+
+      <p>
+
+        NEXSTORVEN builds an understanding
+        of the individual and uses that
+        understanding to shape
+        the learning experience.
+
+      </p>
+
+    </div>
+
+
+    <div class="platform-card">
+
+      <h3>
+        Teach Adaptively
+      </h3>
+
+      <p>
+
+        The platform adjusts explanations,
+        questions, pacing, practice,
+        and coaching based on the learner.
+
+      </p>
+
+    </div>
+
+
+    <div class="platform-card">
+
+      <h3>
+        Practice Real Work
+      </h3>
+
+      <p>
+
+        Learners interact with realistic
+        situations, conversations,
+        role-play, and scenarios
+        drawn from the subject.
+
+      </p>
+
+    </div>
+
+
+    <div class="platform-card">
+
+      <h3>
+        Demonstrate Capability
+      </h3>
+
+      <p>
+
+        NEXSTORVEN evaluates demonstrated
+        performance and helps determine
+        what the learner should practice next.
+
+      </p>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     SINGLE LOGIN
+===================================================== -->
+
+<section class="section">
+
+  <div class="access-heading">
+
+    <div class="eyebrow">
+      YOUR NEXSTORVEN ENVIRONMENT
+    </div>
+
+
+    <h2>
+
+      ONE LOGIN.
+      <br>
+      THE RIGHT EXPERIENCE.
+
+    </h2>
+
+
+    <p>
+
+      Every authorized user enters
+      NEXSTORVEN through one secure login.
+
+      Your account identifies your role,
+      organization, permissions,
+      and the experience built for you.
+
+    </p>
+
+  </div>
+
+
+  <div class="access-grid">
+
+
+    <div class="login-card">
+
+      <div class="eyebrow">
+        SECURE ACCESS
+      </div>
+
+
+      <h3>
+        Sign in to NEXSTORVEN
+      </h3>
+
+
+      <p>
+
+        Whether you manage the platform,
+        lead an organization,
+        or are completing training,
+        NEXSTORVEN automatically connects
+        you to the correct environment
+        after authentication.
+
+      </p>
+
+
+      <button
+        class="primary"
+        data-login
+      >
+        Sign In to NEXSTORVEN →
+      </button>
+
+    </div>
+
+
+    <div class="role-stack">
+
+
+      <div class="role">
+
+        <div class="role-code">
+          NX
+        </div>
+
+        <div>
+
+          <strong>
+            NEXSTORVEN Management
+          </strong>
+
+          <span>
+            Platform administration and authoring
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="role">
+
+        <div class="role-code">
+          CO
+        </div>
+
+        <div>
+
+          <strong>
+            Company Dashboard
+          </strong>
+
+          <span>
+            Organization management and reporting
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <div class="role">
+
+        <div class="role-code">
+          LR
+        </div>
+
+        <div>
+
+          <strong>
+            Learner Dashboard
+          </strong>
+
+          <span>
+            Training, practice, progress and development
+          </span>
+
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     CTA
+===================================================== -->
+
+<section
+  id="contact"
+  class="section"
+>
+
+  <div class="cta">
+
+    <div class="eyebrow">
+      THE FUTURE OF LEARNING IS PERSONAL
+    </div>
+
+
+    <h2>
+
+      BUILD STRONGER
+      <br>
+      PEOPLE.
+
+      <span class="blue">
+        BUILD A STRONGER
+      </span>
+
+      <span class="orange">
+        ORGANIZATION.
+      </span>
+
+    </h2>
+
+
+    <p>
+
+      Turn your organization's knowledge,
+      standards, scenarios, goals,
+      and culture into an adaptive
+      AI training experience built
+      around the people you are developing.
+
+    </p>
+
+
+    <div class="hero-actions">
+
+      <button
+        class="primary"
+        data-demo
+      >
+        Request a Demo →
+      </button>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     FOOTER
+===================================================== -->
+
+<footer class="footer">
+
+  <div class="footer-grid">
+
+
+    <div>
+
+      <img
+        class="footer-logo"
+        src="${LOGO_URL}"
+        alt="NEXSTORVEN"
+      >
+
+    </div>
+
+
+    <div class="footer-links">
+
+      <button data-scroll="platform">
+        Platform
+      </button>
+
+      <button data-scroll="industries">
+        Industries
+      </button>
+
+      <button data-scroll="about">
+        About
+      </button>
+
+    </div>
+
+
+    <div class="footer-links">
+
+      <button data-login>
+        Login
+      </button>
+
+      <button data-scroll="contact">
+        Contact
+      </button>
+
+      <span>
+        Privacy
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <div class="footer-bottom">
+
+    <div>
+      © 2026 NEXSTORVEN. All rights reserved.
+    </div>
+
+
+    <div class="footer-tagline">
+
+      The Next Generation of
+
+      <span>
+        Connected Intelligence
+      </span>
+
+    </div>
+
+  </div>
+
+</footer>
+
+
+</div>
+
+    `;
+
+  }
+
+}
+
+
+if (
+  !customElements.get(
+    "nexivra-home"
+  )
+) {
+
+  customElements.define(
+    "nexivra-home",
+    NexivraHome
+  );
+
+}
