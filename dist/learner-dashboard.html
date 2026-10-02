@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEXIVRA Learner</title>
+<title>NEXSTORVEN Learner</title>
 <style>
 :root{
   --bg:#020912;
@@ -204,7 +204,7 @@ button{cursor:pointer}
     <div class="brand">
       <div class="brand-mark">N</div>
       <div class="brand-copy">
-        <strong>NEXIVRA</strong>
+        <strong>NEXSTORVEN</strong>
         <span>LEARNING</span>
       </div>
     </div>
@@ -215,7 +215,7 @@ button{cursor:pointer}
     </nav>
 
     <div class="sidebar-footer">
-      <div class="status">● NEXIVRA Core Online</div>
+      <div class="status">● NEXSTORVEN Core Online</div>
     </div>
   </aside>
 
@@ -236,7 +236,7 @@ button{cursor:pointer}
       <div class="hero">
         <div class="eyebrow">CONNECTED LEARNING</div>
         <h2 id="welcomeTitle">Welcome back.</h2>
-        <p>Your assigned learning, progress, and active NEXIVRA sessions are here.</p>
+        <p>Your assigned learning, progress, and active NEXSTORVEN sessions are here.</p>
       </div>
 
       <div class="metrics">
@@ -252,7 +252,7 @@ button{cursor:pointer}
         </div>
         <div class="card-body">
           <div id="assignmentsContainer" class="assignment-grid">
-            <div class="empty">Connecting to NEXIVRA...</div>
+            <div class="empty">Connecting to NEXSTORVEN...</div>
           </div>
         </div>
       </div>
@@ -279,7 +279,7 @@ button{cursor:pointer}
 
           <div class="avatar-stage" id="avatarStage">
             <div class="avatar-waiting" id="avatarWaiting">
-              NEXIVRA Live Instructor opens below the learner dashboard.
+              NEXSTORVEN Live Instructor opens below the learner dashboard.
               Use the instructor controls to begin the live camera and voice session.
             </div>
           </div>
@@ -352,7 +352,7 @@ window.addEventListener('message',event=>{
 
         if(waiting){
           waiting.textContent=
-            'NEXIVRA Live Instructor is ready below. Click Start Session on the instructor when you are ready.';
+            'NEXSTORVEN Live Instructor is ready below. Click Start Session on the instructor when you are ready.';
         }
       }
       break;
@@ -387,7 +387,7 @@ window.addEventListener('message',event=>{
       break;
 
     case 'ACTION_ERROR':
-      showError(payload?.message || 'NEXIVRA could not complete that request.');
+      showError(payload?.message || 'NEXSTORVEN could not complete that request.');
       break;
   }
 });
@@ -514,7 +514,7 @@ function renderMessages(){
   if(!history.length){
     el.innerHTML=`
       <div class="message coach">
-        NEXIVRA runtime is ready. Live session events and typed learner turns will be preserved here.
+        NEXSTORVEN runtime is ready. Live session events and typed learner turns will be preserved here.
       </div>
     `;
     return;
@@ -546,7 +546,7 @@ function handleRuntimeContext(payload){
     [];
 
   document.getElementById('runtimeStatus').textContent=
-    `${sources.length} approved knowledge source${sources.length===1?'':'s'} loaded. NEXIVRA Live Instructor is connected through the secure Wix training element.`;
+    `${sources.length} approved knowledge source${sources.length===1?'':'s'} loaded. NEXSTORVEN Live Instructor is connected through the secure Wix training element.`;
 
   showToast(
     'Learning context loaded. Use the Live Instructor below to begin.',
