@@ -542,11 +542,13 @@ a {
   width: 100%;
 
   aspect-ratio:
-    1.12 / 1;
+    16 / 9;
 
   display: block;
 
-  object-fit: cover;
+  object-fit: contain;
+
+  background: #020711;
 }
 
 .industry-content {
