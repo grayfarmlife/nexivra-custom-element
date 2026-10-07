@@ -58,6 +58,11 @@
                                                                                                             this.m5b3gGuestStartPromise = null;
                                                                                                             this.m5b3gGuestStopPromise = null;
 
+                                                                                                            // M5B-3T — Experience NEXSTORVEN deterministic demo orchestration.
+                                                                                                            this.m5b3tDemoLearnerTurns = 0;
+                                                                                                            this.m5b3tDemoRolePlayTriggered = false;
+                                                                                                            this.m5b3tRuntimeInjectionAttempts = 0;
+
                                                                                                             // Package 3 M5B-2 — real multi-avatar stage handoff.
                                                                                                             this.m5b2RolePlayStageActive = false;
                                                                                                             this.m5b2GuestStartRequested = false;
@@ -1452,6 +1457,10 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                                                                                                             this.runtimeContextInjected =
                                                                                                               false;
 
+                                                                                                            this.m5b3tDemoLearnerTurns = 0;
+                                                                                                            this.m5b3tDemoRolePlayTriggered = false;
+                                                                                                            this.m5b3tRuntimeInjectionAttempts = 0;
+
                                                                                                             this.renderUnifiedTrainingContext();
 
                                                                                                             this.showUnifiedTraining();
@@ -1531,7 +1540,6 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                                                                                                               return true;
                                                                                                             }
 
-
                                                                                                             if (
                                                                                                               !this.session ||
                                                                                                               !this.runtimeContext ||
@@ -1541,62 +1549,67 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                                                                                                               return;
                                                                                                             }
 
-                                                                                                            this.runtimeContextInjectionPending =
-                                                                                                              true;
+                                                                                                            this.runtimeContextInjectionPending = true;
 
                                                                                                             try {
+                                                                                                              const prompt = this.buildRuntimeContextPrompt();
+                                                                                                              if (!prompt) return;
 
-                                                                                                              const prompt =
-                                                                                                                this.buildRuntimeContextPrompt();
+                                                                                                              const maxAttempts = 6;
 
-                                                                                                              if (!prompt) {
-                                                                                                                return;
+                                                                                                              for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+                                                                                                                if (this.runtimeContextInjected) return true;
+
+                                                                                                                this.m5b3tRuntimeInjectionAttempts = attempt;
+
+                                                                                                                const runtimeContextSent =
+                                                                                                                  this.sendLiveAvatarMessageSafely(
+                                                                                                                    prompt,
+                                                                                                                    "startup-runtime-context"
+                                                                                                                  );
+
+                                                                                                                if (runtimeContextSent) {
+                                                                                                                  this.runtimeContextInjected = true;
+
+                                                                                                                  this.dispatchRuntimeEvent(
+                                                                                                                    "nexivra-runtime-context-injected",
+                                                                                                                    {
+                                                                                                                      sessionId: this.runtimeSessionId,
+                                                                                                                      courseId: this.subjectId,
+                                                                                                                      moduleId: this.lessonId,
+                                                                                                                      attempt
+                                                                                                                    }
+                                                                                                                  );
+
+                                                                                                                  console.log(
+                                                                                                                    "NEXIVRA M5B-3T RUNTIME CONTEXT INJECTED ONCE:",
+                                                                                                                    {
+                                                                                                                      sessionId: this.runtimeSessionId,
+                                                                                                                      courseId: this.subjectId,
+                                                                                                                      moduleId: this.lessonId,
+                                                                                                                      attempt
+                                                                                                                    }
+                                                                                                                  );
+
+                                                                                                                  return true;
+                                                                                                                }
+
+                                                                                                                if (attempt < maxAttempts) {
+                                                                                                                  console.warn(
+                                                                                                                    "NEXIVRA M5B-3T RUNTIME CONTEXT WAITING FOR LIVEAVATAR CONNECTION:",
+                                                                                                                    { attempt, nextRetryMs: 450 }
+                                                                                                                  );
+                                                                                                                  await this.delay(450);
+                                                                                                                }
                                                                                                               }
 
-                                                                                                              const runtimeContextSent =
-                                                                                                                this.sendLiveAvatarMessageSafely(
-                                                                                                                  prompt,
-                                                                                                                  "startup-runtime-context"
-                                                                                                                );
-
-                                                                                                              if (!runtimeContextSent) {
-                                                                                                                console.error(
-                                                                                                                  "NEXIVRA RUNTIME CONTEXT INJECTION BLOCKED"
-                                                                                                                );
-                                                                                                                return;
-                                                                                                              }
-
-                                                                                                              this.runtimeContextInjected =
-                                                                                                                true;
-
-                                                                                                              this.dispatchRuntimeEvent(
-                                                                                                                "nexivra-runtime-context-injected",
-                                                                                                                {
-                                                                                                                  sessionId:
-                                                                                                                    this.runtimeSessionId,
-                                                                                                                  courseId:
-                                                                                                                    this.subjectId,
-                                                                                                                  moduleId:
-                                                                                                                    this.lessonId
-                                                                                                                }
+                                                                                                              console.error(
+                                                                                                                "NEXIVRA M5B-3T RUNTIME CONTEXT INJECTION FAILED AFTER RETRIES"
                                                                                                               );
-
-                                                                                                              console.log(
-                                                                                                                "NEXIVRA RUNTIME CONTEXT INJECTED",
-                                                                                                                {
-                                                                                                                  sessionId:
-                                                                                                                    this.runtimeSessionId,
-                                                                                                                  courseId:
-                                                                                                                    this.subjectId,
-                                                                                                                  moduleId:
-                                                                                                                    this.lessonId
-                                                                                                                }
-                                                                                                              );
+                                                                                                              return false;
 
                                                                                                             } finally {
-
-                                                                                                              this.runtimeContextInjectionPending =
-                                                                                                                false;
+                                                                                                              this.runtimeContextInjectionPending = false;
                                                                                                             }
                                                                                                           }
 
@@ -2029,6 +2042,60 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                                                                                                                   ""
                                                                                                               }
                                                                                                             );
+                                                                                                          }
+
+
+                                                                                                          isExperienceNexstorvenDemo() {
+                                                                                                            const courseName = String(
+                                                                                                              this.runtimeContext?.course?.name ||
+                                                                                                              this.runtimeContext?.course?.title ||
+                                                                                                              ""
+                                                                                                            ).trim().toLowerCase();
+
+                                                                                                            const moduleName = String(
+                                                                                                              this.runtimeContext?.module?.name ||
+                                                                                                              this.runtimeContext?.module?.title ||
+                                                                                                              ""
+                                                                                                            ).trim().toLowerCase();
+
+                                                                                                            return (
+                                                                                                              courseName === "experience nexstorven" ||
+                                                                                                              (
+                                                                                                                courseName.includes("experience nexstorven") &&
+                                                                                                                moduleName.includes("imagine what's possible")
+                                                                                                              )
+                                                                                                            );
+                                                                                                          }
+
+
+                                                                                                          shouldForceExperienceDemoRolePlay(text = "") {
+                                                                                                            if (!this.isExperienceNexstorvenDemo()) return false;
+                                                                                                            if (
+                                                                                                              !this.sessionActive ||
+                                                                                                              this.rolePlayActive ||
+                                                                                                              this.rolePlayRequestPending ||
+                                                                                                              this.m5b2fRolePlayPreparing ||
+                                                                                                              this.m5b3tDemoRolePlayTriggered
+                                                                                                            ) return false;
+
+                                                                                                            const value = String(text || "")
+                                                                                                              .trim()
+                                                                                                              .toLowerCase()
+                                                                                                              .replace(/[’]/g, "'");
+
+                                                                                                            // Strong conversational acceptance after Elenora has led
+                                                                                                            // the participant toward the demonstration.
+                                                                                                            const affirmativeTransition =
+                                                                                                              /\b(?:yes|yeah|yep|sure|absolutely|okay|ok)\b[\s\S]{0,35}\b(?:let'?s do it|i would|ready|go ahead|show me|try it)\b/i.test(value) ||
+                                                                                                              /\b(?:let'?s do it|go ahead|i'?m ready|i am ready)\b/i.test(value);
+
+                                                                                                            // Hard demo progression guard: after five meaningful learner
+                                                                                                            // turns, Experience NEXSTORVEN must demonstrate rather than
+                                                                                                            // remain in open-ended discovery.
+                                                                                                            const discoveryComplete =
+                                                                                                              this.m5b3tDemoLearnerTurns >= 5;
+
+                                                                                                            return affirmativeTransition || discoveryComplete;
                                                                                                           }
 
 
@@ -7962,6 +8029,55 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                             !this.m5b2fRolePlayPreparing &&
                                             this.m5b2FloorOwner!=="PEDRO"
                                           ){
+                                            if (this.isExperienceNexstorvenDemo()) {
+                                              this.m5b3tDemoLearnerTurns += 1;
+
+                                              console.log(
+                                                "NEXIVRA M5B-3T EXPERIENCE DEMO LEARNER TURN:",
+                                                {
+                                                  turn: this.m5b3tDemoLearnerTurns,
+                                                  text
+                                                }
+                                              );
+
+                                              if (this.shouldForceExperienceDemoRolePlay(text)) {
+                                                this.m5b3tDemoRolePlayTriggered = true;
+                                                this.rolePlayRecommended = false;
+                                                this.rolePlayRequestPending = true;
+                                                this.lastAdaptiveRolePlayRequestAt = Date.now();
+
+                                                console.log(
+                                                  "NEXIVRA M5B-3T EXPERIENCE DEMO ROLE-PLAY TRIGGERED:",
+                                                  {
+                                                    turn: this.m5b3tDemoLearnerTurns,
+                                                    text,
+                                                    guestTokenReady: Boolean(this.guestSessionToken)
+                                                  }
+                                                );
+
+                                                this.requestAdaptiveRolePlay({
+                                                  requestedGuestType: "pedro"
+                                                });
+
+                                                const transition =
+                                                  `EXPERIENCE NEXSTORVEN ROLE-PLAY TRANSITION — AUTHORITATIVE
+You are Elenora and you are leading the demonstration.
+Do not ask permission to continue.
+Do not ask what the participant wants to explore.
+Do not imitate or speak for Pedro.
+A separate AI person named Pedro is being prepared by NEXSTORVEN.
+Briefly tell the participant that rather than continuing to explain NEXSTORVEN, you are going to let them experience it.
+Then stop. NEXSTORVEN will provide the scenario and control the handoff to Pedro.`;
+
+                                                this.sendLiveAvatarMessageSafely(
+                                                  transition,
+                                                  "m5b3t-experience-demo-roleplay-transition"
+                                                );
+
+                                                return;
+                                              }
+                                            }
+
                                             const deterministicRolePlayRequested =
                                               this.requestDeterministicRolePlayFromLearner(
                                                 text
@@ -9996,6 +10112,8 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                                                                                                                   this.learnerAnalyser
                                                                                                                     .fftSize
                                                                                                                 );
+
+
                                                                                                               const monitorStartedAt =
                                                                                                                 Date.now();
 
