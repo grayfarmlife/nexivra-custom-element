@@ -9820,6 +9820,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
                                                                                                             try {
 
+                                                                                                              if(this.isExperienceNexstorvenDemo()){
+                                                                                                                console.log('NEXSTORVEN DEMO PASSIVE VISUAL MESSAGE SUPPRESSED',observation.type);
+                                                                                                                return;
+                                                                                                              }
                                                                                                               this.sendLiveAvatarMessageSafely(internalContext,"runtime");
 
 
