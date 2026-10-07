@@ -31668,16 +31668,21 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     );
     setTimeout(
       () => {
-        if (this.rolePlayRequestPending && !this.rolePlayActive) {
+        if (this.rolePlayRequestPending && !this.rolePlayActive && !this.m5b2fRolePlayPreparing) {
           this.rolePlayRequestPending = false;
-          console.warn("NEXIVRA ROLE PLAY REQUEST TIMEOUT");
+          console.warn("NEXIVRA M5B-3S ROLE PLAY REQUEST TIMEOUT \u2014 NO HANDOFF RECEIVED");
+        } else if (this.m5b2fRolePlayPreparing) {
+          console.log("NEXIVRA M5B-3S REQUEST TIMER EXPIRED BUT PEDRO HANDOFF IS PREPARING \u2014 KEEPING ROLE PLAY ALIVE");
         }
       },
-      8e3
+      2e4
     );
   }
   async prepareM5B2FRolePlayHandoff(scenario = {}) {
-    if (this.m5b2fRolePlayPreparing || this.rolePlayActive) return;
+    if (this.m5b2fRolePlayPreparing || this.rolePlayActive) {
+      console.log("NEXIVRA M5B-3S ROLE PLAY HANDOFF ALREADY ACTIVE \u2014 DUPLICATE IGNORED");
+      return;
+    }
     this.m5b2fRolePlayPreparing = true;
     this.m5b2fPendingScenario = scenario || {};
     this.m5b2fSetupSpeechStarted = false;
@@ -31686,28 +31691,115 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     this.m5b2hSetupSpeaking = false;
     this.m5b2hWaitingForGuestReady = true;
     this.m5b2FloorOwner = "ELENORA";
-    console.log("NEXIVRA M5B-2I HARD HANDOFF LOCK \u2014 ELENORA AUTONOMOUS VOICE OFF:", {
+    this.m5b3sGuestReadyAttempts = 0;
+    if (this.m5b3sGuestReadyWatchdog) {
+      clearTimeout(this.m5b3sGuestReadyWatchdog);
+      this.m5b3sGuestReadyWatchdog = null;
+    }
+    console.log("NEXIVRA M5B-3S PEDRO HANDOFF START:", {
       scenarioId: scenario?.scenarioId || "",
-      guestId: scenario?.guestId || "pedro"
+      rolePlaySessionId: scenario?.rolePlaySessionId || "",
+      guestId: scenario?.guestId || "pedro",
+      tokenPresent: Boolean(this.guestSessionToken),
+      guestReady: Boolean(this.guestInfrastructureReady)
     });
     try {
       if (typeof this.session?.interrupt === "function") {
         await this.session.interrupt();
       }
     } catch (error) {
-      console.warn("NEXIVRA M5B-3C ELENORA HANDOFF INTERRUPT WARNING:", error);
+      console.warn("NEXIVRA M5B-3S ELENORA HANDOFF INTERRUPT WARNING:", error);
     }
-    console.log("NEXIVRA M5B-3C HANDOFF CONFIRMED \u2014 AUTONOMOUS MIC ALREADY OFF");
     this.m5b2ElenoraVoiceSuspended = true;
     this.m5b3aElenoraDrainUntilMs = Date.now() + 350;
-    console.log("NEXIVRA M5B-3B ELENORA FALLBACK DRAINING BEFORE SETUP");
     if (this.guestInfrastructureReady) {
+      console.log("NEXIVRA M5B-3S PEDRO ALREADY READY \u2014 CONTINUING HANDOFF");
       this.dispatchM5B2HInstructorSetup();
-    } else if (this.guestSessionToken) {
-      this.startGuestInfrastructureTest();
-    } else {
-      console.warn("NEXIVRA M5B-2H WAITING FOR PEDRO TOKEN");
+      return;
     }
+    if (this.guestSessionToken) {
+      console.log("NEXIVRA M5B-3S STARTING PEDRO PREWARM");
+      this.m5b3sGuestReadyAttempts = 1;
+      try {
+        this.startGuestInfrastructureTest();
+      } catch (error) {
+        console.error("NEXIVRA M5B-3S PEDRO INITIAL START ERROR:", error);
+      }
+    } else {
+      console.warn("NEXIVRA M5B-3S PEDRO TOKEN NOT YET AVAILABLE \u2014 WAITING");
+    }
+    const handoffStartedAt = Date.now();
+    const checkPedro = async () => {
+      if (!this.m5b2fRolePlayPreparing || this.rolePlayActive) {
+        this.m5b3sGuestReadyWatchdog = null;
+        return;
+      }
+      if (this.guestInfrastructureReady) {
+        console.log("NEXIVRA M5B-3S PEDRO READY CONFIRMED:", {
+          attempts: this.m5b3sGuestReadyAttempts,
+          elapsedMs: Date.now() - handoffStartedAt
+        });
+        this.m5b3sGuestReadyWatchdog = null;
+        this.dispatchM5B2HInstructorSetup();
+        return;
+      }
+      const elapsed = Date.now() - handoffStartedAt;
+      if (this.guestSessionToken && this.m5b3sGuestReadyAttempts < this.m5b3sGuestReadyMaxAttempts) {
+        this.m5b3sGuestReadyAttempts += 1;
+        console.warn("NEXIVRA M5B-3S PEDRO NOT READY \u2014 RETRYING:", {
+          attempt: this.m5b3sGuestReadyAttempts,
+          elapsedMs: elapsed,
+          tokenPresent: Boolean(this.guestSessionToken)
+        });
+        try {
+          await this.startGuestInfrastructureTest();
+        } catch (error) {
+          console.error("NEXIVRA M5B-3S PEDRO RETRY ERROR:", error);
+        }
+      }
+      if (elapsed >= this.m5b3sGuestReadyHardTimeoutMs) {
+        console.error("NEXIVRA M5B-3S PEDRO HARD TIMEOUT:", {
+          elapsedMs: elapsed,
+          attempts: this.m5b3sGuestReadyAttempts,
+          tokenPresent: Boolean(this.guestSessionToken),
+          guestReady: Boolean(this.guestInfrastructureReady)
+        });
+        this.m5b3sGuestReadyWatchdog = null;
+        this.m5b2fRolePlayPreparing = false;
+        this.m5b2hWaitingForGuestReady = false;
+        this.m5b2hSetupRequested = false;
+        this.m5b2hSetupSpeaking = false;
+        this.m5b2ElenoraVoiceSuspended = false;
+        this.m5b2FloorOwner = "ELENORA";
+        this.rolePlayRequestPending = false;
+        try {
+          const recovery = "It looks like the client is taking a moment to connect. Give me just a second and we'll try that role-play again.";
+          if (typeof this.session?.repeat === "function") {
+            this.session.repeat(recovery);
+          } else {
+            this.sendLiveAvatarMessageSafely(recovery, "m5b3s-pedro-recovery");
+          }
+        } catch (error) {
+          console.error("NEXIVRA M5B-3S RECOVERY MESSAGE ERROR:", error);
+        }
+        this.dispatchRuntimeEvent("nexivra-pedro-handoff-failed", {
+          sessionId: this.runtimeSessionId || "",
+          rolePlaySessionId: scenario?.rolePlaySessionId || "",
+          scenarioId: scenario?.scenarioId || "",
+          reason: "guest_ready_timeout",
+          attempts: this.m5b3sGuestReadyAttempts
+        });
+        return;
+      }
+      this.m5b3sGuestReadyWatchdog = setTimeout(
+        checkPedro,
+        this.m5b3sGuestReadyRetryMs
+      );
+    };
+    this.m5b3sGuestReadyWatchdog = setTimeout(
+      checkPedro,
+      this.m5b3sGuestReadyRetryMs
+    );
   }
   dispatchM5B2HInstructorSetup() {
     if (!this.m5b2fRolePlayPreparing || this.m5b2hSetupRequested) return;
@@ -31725,6 +31817,11 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
     }
     console.log("NEXIVRA M5B-3B ELENORA QUIET \u2014 DETERMINISTIC SETUP ONLY");
     this.m5b2hWaitingForGuestReady = false;
+    this.m5b3sGuestReadyWatchdog = null;
+    this.m5b3sGuestReadyAttempts = 0;
+    this.m5b3sGuestReadyMaxAttempts = 3;
+    this.m5b3sGuestReadyRetryMs = 3500;
+    this.m5b3sGuestReadyHardTimeoutMs = 14e3;
     this.m5b2hSetupRequested = true;
     this.m5b2hSetupSpeaking = false;
     const setup = String(
