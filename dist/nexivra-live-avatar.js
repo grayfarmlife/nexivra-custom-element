@@ -37374,6 +37374,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                         Continue the learning interaction naturally.
                                                                                                             `.trim();
     try {
+      if (this.isExperienceNexstorvenDemo()) {
+        console.log("NEXSTORVEN DEMO PASSIVE VISUAL MESSAGE SUPPRESSED", observation.type);
+        return;
+      }
       this.sendLiveAvatarMessageSafely(internalContext, "runtime");
       console.log(
         "NEXIVRA ADAPTIVE EVENT SENT:",
