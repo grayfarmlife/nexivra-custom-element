@@ -31631,7 +31631,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     if (!this.sessionActive || this.rolePlayActive || this.rolePlayRequestPending || this.m5b2fRolePlayPreparing || this.m5b3tDemoRolePlayTriggered) return false;
     const value = String(text || "").trim().toLowerCase().replace(/[’]/g, "'");
     const affirmativeTransition = /\b(?:yes|yeah|yep|sure|absolutely|okay|ok)\b[\s\S]{0,35}\b(?:let'?s do it|i would|ready|go ahead|show me|try it)\b/i.test(value) || /\b(?:let'?s do it|go ahead|i'?m ready|i am ready)\b/i.test(value);
-    const discoveryComplete = this.m5b3tDemoLearnerTurns >= 5;
+    const discoveryComplete = this.m5b3tDemoLearnerTurns >= 3;
     return affirmativeTransition || discoveryComplete;
   }
   isExplicitRolePlayRequest(text = "") {
@@ -36399,13 +36399,41 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
                   requestedGuestType: "pedro"
                 });
                 const transition = `EXPERIENCE NEXSTORVEN ROLE-PLAY TRANSITION \u2014 AUTHORITATIVE
+
 You are Elenora and you are leading the demonstration.
+
+DISCOVERY IS NOW COMPLETE.
+
+Do not ask another discovery question before the role-play.
+Do not ask the participant how they think NEXSTORVEN could help.
+Do not ask where they see NEXSTORVEN fitting.
+Do not ask what they want NEXSTORVEN to solve.
+Do not ask what capability they want to explore.
+Do not ask what they want to see next.
 Do not ask permission to continue.
-Do not ask what the participant wants to explore.
-Do not imitate or speak for Pedro.
+Do not give the participant a menu of features.
+
+YOU do the analysis.
+
+Using only facts the participant has actually shared during this experience:
+1. Briefly reflect the important company/training need you heard.
+2. Tell the participant how NEXSTORVEN can address that need.
+3. Connect approximately two or three relevant NEXSTORVEN capabilities to their situation.
+4. Make clear that NEXSTORVEN can move beyond simply delivering information or recording completion by creating interactive development, realistic practice, behavioral evidence, targeted coaching/remediation, and management visibility when those capabilities are relevant.
+5. Do not make unsupported claims about competitors.
+6. Do not invent facts about the participant or their organization.
+
+Then transition confidently with the equivalent of:
+"Rather than keep telling you about it, let me show you."
+
 A separate AI person named Pedro is being prepared by NEXSTORVEN.
-Briefly tell the participant that rather than continuing to explain NEXSTORVEN, you are going to let them experience it.
-Then stop. NEXSTORVEN will provide the scenario and control the handoff to Pedro.`;
+
+Do not imitate Pedro.
+Do not speak Pedro's dialogue.
+Do not conduct the client interaction yourself.
+
+After your concise personalized explanation and transition, STOP speaking.
+NEXSTORVEN will provide the scenario and control the handoff to Pedro.`;
                 this.sendLiveAvatarMessageSafely(
                   transition,
                   "m5b3t-experience-demo-roleplay-transition"
@@ -36422,7 +36450,30 @@ Then stop. NEXSTORVEN will provide the scenario and control the handoff to Pedro
               );
               return;
             }
-            const routed = `LEARNER TURN \u2014 AUTHORITATIVE
+            const routed = this.isExperienceNexstorvenDemo() ? `EXPERIENCE NEXSTORVEN LEARNER TURN \u2014 AUTHORITATIVE
+The participant just said: "${String(text || "").replaceAll('"', "'")}"
+
+You are Elenora and YOU lead this demonstration.
+
+Use this answer to learn factual information about the participant, their organization, their current training/development approach, or a meaningful challenge.
+
+Do NOT ask:
+- how they think NEXSTORVEN could help
+- where they think NEXSTORVEN would fit
+- what they want NEXSTORVEN to solve
+- what NEXSTORVEN feature they want to see
+- what they want to explore next
+- what they want to dive into
+
+The participant provides facts and needs. YOU identify and explain the NEXSTORVEN value.
+
+Do not repeat a question they already answered.
+Do not repeat your prior explanation.
+Ask at most ONE concise factual discovery question if essential information is still missing.
+
+If you already have enough information to understand their role/company and at least one meaningful training or development challenge, stop discovery. Briefly reflect what you learned and explain how NEXSTORVEN can address it. Lead forward confidently.
+
+Do not invent additional participant speech or company facts.` : `LEARNER TURN \u2014 AUTHORITATIVE
 The learner just said: "${String(text || "").replaceAll('"', "'")}"
 Respond naturally as Elenora to this learner turn. Follow the current course state and instructions. Do not invent additional learner speech. If the learner asked a question, answer it. If the learner answered your question, evaluate only that actual answer and continue appropriately.`;
             console.log("NEXIVRA M5B-3C ROUTE: LEARNER \u2192 ELENORA:", text);
