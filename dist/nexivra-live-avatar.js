@@ -31626,18 +31626,10 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     ).trim().toLowerCase();
     return courseName === "experience nexstorven" || courseName.includes("experience nexstorven") && moduleName.includes("imagine what's possible");
   }
-  shouldForceExperienceDemoRolePlay(text = "") {
-    if (!this.isExperienceNexstorvenDemo()) return false;
-    if (!this.sessionActive || this.rolePlayActive || this.rolePlayRequestPending || this.m5b2fRolePlayPreparing || this.m5b3tDemoRolePlayTriggered) return false;
-    const value = String(text || "").trim().toLowerCase().replace(/[’]/g, "'");
-    const affirmativeTransition = /\b(?:yes|yeah|yep|sure|absolutely|okay|ok)\b[\s\S]{0,35}\b(?:let'?s do it|i would|ready|go ahead|show me|try it)\b/i.test(value) || /\b(?:let'?s do it|go ahead|i'?m ready|i am ready)\b/i.test(value);
-    const discoveryComplete = this.m5b3tDemoLearnerTurns >= 3;
-    return affirmativeTransition || discoveryComplete;
-  }
   isExplicitRolePlayRequest(text = "") {
     const value = String(text || "").trim().toLowerCase().replace(/[’]/g, "'");
     if (!value) return false;
-    return /\b(?:let'?s|lets|can we|could we|i want to|i'?d like to|i am ready to|i'?m ready to|ready to|start|begin|do|try|practice)\b[\s\S]{0,48}\brole[\s-]?play\b/i.test(value) || /\brole[\s-]?play\b[\s\S]{0,48}\b(?:start|begin|ready|now|please)\b/i.test(value) || /\bwhere(?:'s| is)\s+pedro\b/i.test(value) || /\bbring\s+(?:in\s+)?pedro\b/i.test(value) || /\b(?:i'?m|i am)\s+ready[\s\S]{0,24}\bpedro\b/i.test(value);
+    return /\b(?:bring\s+(?:in\s+)?pedro|start\s+(?:the\s+)?role[ -]?play\s+now|launch\s+(?:the\s+)?role[ -]?play|begin\s+(?:the\s+)?simulation\s+now)\b/i.test(value);
   }
   requestDeterministicRolePlayFromLearner(text = "") {
     if (!this.sessionActive || this.rolePlayActive || this.m5b2fRolePlayPreparing) {
@@ -31673,7 +31665,7 @@ You are Elenora and you remain Elenora.
 Do not role-play, imitate, voice, simulate, or speak dialogue for Pedro.
 Do not role-play the client yourself and do not continue ordinary teaching.
 If the separate Pedro avatar has not yet been activated, wait as Elenora rather than simulating the interaction.
-Briefly acknowledge the request and tell the learner you are preparing a banking role-play. Do not invent the scenario; NEXIVRA will provide the selected scenario and handoff instructions.`;
+Briefly acknowledge the request and tell the learner you are preparing a scenario appropriate to their organization. Do not invent the scenario; NEXIVRA will provide the selected scenario and handoff instructions.`;
     this.sendLiveAvatarMessageSafely(
       elenoraTransition,
       "m5b3l-b-roleplay-intent"
@@ -36374,72 +36366,7 @@ Briefly acknowledge the request and tell the learner you are preparing a banking
           this.dispatchRuntimeEvent("nexivra-learner-transcript", { sessionId: this.runtimeSessionId || "", text, observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null });
           if (this.m5b3cInputRouterActive && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && this.m5b2FloorOwner !== "PEDRO") {
             if (this.isExperienceNexstorvenDemo()) {
-              this.m5b3tDemoLearnerTurns += 1;
-              console.log(
-                "NEXIVRA M5B-3T EXPERIENCE DEMO LEARNER TURN:",
-                {
-                  turn: this.m5b3tDemoLearnerTurns,
-                  text
-                }
-              );
-              if (this.shouldForceExperienceDemoRolePlay(text)) {
-                this.m5b3tDemoRolePlayTriggered = true;
-                this.rolePlayRecommended = false;
-                this.rolePlayRequestPending = true;
-                this.lastAdaptiveRolePlayRequestAt = Date.now();
-                console.log(
-                  "NEXIVRA M5B-3T EXPERIENCE DEMO ROLE-PLAY TRIGGERED:",
-                  {
-                    turn: this.m5b3tDemoLearnerTurns,
-                    text,
-                    guestTokenReady: Boolean(this.guestSessionToken)
-                  }
-                );
-                this.requestAdaptiveRolePlay({
-                  requestedGuestType: "pedro"
-                });
-                const transition = `EXPERIENCE NEXSTORVEN ROLE-PLAY TRANSITION \u2014 AUTHORITATIVE
-
-You are Elenora and you are leading the demonstration.
-
-DISCOVERY IS NOW COMPLETE.
-
-Do not ask another discovery question before the role-play.
-Do not ask the participant how they think NEXSTORVEN could help.
-Do not ask where they see NEXSTORVEN fitting.
-Do not ask what they want NEXSTORVEN to solve.
-Do not ask what capability they want to explore.
-Do not ask what they want to see next.
-Do not ask permission to continue.
-Do not give the participant a menu of features.
-
-YOU do the analysis.
-
-Using only facts the participant has actually shared during this experience:
-1. Briefly reflect the important company/training need you heard.
-2. Tell the participant how NEXSTORVEN can address that need.
-3. Connect approximately two or three relevant NEXSTORVEN capabilities to their situation.
-4. Make clear that NEXSTORVEN can move beyond simply delivering information or recording completion by creating interactive development, realistic practice, behavioral evidence, targeted coaching/remediation, and management visibility when those capabilities are relevant.
-5. Do not make unsupported claims about competitors.
-6. Do not invent facts about the participant or their organization.
-
-Then transition confidently with the equivalent of:
-"Rather than keep telling you about it, let me show you."
-
-A separate AI person named Pedro is being prepared by NEXSTORVEN.
-
-Do not imitate Pedro.
-Do not speak Pedro's dialogue.
-Do not conduct the client interaction yourself.
-
-After your concise personalized explanation and transition, STOP speaking.
-NEXSTORVEN will provide the scenario and control the handoff to Pedro.`;
-                this.sendLiveAvatarMessageSafely(
-                  transition,
-                  "m5b3t-experience-demo-roleplay-transition"
-                );
-                return;
-              }
+              console.log("NEXIVRA M5B-3V DEMO DISCOVERY \u2014 NO AUTOMATIC GUEST TRIGGER");
             }
             const deterministicRolePlayRequested = this.requestDeterministicRolePlayFromLearner(
               text
@@ -36452,6 +36379,7 @@ NEXSTORVEN will provide the scenario and control the handoff to Pedro.`;
             }
             const routed = this.isExperienceNexstorvenDemo() ? `EXPERIENCE NEXSTORVEN LEARNER TURN \u2014 AUTHORITATIVE
 The participant just said: "${String(text || "").replaceAll('"', "'")}"
+If this is a sentence fragment, do not respond or advance; wait for the participant to finish their thought. Do not interrupt their answer.
 
 You are Elenora and YOU lead this demonstration.
 
@@ -37413,6 +37341,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
   async handleAdaptiveObservation(type, details = {}) {
     const observation = this.recordObservation(type, details);
     if (!this.session || !this.sessionActive || this.sessionEnding) {
+      return;
+    }
+    if (this.isExperienceNexstorvenDemo()) {
+      console.log("NEXIVRA M5B-3V DEMO PASSIVE OBSERVATION RECORDED WITHOUT INSTRUCTOR INTERRUPTION", observation.type);
       return;
     }
     const internalContext = `
