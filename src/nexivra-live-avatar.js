@@ -6589,6 +6589,11 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar started speaking"
                                                                                                                   );
+                                                                                                                  if(this.m5b3yDemoHandoffArmed && !this.m5b3yDemoHandoffRequested){
+                                                                                                                    this.m5b3zSynthesisSpeechStarted=true;
+                                                                                                                    console.log('NEXIVRA M5B-3Z SYNTHESIS SPEECH START CONFIRMED');
+                                                                                                                  }
+
                                                                                                                   // M5B-3D.1 — instructor owns the floor.
                                                                                                                   // Any learner-audio window that begins now is quarantined.
                                                                                                                   this.m5b3d1SpeechBeganDuringInstructor=false;
@@ -6622,6 +6627,11 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar stopped speaking"
                                                                                                                   );
+                                                                                                                  // M5B-3Z: The active instructor's speech-end listener owns demo handoff.
+                                                                                                                  if(this.m5b3zSynthesisSpeechStarted && this.m5b3yDemoHandoffArmed && !this.m5b3yDemoHandoffRequested){
+                                                                                                                    this.m5b3zSynthesisSpeechStarted=false;
+                                                                                                                    this.m5b3zRequestPedroAfterSynthesis('instructor-speech-ended');
+                                                                                                                  }
                                                                                                                   if(this.m5b2fRolePlayPreparing&&this.m5b2hSetupRequested&&this.m5b2hSetupSpeaking){
                                                                                                                     this.m5b2hSetupSpeaking=false;
                                                                                                                     this.completeM5B2FHandoffAfterInstructorSetup();
@@ -7709,7 +7719,28 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                             },fallbackWaitMs);
                                                                                                           }
 
-                                                                                                          m5b3yRouteCompleteAnswer(answer){
+                                                                                                          m5b3zRequestPedroAfterSynthesis(reason='unknown'){
+                                            if(!this.m5b3yDemoHandoffArmed || this.m5b3yDemoHandoffRequested || !this.sessionActive || this.rolePlayActive || this.m5b2fRolePlayPreparing)return false;
+                                            this.m5b3yDemoHandoffRequested=true;
+                                            clearTimeout(this.m5b3zSynthesisWatchdog);
+                                            this.rolePlayRequestPending=true;
+                                            console.log('NEXIVRA M5B-3Z FORMAL PEDRO GATEWAY REQUESTED:',reason);
+                                            try{
+                                              Promise.resolve(this.requestAdaptiveRolePlay({requestedGuestType:'pedro'})).catch(error=>{
+                                                console.error('NEXIVRA M5B-3Z PEDRO GATEWAY REJECTED:',error);
+                                                this.m5b3yDemoHandoffRequested=false;
+                                                this.rolePlayRequestPending=false;
+                                              });
+                                            }catch(error){
+                                              console.error('NEXIVRA M5B-3Z PEDRO GATEWAY ERROR:',error);
+                                              this.m5b3yDemoHandoffRequested=false;
+                                              this.rolePlayRequestPending=false;
+                                              return false;
+                                            }
+                                            return true;
+                                          }
+
+                                          m5b3yRouteCompleteAnswer(answer){
                                                                                                             if(!this.speechRecognition?.onresult)return;
                                                                                                             this.speechRecognition.onresult({resultIndex:0,results:[Object.assign([{transcript:answer}],{isFinal:true})]});
                                                                                                           }
@@ -8031,6 +8062,20 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                 // Elenora gets one final, personalized synthesis before Pedro is requested.
                                                 this.sendLiveAvatarMessageSafely(`DEMO STAGE: PERSONALIZED EXPLANATION — YOU LEAD. Discovery is complete. Reflect the actual company facts and the specific training challenge provided. Explain how NEXSTORVEN could help through private AI practice, adaptive teaching, evaluation and coaching as relevant. Do not ask another question or ask permission. Finish with: Rather than just explain it, let me show you. Do not pretend to be Pedro. A separate guest will follow.`, 'm5b3y-demo-synthesis');
                                                 console.log('NEXIVRA M5B-3Y SYNTHESIS REQUESTED — WAITING FOR ELENORA SPEECH END');
+                                                this.m5b3zSynthesisSpeechStarted=false;
+                                                clearTimeout(this.m5b3zSynthesisWatchdog);
+                                                // Recovery if the SDK drops the final speech-end event; never cut off active speech.
+                                                this.m5b3zSynthesisWatchdog=setTimeout(()=>{
+                                                  if(!this.m5b3yDemoHandoffRequested && this.m5b3yDemoHandoffArmed){
+                                                    if(this.avatarSpeaking){
+                                                      console.warn('NEXIVRA M5B-3Z WATCHDOG: ELENORA STILL SPEAKING; WAITING');
+                                                      this.m5b3zSynthesisWatchdog=setTimeout(()=>{
+                                                        if(!this.avatarSpeaking)this.m5b3zRequestPedroAfterSynthesis('watchdog-after-speech');
+                                                        else console.warn('NEXIVRA M5B-3Z WATCHDOG: SPEECH STILL ACTIVE; MANUAL REVIEW REQUIRED');
+                                                      },12000);
+                                                    }else this.m5b3zRequestPedroAfterSynthesis('missing-speech-event-watchdog');
+                                                  }
+                                                },35000);
                                                 return;
                                               }
                                             }
@@ -8087,7 +8132,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                           }
 
                                                                                                           stopLearnerTranscriptCapture() {
-                                                                                                            clearTimeout(this.m5b3ySpeechTimer);this.m5b3ySpeechParts=[];
+                                                                                                            clearTimeout(this.m5b3ySpeechTimer);this.m5b3ySpeechParts=[];clearTimeout(this.m5b3zSynthesisWatchdog);this.m5b3zSynthesisSpeechStarted=false;
                                                                                                             this.speechRecognitionActive=false;if(this.speechRecognition){try{this.speechRecognition.stop();}catch(error){}}this.speechRecognition=null;
                                                                                                           }
 
