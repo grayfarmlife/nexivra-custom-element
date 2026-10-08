@@ -59,6 +59,7 @@
                                                                                                             this.m5b3gGuestStopPromise = null;
 
                                                                                                             // M5B-3T — Experience NEXSTORVEN deterministic demo orchestration.
+                                                                                                            this.m5b3yDemoAnswers=0;this.m5b3yNeedsIdentified=false;this.m5b3yDemoHandoffArmed=false;this.m5b3yDemoHandoffRequested=false;
                                                                                                             this.m5b3tDemoLearnerTurns = 0; // diagnostics only, never triggers role-play
                                                                                                             this.m5b3tDemoRolePlayTriggered = false;
                                                                                                             this.m5b3tRuntimeInjectionAttempts = 0;
@@ -6487,6 +6488,12 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                   ()=>{
                                                                                                                     this.avatarSpeaking=false;
                                                                                                                     console.log("NEXIVRA SPEECH EVENT: avatar stopped speaking");
+                                                                                                                    if(this.m5b3yDemoHandoffArmed && !this.m5b3yDemoHandoffRequested && this.sessionActive && !this.rolePlayActive){
+                                                                                                                      this.m5b3yDemoHandoffRequested=true;
+                                                                                                                      this.rolePlayRequestPending=true;
+                                                                                                                      console.log('NEXIVRA M5B-3Y ELENORA SYNTHESIS FINISHED — FORMAL PEDRO GATEWAY REQUESTED');
+                                                                                                                      this.requestAdaptiveRolePlay({requestedGuestType:'pedro'});
+                                                                                                                    }
                                                                                                                   }
                                                                                                                 );
 
@@ -7702,6 +7709,11 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                             },fallbackWaitMs);
                                                                                                           }
 
+                                                                                                          m5b3yRouteCompleteAnswer(answer){
+                                                                                                            if(!this.speechRecognition?.onresult)return;
+                                                                                                            this.speechRecognition.onresult({resultIndex:0,results:[Object.assign([{transcript:answer}],{isFinal:true})]});
+                                                                                                          }
+
                                                                                                           startLearnerTranscriptCapture() {
                                                                                                             if(this.speechRecognitionActive)return;
                                                                                                             const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -7718,6 +7730,25 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                     this.m5b2oLatestInterimText=text;
                                                                                                                     this.m5b2oLatestInterimAtMs=Date.now();
                                                                                                                   }
+                                                                                                                  continue;
+                                                                                                                }
+                                                                                                                // M5B-3Y: final ASR results are fragments, not necessarily completed answers.
+                                                                                                                // Buffer demo discovery speech across short pauses before routing.
+                                                                                                                if(this.isExperienceNexstorvenDemo() && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && !this.m5b3yFlushing){
+                                                                                                                  this.m5b3ySpeechParts=this.m5b3ySpeechParts||[];
+                                                                                                                  const previous=this.m5b3ySpeechParts[this.m5b3ySpeechParts.length-1];
+                                                                                                                  if(previous!==text)this.m5b3ySpeechParts.push(text);
+                                                                                                                  clearTimeout(this.m5b3ySpeechTimer);
+                                                                                                                  this.m5b3ySpeechTimer=setTimeout(()=>{
+                                                                                                                    if(!this.sessionActive||this.rolePlayActive)return;
+                                                                                                                    const answer=(this.m5b3ySpeechParts||[]).join(' ').trim();
+                                                                                                                    this.m5b3ySpeechParts=[];
+                                                                                                                    if(!answer)return;
+                                                                                                                    // Route the complete utterance through the existing validated speaker checks.
+                                                                                                                    this.m5b3yFlushing=true;
+                                                                                                                    try{this.m5b3yRouteCompleteAnswer(answer);}finally{this.m5b3yFlushing=false;}
+                                                                                                                  },2100);
+                                                                                                                  console.log('NEXIVRA M5B-3Y DISCOVERY FRAGMENT BUFFERED:',text);
                                                                                                                   continue;
                                                                                                                 }
                                                                                                                 const now=Date.now();
@@ -7948,7 +7979,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                               }
                                 const lowerText=String(text||"").toLowerCase();const gatewayNow=Date.now();
                                       const explicitRolePlayRequest=/(?:^|\b)(?:let'?s|can we|can i|could we|i want to|i would like to|please|start|begin|do|try|practice|continue|new)\b[\s\S]{0,55}\b(?:role[- ]?play|scenario|practice)\b/i.test(lowerText)||/^(?:role[- ]?play|practice|start role[- ]?play|new role[- ]?play)$/i.test(lowerText);
-                                      if(!this.rolePlayActive&&!this.rolePlayGatewayLocked&&gatewayNow>=Number(this.rolePlayGatewayRearmAt||0)&&explicitRolePlayRequest){
+                                      if(!this.rolePlayActive&&!this.rolePlayGatewayLocked&&gatewayNow>=Number(this.rolePlayGatewayRearmAt||0)&&explicitRolePlayRequest&&!this.isExperienceNexstorvenDemo()){
                                         if(/\b(?:with\s+)?sally\b/.test(lowerText))this.requestFormalRolePlayWithGuest("sally","Sally");
                                         else if(/\b(?:with\s+)?ron\b/.test(lowerText))this.requestFormalRolePlayWithGuest("ron","Ron");
                                         else if(
@@ -7991,7 +8022,17 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                             // a number of speech-recognition fragments.
                                             // A discussion ABOUT role-play is not a command.
                                             if (this.isExperienceNexstorvenDemo()) {
-                                              console.log("NEXIVRA M5B-3V DEMO DISCOVERY — NO AUTOMATIC GUEST TRIGGER");
+                                              this.m5b3yDemoAnswers=(this.m5b3yDemoAnswers||0)+1;
+                                              const lower=String(text||'').toLowerCase();
+                                              if(/(?:training|role.play|onboard|employee|associate|staff|challenge|difficulty|problem|nervous|anxious|consisten)/i.test(lower))this.m5b3yNeedsIdentified=true;
+                                              console.log('NEXIVRA M5B-3Y COMPLETE DISCOVERY ANSWER:',this.m5b3yDemoAnswers);
+                                              if(this.m5b3yDemoAnswers>=3 && this.m5b3yNeedsIdentified && !this.m5b3yDemoHandoffArmed){
+                                                this.m5b3yDemoHandoffArmed=true;
+                                                // Elenora gets one final, personalized synthesis before Pedro is requested.
+                                                this.sendLiveAvatarMessageSafely(`DEMO STAGE: PERSONALIZED EXPLANATION — YOU LEAD. Discovery is complete. Reflect the actual company facts and the specific training challenge provided. Explain how NEXSTORVEN could help through private AI practice, adaptive teaching, evaluation and coaching as relevant. Do not ask another question or ask permission. Finish with: Rather than just explain it, let me show you. Do not pretend to be Pedro. A separate guest will follow.`, 'm5b3y-demo-synthesis');
+                                                console.log('NEXIVRA M5B-3Y SYNTHESIS REQUESTED — WAITING FOR ELENORA SPEECH END');
+                                                return;
+                                              }
                                             }
 
                                             const deterministicRolePlayRequested =
@@ -8046,6 +8087,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                           }
 
                                                                                                           stopLearnerTranscriptCapture() {
+                                                                                                            clearTimeout(this.m5b3ySpeechTimer);this.m5b3ySpeechParts=[];
                                                                                                             this.speechRecognitionActive=false;if(this.speechRecognition){try{this.speechRecognition.stop();}catch(error){}}this.speechRecognition=null;
                                                                                                           }
 
