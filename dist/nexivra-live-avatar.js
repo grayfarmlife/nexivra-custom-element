@@ -31724,6 +31724,9 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     this.m5b2hWaitingForGuestReady = true;
     this.m5b2FloorOwner = "ELENORA";
     this.m5b3sGuestReadyAttempts = 0;
+    this.m5b3sGuestReadyMaxAttempts = 5;
+    this.m5b3sGuestReadyRetryMs = 3500;
+    this.m5b3sGuestReadyHardTimeoutMs = 35e3;
     if (this.m5b3sGuestReadyWatchdog) {
       clearTimeout(this.m5b3sGuestReadyWatchdog);
       this.m5b3sGuestReadyWatchdog = null;
@@ -31776,7 +31779,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
         return;
       }
       const elapsed = Date.now() - handoffStartedAt;
-      if (this.guestSessionToken && this.m5b3sGuestReadyAttempts < this.m5b3sGuestReadyMaxAttempts) {
+      if (this.guestSessionToken && !this.m5b3gGuestNeedsFreshToken && !this.m5b3gGuestStopPromise && !this.m5b3gGuestStartPromise && this.m5b3sGuestReadyAttempts < this.m5b3sGuestReadyMaxAttempts) {
         this.m5b3sGuestReadyAttempts += 1;
         console.warn("NEXIVRA M5B-3S PEDRO NOT READY \u2014 RETRYING:", {
           attempt: this.m5b3sGuestReadyAttempts,
@@ -31850,10 +31853,6 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     console.log("NEXIVRA M5B-3B ELENORA QUIET \u2014 DETERMINISTIC SETUP ONLY");
     this.m5b2hWaitingForGuestReady = false;
     this.m5b3sGuestReadyWatchdog = null;
-    this.m5b3sGuestReadyAttempts = 0;
-    this.m5b3sGuestReadyMaxAttempts = 3;
-    this.m5b3sGuestReadyRetryMs = 3500;
-    this.m5b3sGuestReadyHardTimeoutMs = 14e3;
     this.m5b2hSetupRequested = true;
     this.m5b2hSetupSpeaking = false;
     const isProductDemo = this.isExperienceNexstorvenDemo();
