@@ -31856,10 +31856,12 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     this.m5b3sGuestReadyHardTimeoutMs = 14e3;
     this.m5b2hSetupRequested = true;
     this.m5b2hSetupSpeaking = false;
+    const isProductDemo = this.isExperienceNexstorvenDemo();
     const setup = String(
-      this.m5b2fPendingScenario?.learnerFacingSetup || "You are a Centier associate. A client is approaching with a banking service need. Welcome the client, understand what they need, and handle the interaction naturally."
+      this.m5b2fPendingScenario?.learnerFacingSetup || (isProductDemo ? "Demonstrate how a realistic AI person responds to an employee's words and decisions." : "Welcome the person, understand their need, and handle the interaction professionally.")
     ).trim();
-    const spoken = `All right, let's do a Centier banking role-play. ${setup} Ready? Here comes the client.`;
+    const spoken = isProductDemo ? `Let me show you how NEXSTORVEN turns company knowledge into realistic, conversational practice. Pedro will act as a customer in a sample workplace situation. Notice how he responds to your choices, and afterward I'll show you how this could work with your company's actual procedures and training needs. ${setup} I'll bring Pedro in now.` : `Let's begin this practice scenario. ${setup} Here comes the person.`;
+    console.log("NEXSTORVEN M5B-4A DEMO SCENARIO FRAMED:", { isProductDemo });
     console.log("NEXIVRA M5B-2H ELENORA SETUP DISPATCHED");
     try {
       if (typeof this.session?.repeat === "function") {
@@ -32107,7 +32109,9 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     this.m5b3aEvaluationPending = false;
     const debrief = String(evaluation.debrief || "").trim();
     const nextAction = String(evaluation.nextAction || "continue_course");
-    const instruction = `The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction === "repeat_role_play" ? "explain that another practice attempt will help and prepare the learner for another attempt" : nextAction === "targeted_coaching" ? "give one brief targeted coaching point and then continue forward" : "continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro. Speak in English.`;
+    const isProductDemo = this.isExperienceNexstorvenDemo();
+    const instruction = isProductDemo ? `You are Elenora, leading the Experience NEXSTORVEN product demonstration. Pedro's example is complete. Briefly explain the observable strengths and any improvement opportunities using ONLY this evaluation: ${JSON.stringify(debrief)}. Explain that this is a sample of how NEXSTORVEN can provide realistic role-play, behavioral evidence, targeted reinforcement, company-approved knowledge, personalized teaching and manager visibility. Tie the explanation to the prospect's previously mentioned company and training approach when known; never invent details. This is a product demonstration, not a Centier training course. You MUST lead the conclusion yourself. Do not ask 'what would you like to do next', 'what should we explore', or any equivalent open-ended navigation question. End with a clear, natural invitation to discuss implementing NEXSTORVEN for their organization with the sales team. Do not start another role-play or repeat training unless explicitly requested. Be conversational, concise, and speak in English.` : `The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction === "repeat_role_play" ? "explain that another practice attempt will help and prepare the learner for another attempt" : nextAction === "targeted_coaching" ? "give one brief targeted coaching point and then continue forward" : "continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro. Speak in English.`;
+    console.log("NEXSTORVEN M5B-4A POST-PEDRO LEADERSHIP:", { isProductDemo, nextAction });
     this.sendLiveAvatarMessageSafely(instruction, "m5b3a-structured-role-play-debrief");
     console.log("NEXIVRA M5B-3L-Q STRUCTURED DEBRIEF DISPATCHED TO LIVE ELENORA:", {
       nextAction,
