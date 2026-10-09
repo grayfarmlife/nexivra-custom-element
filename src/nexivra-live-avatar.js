@@ -8087,7 +8087,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                               const lower=String(text||'').toLowerCase();
                                               if(/(?:training|role.play|onboard|employee|associate|staff|challenge|difficulty|problem|nervous|anxious|consisten)/i.test(lower))this.m5b3yNeedsIdentified=true;
                                               console.log('NEXIVRA M5B-3Y COMPLETE DISCOVERY ANSWER:',this.m5b3yDemoAnswers);
-                                              if(this.m5b3yDemoAnswers>=3 && this.m5b3yNeedsIdentified && !this.m5b3yDemoHandoffArmed){
+                                              if(this.m5b3yNeedsIdentified && !this.m5b3yDemoHandoffArmed && (this.m5b3yDemoAnswers>=3 || (this.m5b3yDemoAnswers>=2 && /\b(?:yes|show|see that|ready|go ahead|let.s do|sounds good)\b/i.test(String(text||''))))){
                                                 this.m5b3yDemoHandoffArmed=true;
                                                 // Elenora gets one final, personalized synthesis before Pedro is requested.
                                                 this.sendLiveAvatarMessageSafely(`DEMO STAGE: PERSONALIZED EXPLANATION — YOU LEAD. Discovery is complete. Reflect the actual company facts and the specific training challenge provided. Explain how NEXSTORVEN could help through private AI practice, adaptive teaching, evaluation and coaching as relevant. Do not ask another question or ask permission. Finish with: Rather than just explain it, let me show you. Do not pretend to be Pedro. A separate guest will follow.`, 'm5b3y-demo-synthesis');
@@ -8101,7 +8101,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                       console.warn('NEXIVRA M5B-3Z WATCHDOG: ELENORA STILL SPEAKING; WAITING');
                                                       this.m5b3zSynthesisWatchdog=setTimeout(()=>{
                                                         if(!this.avatarSpeaking)this.m5b3zRequestPedroAfterSynthesis('watchdog-after-speech');
-                                                        else console.warn('NEXIVRA M5B-3Z WATCHDOG: SPEECH STILL ACTIVE; MANUAL REVIEW REQUIRED');
+                                                        else { console.warn('NEXIVRA M5B-4F WATCHDOG: SPEECH STILL ACTIVE; RECHECKING'); this.m5b3zSynthesisWatchdog=setTimeout(()=>{ if(!this.m5b3yDemoHandoffRequested && this.m5b3yDemoHandoffArmed && !this.avatarSpeaking) this.m5b3zRequestPedroAfterSynthesis('delayed-speech-completion'); },8000); }
                                                       },12000);
                                                     }else this.m5b3zRequestPedroAfterSynthesis('missing-speech-event-watchdog');
                                                   }
