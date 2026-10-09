@@ -2521,6 +2521,11 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                           }
 
                                                                           completeAdaptiveRolePlay(outcome = {}) {
+                                                                            if(this.isExperienceNexstorvenDemo()){
+                                                                              this.m5b4bRolePlayExitAt=Date.now();
+                                                                              this.m5b3ySpeechParts=[];
+                                                                              clearTimeout(this.m5b3ySpeechTimer);
+                                                                            }
                                                                             if (!this.rolePlayActive) return;
 
                                                                             this.dispatchRuntimeEvent(
@@ -2672,7 +2677,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 
                                     const isProductDemo=this.isExperienceNexstorvenDemo();
                                     const instruction=isProductDemo
-                                      ? `You are Elenora, leading the Experience NEXSTORVEN product demonstration. Pedro's example is complete. Briefly explain the observable strengths and any improvement opportunities using ONLY this evaluation: ${JSON.stringify(debrief)}. Explain that this is a sample of how NEXSTORVEN can provide realistic role-play, behavioral evidence, targeted reinforcement, company-approved knowledge, personalized teaching and manager visibility. Tie the explanation to the prospect's previously mentioned company and training approach when known; never invent details. This is a product demonstration, not a Centier training course. You MUST lead the conclusion yourself. Do not ask 'what would you like to do next', 'what should we explore', or any equivalent open-ended navigation question. End with a clear, natural invitation to discuss implementing NEXSTORVEN for their organization with the sales team. Do not start another role-play or repeat training unless explicitly requested. Be conversational, concise, and speak in English.`
+                                      ? `You are Elenora, the NEXSTORVEN enterprise product demonstration host, NOT a hospitality trainer. Pedro's example is complete. Remain in the product-demo closing stage and do not switch to any training curriculum. Briefly explain the observable strengths and any improvement opportunities using ONLY this evaluation: ${JSON.stringify(debrief)}. Explain that this is a sample of how NEXSTORVEN can provide realistic role-play, behavioral evidence, targeted reinforcement, company-approved knowledge, personalized teaching and manager visibility. Tie the explanation to the prospect's previously mentioned company and training approach when known; never invent details. This is a product demonstration, not a Centier training course. You MUST lead the conclusion yourself. Do not ask 'what would you like to do next', 'what should we explore', or any equivalent open-ended navigation question. End with a clear, natural invitation to discuss implementing NEXSTORVEN for their organization with the sales team. Do not start another role-play or repeat training unless explicitly requested. Be conversational, concise, and speak in English.`
                                       : `The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction==="repeat_role_play"?"explain that another practice attempt will help and prepare the learner for another attempt":nextAction==="targeted_coaching"?"give one brief targeted coaching point and then continue forward":"continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro. Speak in English.`;
 
                                     console.log("NEXSTORVEN M5B-4A POST-PEDRO LEADERSHIP:", {isProductDemo,nextAction});
@@ -7469,7 +7474,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                               /\bhave (?:a )?(?:great|good|wonderful|nice) day\b/.test(normalized) ||
                                                                                                               /\bwe(?:'ll| will) see you next time\b/.test(normalized) ||
                                                                                                               /\bsee you next time\b/.test(normalized) ||
-                                                                                                              /\btake care\b/.test(normalized) ||
+                                                                                                              /\b(?:goodbye|bye for now|take care and goodbye)\b/.test(normalized) ||
                                                                                                               /\benjoy (?:the rest of )?your day\b/.test(normalized) ||
                                                                                                               /\bthanks? for (?:coming|stopping) (?:in|by)\b/.test(normalized) ||
                                                                                                               /\bgoodbye\b/.test(normalized)
@@ -7505,6 +7510,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                 : null
                                                                                                             });
                                                                                                             this.rolePlayConversation.push({speaker:"learner",text,at:new Date().toISOString()});
+                                                                                                            this.m5b4bLastRolePlayUtterance=text;
 
                                                                                                             if(this.isM5B3ONaturalFarewell(text)){
                                                                                                               console.log("NEXIVRA M5B-3L-P LOCAL FAREWELL CLOSE — RETURNING TO ELENORA:",text);
@@ -7771,6 +7777,11 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                     this.m5b2oLatestInterimText=text;
                                                                                                                     this.m5b2oLatestInterimAtMs=Date.now();
                                                                                                                   }
+                                                                                                                  continue;
+                                                                                                                }
+                                                                                                                // M5B-4B: reject stale role-play transcripts after returning to Elenora.
+                                                                                                                if(this.isExperienceNexstorvenDemo() && !this.rolePlayActive && this.m5b4bLastRolePlayUtterance && Date.now()-Number(this.m5b4bRolePlayExitAt||0)<15000 && text.toLowerCase()===String(this.m5b4bLastRolePlayUtterance).toLowerCase()){
+                                                                                                                  console.log('NEXSTORVEN M5B-4B STALE PEDRO TRANSCRIPT IGNORED:',text);
                                                                                                                   continue;
                                                                                                                 }
                                                                                                                 // M5B-3Y: final ASR results are fragments, not necessarily completed answers.
@@ -8062,6 +8073,10 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                         // M5B-3V: Never launch a demo role-play based on
                                             // a number of speech-recognition fragments.
                                             // A discussion ABOUT role-play is not a command.
+                                            if (this.isExperienceNexstorvenDemo() && this.m5b4bRolePlayExitAt) {
+                                              console.log('NEXSTORVEN M5B-4B POST-PEDRO DISCOVERY ROUTE BLOCKED:',text);
+                                              return;
+                                            }
                                             if (this.isExperienceNexstorvenDemo()) {
                                               this.m5b3yDemoAnswers=(this.m5b3yDemoAnswers||0)+1;
                                               const lower=String(text||'').toLowerCase();
