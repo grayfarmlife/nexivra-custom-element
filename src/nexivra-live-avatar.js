@@ -2203,6 +2203,12 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                             this.m5b2hWaitingForGuestReady=true;
                                                                             this.m5b2FloorOwner="ELENORA";
                                                                             this.m5b3sGuestReadyAttempts=0;
+                                                                            // M5B-4D: allow a failed LiveKit join to retire its token,
+                                                                            // request a new session through the existing Wix bridge,
+                                                                            // and auto-retry without starting a duplicate role-play.
+                                                                            this.m5b3sGuestReadyMaxAttempts=5;
+                                                                            this.m5b3sGuestReadyRetryMs=3500;
+                                                                            this.m5b3sGuestReadyHardTimeoutMs=35000;
 
                                                                             if(this.m5b3sGuestReadyWatchdog){
                                                                               clearTimeout(this.m5b3sGuestReadyWatchdog);
@@ -2268,6 +2274,9 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 
                                                                               if(
                                                                                 this.guestSessionToken&&
+                                                                                !this.m5b3gGuestNeedsFreshToken&&
+                                                                                !this.m5b3gGuestStopPromise&&
+                                                                                !this.m5b3gGuestStartPromise&&
                                                                                 this.m5b3sGuestReadyAttempts<this.m5b3sGuestReadyMaxAttempts
                                                                               ){
                                                                                 this.m5b3sGuestReadyAttempts+=1;
@@ -2346,12 +2355,8 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                             }
                                                                             console.log("NEXIVRA M5B-3B ELENORA QUIET — DETERMINISTIC SETUP ONLY");
                                                                             this.m5b2hWaitingForGuestReady=false;
-                                                                            // M5B-3S — fail-safe Pedro handoff recovery.
+                                                                            // M5B-4D: keep the active connection recovery budget intact.
                                                                             this.m5b3sGuestReadyWatchdog=null;
-                                                                            this.m5b3sGuestReadyAttempts=0;
-                                                                            this.m5b3sGuestReadyMaxAttempts=3;
-                                                                            this.m5b3sGuestReadyRetryMs=3500;
-                                                                            this.m5b3sGuestReadyHardTimeoutMs=14000;
                                                                             this.m5b2hSetupRequested=true;
                                                                             this.m5b2hSetupSpeaking=false;
                                                                             const isProductDemo=this.isExperienceNexstorvenDemo();
