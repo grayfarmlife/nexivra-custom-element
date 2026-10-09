@@ -1692,6 +1692,11 @@ textarea {
         <span>Reporting</span>
       </button>
 
+      <button class="nav-button" data-section="demo-users" id="demoUsersNav" style="display:none">
+        <span class="nav-icon">◈</span>
+        <span>Demo Users</span>
+      </button>
+
       <button class="nav-button" data-section="demo">
         <span class="nav-icon">✦</span>
         <span>Demo Mode</span>
@@ -2449,6 +2454,27 @@ textarea {
 
         </div>
 
+      </section>
+
+      <section class="section" id="section-demo-users">
+        <div class="section-header">
+          <div class="section-heading">
+            <div class="eyebrow">SALES INTELLIGENCE</div>
+            <h1>Demo Users</h1>
+            <p>Prospects who experienced the Experience NEXSTORVEN course. Select a user to review their conversation intelligence and suggested follow-up.</p>
+          </div>
+          <button class="btn" onclick="requestDemoUsers()">Refresh Prospects</button>
+        </div>
+        <div class="metric-grid" id="demoUserMetrics"></div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Prospect Directory</div><div class="card-subtitle">Platform administrator access only · Experience NEXSTORVEN</div></div></div>
+          <div class="card-body"><input id="demoUserSearch" type="search" placeholder="Search by name, company, email, or role" aria-label="Search demo users"></div>
+          <div class="table-wrap" id="demoUsersContainer"><div class="empty">Open Demo Users to load prospects.</div></div>
+        </div>
+        <div class="card" id="demoUserDetailCard" style="display:none;margin-top:18px">
+          <div class="card-header"><div><div class="eyebrow">DEMO INTELLIGENCE REPORT</div><div class="card-title" id="demoUserDetailTitle"></div><div class="card-subtitle" id="demoUserDetailSubtitle"></div></div><button class="btn" id="demoUserCopyButton">Copy Report</button></div>
+          <div class="card-body" id="demoUserDetailBody"></div>
+        </div>
       </section>
 
       <section
@@ -3741,6 +3767,9 @@ const state = {
   assets: [],
   users: [],
   assignments: [],
+  demoUsers: [],
+  demoUsersStatus: "idle",
+  selectedDemoUserId: null,
   selectedModuleArea: null,
   knowledgeModules: [],
   selectedKnowledgeSourceId: null,
@@ -3784,6 +3813,7 @@ window.addEventListener(
   () => {
 
     setupNavigation();
+    document.getElementById("demoUserSearch")?.addEventListener("input", renderDemoUsers);
 
     document
       .getElementById('refreshButton')
@@ -4253,6 +4283,24 @@ function handleWixMessage(
 
       break;
 
+    case 'DEMO_USERS_DATA':
+      state.demoUsers = Array.isArray(payload?.users) ? payload.users : [];
+      state.demoUsersStatus = payload?.ok === false ? 'error' : 'ready';
+      renderDemoUsers();
+      break;
+    case 'DEMO_USERS_ERROR':
+      state.demoUsersStatus = 'error';
+      renderDemoUsers();
+      break;
+    case 'DEMO_USER_DETAIL_DATA':
+      if (payload?.ok && payload.user) {
+        const index = state.demoUsers.findIndex(x => x.id === payload.user.id);
+        if (index >= 0) state.demoUsers[index] = payload.user;
+        else state.demoUsers.push(payload.user);
+        state.selectedDemoUserId = payload.user.id;
+        renderDemoUsers();
+      }
+      break;
     case 'ACTION_SUCCESS':
 
       showToast(
@@ -8238,6 +8286,8 @@ function renderDashboard(
     };
 
     applyAccessPolicy();
+    const demoNav = document.getElementById("demoUsersNav");
+    if (demoNav) demoNav.style.display = state.access.isPlatformAdmin && !state.access.isCompanyAdmin ? "" : "none";
 
     const name =
       [
@@ -8299,6 +8349,7 @@ function applyAccessPolicy() {
       ? [
           'organizations',
           'demo',
+          'demo-users',
           'settings'
         ]
       : [];
@@ -12866,6 +12917,8 @@ function goToSection(
     demo:
       'Demo Mode',
 
+    'demo-users': 'Demo Users',
+
     settings:
       'System Settings'
   };
@@ -12875,6 +12928,14 @@ function goToSection(
     titles[section] ||
     'NEXSTORVEN'
   );
+
+  if (section === 'demo-users') {
+    if (!state.access?.isPlatformAdmin || state.access?.isCompanyAdmin) {
+      goToSection('overview');
+      return;
+    }
+    requestDemoUsers();
+  }
 
   if (
     section ===
@@ -13542,6 +13603,78 @@ function escapeAttribute(
     value
   );
 
+}
+
+
+/* ======================================================
+   M6A — DEMO USERS (read-only dashboard)
+   Records supplied by authenticated Wix backend only.
+====================================================== */
+function requestDemoUsers() {
+  if (!state.access?.isPlatformAdmin || state.access?.isCompanyAdmin) return;
+  state.demoUsersStatus = 'loading';
+  renderDemoUsers();
+  sendToWix('LIST_DEMO_USERS', {});
+}
+window.requestDemoUsers = requestDemoUsers;
+
+function demoText(value) { return escapeHTML(value == null || value === '' ? 'Not provided' : String(value)); }
+function demoDate(value) { return value ? formatDate(value) : '—'; }
+function demoField(label, value) {
+  const display = Array.isArray(value) ? value.join(' • ') : value;
+  return `<div style="padding:15px 0;border-bottom:1px solid rgba(255,255,255,.07)"><div class="eyebrow" style="margin-bottom:8px">${escapeHTML(label)}</div><div style="white-space:pre-wrap;line-height:1.65;color:#dceaf4">${demoText(display)}</div></div>`;
+}
+function renderDemoUsers() {
+  const container = document.getElementById('demoUsersContainer');
+  const metrics = document.getElementById('demoUserMetrics');
+  if (!container || !metrics) return;
+  const all = state.demoUsers || [];
+  const query = (document.getElementById('demoUserSearch')?.value || '').toLowerCase().trim();
+  const filtered = all.filter(u => [u.name,u.company,u.email,u.role].some(v => String(v||'').toLowerCase().includes(query)));
+  metrics.innerHTML = [
+    ['Prospects', all.length, 'Unique demo users'],
+    ['Completed', all.filter(x=>x.status==='completed').length, 'Completed demo experiences'],
+    ['Incomplete', all.filter(x=>x.status!=='completed').length, 'Interrupted or unfinished'],
+    ['Follow-up', all.filter(x=>x.followUpRecommended===true).length, 'Suggested follow-ups']
+  ].map(([label,value,sub])=>`<div class="metric-card"><div class="metric-label">${label}</div><div class="metric-value">${value}</div><div class="metric-sub">${sub}</div></div>`).join('');
+  if (state.demoUsersStatus === 'loading') container.innerHTML = '<div class="empty">Loading demo users…</div>';
+  else if (state.demoUsersStatus === 'error') container.innerHTML = '<div class="empty">Demo users could not be loaded. Check the Wix backend integration.</div>';
+  else if (!filtered.length) container.innerHTML = `<div class="empty">${query?'No matching prospects.':'No demo records available yet. Records appear after the demo capture service is connected.'}</div>`;
+  else {
+    container.innerHTML = `<table><thead><tr><th>Prospect</th><th>Company</th><th>Status</th><th>Last Demo</th><th></th></tr></thead><tbody>${filtered.map(u=>`<tr><td><strong>${demoText(u.name)}</strong><div style="color:var(--muted);margin-top:4px">${demoText(u.email)}</div></td><td>${demoText(u.company)}</td><td>${statusBadge(u.status||'unknown')}</td><td>${demoDate(u.lastDemoAt)}</td><td><button class="btn" data-demo-user-id="${escapeAttribute(u.id)}">View Summary →</button></td></tr>`).join('')}</tbody></table>`;
+    container.querySelectorAll('[data-demo-user-id]').forEach(button=>button.addEventListener('click',()=>{
+      const id=button.getAttribute('data-demo-user-id');
+      state.selectedDemoUserId=id;
+      renderDemoUserDetail();
+      sendToWix('GET_DEMO_USER_DETAIL',{userId:id});
+    }));
+  }
+  renderDemoUserDetail();
+}
+function renderDemoUserDetail() {
+  const card = document.getElementById('demoUserDetailCard');
+  if (!card) return;
+  const u=(state.demoUsers||[]).find(x=>x.id===state.selectedDemoUserId);
+  if (!u) {card.style.display='none';return;}
+  card.style.display='block';
+  document.getElementById('demoUserDetailTitle').textContent=u.name||'Unnamed prospect';
+  document.getElementById('demoUserDetailSubtitle').textContent=[u.company,u.role,u.email].filter(Boolean).join(' · ');
+  const sessions=Array.isArray(u.sessions)?u.sessions:[];
+  document.getElementById('demoUserDetailBody').innerHTML = [
+    demoField('Conversation summary',u.summary),
+    demoField('Current training approach',u.trainingApproach),
+    demoField('Challenges identified',u.challenges),
+    demoField('Capabilities demonstrated',u.capabilitiesDemonstrated),
+    demoField('Potential NEXSTORVEN opportunities',u.opportunities),
+    demoField('Recommended follow-up',u.recommendedFollowUp),
+    demoField('Last demo',demoDate(u.lastDemoAt)),
+    `<div style="margin-top:20px"><div class="eyebrow">SESSION HISTORY</div>${sessions.length?sessions.map(x=>`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)">${demoDate(x.startedAt)} · ${demoText(x.status)}${x.summary?`<div style="margin-top:7px;color:var(--muted)">${demoText(x.summary)}</div>`:''}</div>`).join(''):'<p style="color:var(--muted)">No session history provided.</p>'}</div>`
+  ].join('');
+  document.getElementById('demoUserCopyButton').onclick=()=>{
+    const report=[`NEXSTORVEN Demo Intelligence — ${u.name||'Unnamed prospect'}`,`Company: ${u.company||'Not provided'}`,`Role: ${u.role||'Not provided'}`,`Email: ${u.email||'Not provided'}`,`Summary: ${u.summary||'Not provided'}`,`Training approach: ${u.trainingApproach||'Not provided'}`,`Challenges: ${Array.isArray(u.challenges)?u.challenges.join('; '):u.challenges||'Not provided'}`,`Capabilities: ${Array.isArray(u.capabilitiesDemonstrated)?u.capabilitiesDemonstrated.join('; '):u.capabilitiesDemonstrated||'Not provided'}`,`Opportunities: ${Array.isArray(u.opportunities)?u.opportunities.join('; '):u.opportunities||'Not provided'}`,`Follow-up: ${u.recommendedFollowUp||'Not provided'}`].join('\n');
+    if(navigator.clipboard?.writeText) navigator.clipboard.writeText(report).then(()=>showToast('Report copied.','success')).catch(()=>showToast('Unable to copy report.','error'));
+    else showToast('Clipboard unavailable in this browser.','error');
+  };
 }
 
 </script>
