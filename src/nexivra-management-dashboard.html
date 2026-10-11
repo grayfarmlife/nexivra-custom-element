@@ -4388,6 +4388,8 @@ function handleWixMessage(
         ? 'Wix accepted the email request. Check the inbox and invitation history.'
         : 'NEXSTORVEN invitation failed.\nStage: ' + String(payload?.stage || 'unknown') +
           '\nCode: ' + String(payload?.diagnosticCode || payload?.error || 'unknown') +
+          '\nWix message: ' + String(payload?.diagnosticMessage || 'No message returned') +
+          '\nContact identity: ' + String(payload?.identityType || 'unknown') +
           '\nNo invitation email is confirmed sent.';
       if (panel) { panel.textContent = msg; panel.style.display = 'block'; }
       showToast(payload?.ok ? 'Email request accepted by Wix.' : 'Invitation failed. See diagnostic panel.', payload?.ok ? 'success' : 'error');
