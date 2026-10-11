@@ -1697,6 +1697,10 @@ textarea {
         <span>Demo Users</span>
       </button>
 
+      <button class="nav-button" data-section="demo-prospects" id="demoProspectsNav" style="display:none">
+        <span class="nav-icon">✉</span><span>Demo Prospects</span>
+      </button>
+
       <button class="nav-button" data-section="demo">
         <span class="nav-icon">✦</span>
         <span>Demo Mode</span>
@@ -2474,6 +2478,42 @@ textarea {
         <div class="card" id="demoUserDetailCard" style="display:none;margin-top:18px">
           <div class="card-header"><div><div class="eyebrow">DEMO INTELLIGENCE REPORT</div><div class="card-title" id="demoUserDetailTitle"></div><div class="card-subtitle" id="demoUserDetailSubtitle"></div></div><button class="btn" id="demoUserCopyButton">Copy Report</button></div>
           <div class="card-body" id="demoUserDetailBody"></div>
+        </div>
+      </section>
+
+      <section class="section" id="section-demo-prospects">
+        <div class="section-header">
+          <div class="section-heading">
+            <div class="eyebrow">NEXSTORVEN SALES INTELLIGENCE</div>
+            <h1>Demo Prospects</h1>
+            <p>Enroll a business contact, prepare their private demo invitation, and track their interest. Email delivery is not yet connected.</p>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" onclick="requestNexstorvenProspects()">Refresh</button>
+            <button class="btn btn-primary" onclick="openNexstorvenEnrollment()">+ Enroll Demo User</button>
+          </div>
+        </div>
+        <div class="metric-grid" id="nsProspectMetrics"></div>
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Prospect Directory</div><div class="card-subtitle">Invitation preparation, participation, and follow-up</div></div></div>
+          <div class="card-body"><input type="search" id="nsProspectSearch" placeholder="Search name, company, or email" aria-label="Search prospects"></div>
+          <div class="table-wrap" id="nsProspectTable"><div class="empty">Open this section to load prospects.</div></div>
+        </div>
+        <div class="card" id="nsProspectDetail" style="display:none;margin-top:18px">
+          <div class="card-header"><div><div class="card-title" id="nsDetailTitle">Prospect</div><div class="card-subtitle" id="nsDetailSubtitle"></div></div></div>
+          <div class="card-body">
+            <div id="nsDetailHistory"></div>
+            <div class="form-grid" style="margin-top:16px">
+              <div><label>Follow-up status</label><select id="nsFollowUpStatus">
+                <option value="new">New</option><option value="invited">Invited</option>
+                <option value="engaged">Engaged</option><option value="follow_up">Follow-up</option>
+                <option value="interested">Interested</option><option value="converted">Converted</option>
+                <option value="closed">Closed</option>
+              </select></div>
+              <div><label>Follow-up notes</label><textarea id="nsFollowUpNotes" maxlength="2000"></textarea></div>
+              <button class="btn btn-primary" onclick="saveNexstorvenFollowUp()">Save Follow-up</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -3746,6 +3786,35 @@ textarea {
   </div>
 </div>
 
+<div class="modal-overlay" id="nsEnrollModal">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Enroll NEXSTORVEN Demo Prospect</div><button class="modal-close" onclick="closeModal('nsEnrollModal')">×</button></div>
+    <div class="modal-body"><form id="nsEnrollForm" class="form-grid">
+      <div class="form-row">
+        <div><label for="nsFirstName">First name *</label><input id="nsFirstName" required maxlength="100"></div>
+        <div><label for="nsLastName">Last name *</label><input id="nsLastName" required maxlength="100"></div>
+      </div>
+      <div><label for="nsEmail">Business email *</label><input id="nsEmail" type="email" required maxlength="254"></div>
+      <div><label for="nsCompany">Company *</label><input id="nsCompany" required maxlength="200"></div>
+      <div class="form-row">
+        <div><label for="nsJobTitle">Job title</label><input id="nsJobTitle" maxlength="150"></div>
+        <div><label for="nsIndustry">Industry</label><select id="nsIndustry">
+          <option value="healthcare">Healthcare</option><option value="financial_services">Financial Services</option>
+          <option value="hospitality">Hospitality</option><option value="retail">Retail</option>
+          <option value="manufacturing">Manufacturing</option><option value="education">Education</option>
+          <option value="professional_services">Professional Services</option><option value="other" selected>Other</option>
+        </select></div>
+      </div>
+      <div><label for="nsEmployeeCount">Employees</label><select id="nsEmployeeCount"><option value="">Not specified</option><option value="1-49">1–49</option><option value="50-249">50–249</option><option value="250-999">250–999</option><option value="1000+">1,000+</option></select></div>
+      <div><label for="nsChallenge">Training challenge</label><textarea id="nsChallenge" maxlength="2000"></textarea></div>
+      <div><label for="nsPersonalNote">Personal note</label><textarea id="nsPersonalNote" maxlength="1000"></textarea></div>
+      <div style="color:var(--yellow);font-size:12px;line-height:1.5">Enrollment prepares a private invitation record. Email is NOT sent until delivery is configured.</div>
+    </form></div>
+    <div class="modal-footer"><button class="btn" onclick="closeModal('nsEnrollModal')">Cancel</button>
+      <button class="btn btn-primary" id="nsEnrollSubmit" onclick="submitNexstorvenEnrollment()">Create Prospect &amp; Prepare Invitation</button></div>
+  </div>
+</div>
+
 <div
   class="toast"
   id="toast"
@@ -3768,6 +3837,10 @@ const state = {
   users: [],
   assignments: [],
   demoUsers: [],
+  nsProspects: [],
+  nsProspectsStatus: 'idle',
+  nsSelectedProspectId: null,
+  nsEnrollPending: false,
   demoUsersStatus: "idle",
   selectedDemoUserId: null,
   selectedModuleArea: null,
@@ -3814,6 +3887,7 @@ window.addEventListener(
 
     setupNavigation();
     document.getElementById("demoUserSearch")?.addEventListener("input", renderDemoUsers);
+    document.getElementById("nsProspectSearch")?.addEventListener("input", renderNexstorvenProspects);
 
     document
       .getElementById('refreshButton')
@@ -4283,6 +4357,31 @@ function handleWixMessage(
 
       break;
 
+    case 'NS_DEMO_PROSPECTS_DATA':
+      state.nsProspectsStatus = payload?.ok ? 'ready' : 'error';
+      state.nsProspects = Array.isArray(payload?.prospects) ? payload.prospects : [];
+      renderNexstorvenProspects();
+      if (!payload?.ok) showToast('Unable to load demo prospects.', 'error');
+      break;
+    case 'NS_DEMO_PROSPECT_DETAIL':
+      if (payload?.ok) renderNexstorvenProspectDetail(payload);
+      else showToast('Unable to load prospect details.', 'error');
+      break;
+    case 'NS_DEMO_ENROLL_RESULT':
+      state.nsEnrollPending = false;
+      document.getElementById('nsEnrollSubmit').disabled = false;
+      if (payload?.ok) {
+        closeModal('nsEnrollModal');
+        showToast('Prospect saved. Email not sent; delivery is not configured.', 'success');
+        requestNexstorvenProspects();
+      } else showToast('Enrollment failed: ' + (payload?.error || 'Unknown error'), 'error');
+      break;
+    case 'NS_DEMO_FOLLOWUP_RESULT':
+      if (payload?.ok) {
+        showToast('Follow-up saved.', 'success');
+        requestNexstorvenProspects();
+      } else showToast('Unable to save follow-up.', 'error');
+      break;
     case 'DEMO_USERS_DATA':
       state.demoUsers = Array.isArray(payload?.users) ? payload.users : [];
       state.demoUsersStatus = payload?.ok === false ? 'error' : 'ready';
@@ -8288,6 +8387,8 @@ function renderDashboard(
     applyAccessPolicy();
     const demoNav = document.getElementById("demoUsersNav");
     if (demoNav) demoNav.style.display = state.access.isPlatformAdmin && !state.access.isCompanyAdmin ? "" : "none";
+    const nsNav = document.getElementById('demoProspectsNav');
+    if (nsNav) nsNav.style.display = state.access.isPlatformAdmin && !state.access.isCompanyAdmin ? '' : 'none';
 
     const name =
       [
@@ -12918,6 +13019,7 @@ function goToSection(
       'Demo Mode',
 
     'demo-users': 'Demo Users',
+    'demo-prospects': 'Demo Prospects',
 
     settings:
       'System Settings'
@@ -12929,6 +13031,12 @@ function goToSection(
     'NEXSTORVEN'
   );
 
+  if (section === 'demo-prospects') {
+    if (!state.access?.isPlatformAdmin || state.access?.isCompanyAdmin) {
+      goToSection('overview'); return;
+    }
+    requestNexstorvenProspects();
+  }
   if (section === 'demo-users') {
     if (!state.access?.isPlatformAdmin || state.access?.isCompanyAdmin) {
       goToSection('overview');
@@ -13676,6 +13784,95 @@ function renderDemoUserDetail() {
     else showToast('Clipboard unavailable in this browser.','error');
   };
 }
+
+
+/* ======================================================
+   NEXSTORVEN D1 — STANDALONE DEMO PROSPECTS
+   Wix page-code bridge must implement NS_DEMO_* messages.
+   No email sending, avatar runtime, or learner changes.
+====================================================== */
+function nsVal(id) { return (document.getElementById(id)?.value || '').trim(); }
+function requestNexstorvenProspects() {
+  if (!state.access?.isPlatformAdmin || state.access?.isCompanyAdmin) return;
+  state.nsProspectsStatus = 'loading';
+  renderNexstorvenProspects();
+  sendToWix('NS_LIST_DEMO_PROSPECTS', {limit:100});
+}
+function openNexstorvenEnrollment() {
+  if (!state.access?.isPlatformAdmin || state.access?.isCompanyAdmin) return;
+  document.getElementById('nsEnrollForm')?.reset();
+  openModal('nsEnrollModal');
+}
+function submitNexstorvenEnrollment() {
+  if (state.nsEnrollPending) return;
+  const form = document.getElementById('nsEnrollForm');
+  if (!form?.reportValidity()) return;
+  const data = {
+    firstName:nsVal('nsFirstName'),lastName:nsVal('nsLastName'),
+    email:nsVal('nsEmail'),companyName:nsVal('nsCompany'),
+    jobTitle:nsVal('nsJobTitle'),industry:nsVal('nsIndustry'),
+    employeeCount:nsVal('nsEmployeeCount'),
+    trainingChallenge:nsVal('nsChallenge'),personalNote:nsVal('nsPersonalNote')
+  };
+  state.nsEnrollPending = true;
+  document.getElementById('nsEnrollSubmit').disabled = true;
+  sendToWix('NS_ENROLL_DEMO_PROSPECT',data);
+}
+function renderNexstorvenProspects() {
+  const el=document.getElementById('nsProspectTable'),metrics=document.getElementById('nsProspectMetrics');
+  if (!el || !metrics) return;
+  const all=state.nsProspects || [];
+  metrics.innerHTML=[
+    ['Prospects',all.length,'Registered contacts'],
+    ['Invitations',all.filter(x=>x.invitationStatus).length,'Prepared invitations'],
+    ['Completed',all.filter(x=>Number(x.sessionCount||0)>0).length,'Prospects with session records'],
+    ['Follow-up',all.filter(x=>x.prospectStatus==='follow_up').length,'Marked for follow-up']
+  ].map(([a,b,c])=>`<div class="metric-card"><div class="metric-label">${a}</div><div class="metric-value">${b}</div><div class="metric-sub">${c}</div></div>`).join('');
+  if (state.nsProspectsStatus==='loading') {el.innerHTML='<div class="empty">Loading prospects…</div>';return;}
+  if (state.nsProspectsStatus==='error') {el.innerHTML='<div class="empty">Could not load prospects. Check the Wix page-code bridge.</div>';return;}
+  const q=nsVal('nsProspectSearch').toLowerCase();
+  const rows=all.filter(x=>[x.firstName,x.lastName,x.companyName,x.email].some(v=>String(v||'').toLowerCase().includes(q)));
+  if (!rows.length) {el.innerHTML='<div class="empty">No matching prospects yet.</div>';return;}
+  el.innerHTML=`<table><thead><tr><th>Prospect</th><th>Company</th><th>Invitation</th><th>Follow-up</th><th></th></tr></thead><tbody>${rows.map(p=>`<tr>
+    <td><strong>${escapeHTML([p.firstName,p.lastName].filter(Boolean).join(' '))}</strong><div style="color:var(--muted);margin-top:4px">${escapeHTML(p.email)}</div></td>
+    <td>${escapeHTML(p.companyName)}</td><td>${escapeHTML(p.invitationStatus||'Not prepared')}</td>
+    <td>${escapeHTML(p.prospectStatus||'new')}</td>
+    <td><button class="btn" data-ns-id="${escapeAttribute(p.id)}">View →</button></td>
+  </tr>`).join('')}</tbody></table>`;
+  el.querySelectorAll('[data-ns-id]').forEach(b=>b.addEventListener('click',()=>{
+    state.nsSelectedProspectId=b.dataset.nsId;
+    sendToWix('NS_GET_DEMO_PROSPECT',{prospectId:b.dataset.nsId});
+  }));
+}
+function renderNexstorvenProspectDetail(data) {
+  const p=data.prospect||{};
+  state.nsSelectedProspectId=p.id;
+  const card=document.getElementById('nsProspectDetail');
+  card.style.display='block';
+  document.getElementById('nsDetailTitle').textContent=[p.firstName,p.lastName].filter(Boolean).join(' ')||'Prospect';
+  document.getElementById('nsDetailSubtitle').textContent=[p.companyName,p.jobTitle,p.email].filter(Boolean).join(' · ');
+  document.getElementById('nsFollowUpStatus').value=p.prospectStatus||'new';
+  document.getElementById('nsFollowUpNotes').value=p.followUpNotes||'';
+  const sessions=Array.isArray(data.sessions)?data.sessions:[];
+  const invites=Array.isArray(data.invitations)?data.invitations:[];
+  document.getElementById('nsDetailHistory').innerHTML=`
+    <div class="eyebrow">Invitation history</div>
+    ${invites.length?invites.map(i=>`<p style="color:var(--muted)">${escapeHTML(i.status||'pending')} · Delivery: ${escapeHTML(i.deliveryStatus||'not configured')} · Expires: ${escapeHTML(i.expiresAt||'—')}</p>`).join(''):'<p style="color:var(--muted)">No invitations yet.</p>'}
+    <div class="eyebrow" style="margin-top:20px">Demo sessions</div>
+    ${sessions.length?sessions.map(x=>`<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.08)"><strong>${escapeHTML(x.status||'Session')}</strong><p style="white-space:pre-wrap;color:var(--muted)">${escapeHTML(x.summary||'No summary recorded.')}</p></div>`).join(''):'<p style="color:var(--muted)">No demo sessions recorded yet.</p>'}`;
+}
+function saveNexstorvenFollowUp() {
+  if (!state.nsSelectedProspectId) return;
+  sendToWix('NS_UPDATE_DEMO_FOLLOWUP',{
+    prospectId:state.nsSelectedProspectId,
+    prospectStatus:nsVal('nsFollowUpStatus'),
+    followUpNotes:nsVal('nsFollowUpNotes')
+  });
+}
+window.requestNexstorvenProspects=requestNexstorvenProspects;
+window.openNexstorvenEnrollment=openNexstorvenEnrollment;
+window.submitNexstorvenEnrollment=submitNexstorvenEnrollment;
+window.saveNexstorvenFollowUp=saveNexstorvenFollowUp;
 
 </script>
 
