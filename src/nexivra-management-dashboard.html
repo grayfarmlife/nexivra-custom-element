@@ -13849,6 +13849,7 @@ function renderNexstorvenProspectDetail(data) {
   state.nsSelectedProspectId=p.id;
   const card=document.getElementById('nsProspectDetail');
   card.style.display='block';
+  card.scrollIntoView({behavior:'smooth',block:'start'});
   document.getElementById('nsDetailTitle').textContent=[p.firstName,p.lastName].filter(Boolean).join(' ')||'Prospect';
   document.getElementById('nsDetailSubtitle').textContent=[p.companyName,p.jobTitle,p.email].filter(Boolean).join(' · ');
   document.getElementById('nsFollowUpStatus').value=p.prospectStatus||'new';
