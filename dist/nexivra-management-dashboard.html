@@ -2507,6 +2507,7 @@ textarea {
               <button class="btn" onclick="sendNexstorvenInvitation(true)">Resend Test Invitation</button>
               <span style="color:var(--muted);font-size:12px">Only ken@nexstorven.com is allowed during testing.</span>
             </div>
+            <div id="nsEmailDiagnostic" role="status" aria-live="polite" style="display:none;white-space:pre-wrap;padding:12px;margin:0 0 16px;border:1px solid #F59E0B;border-radius:8px;color:#FDE68A;background:#2B2115"></div>
             <div id="nsDetailHistory"></div>
             <div class="form-grid" style="margin-top:16px">
               <div><label>Follow-up status</label><select id="nsFollowUpStatus">
@@ -4381,16 +4382,20 @@ function handleWixMessage(
         requestNexstorvenProspects();
       } else showToast('Enrollment failed: ' + (payload?.error || 'Unknown error'), 'error');
       break;
-    case 'NS_DEMO_INVITATION_RESULT':
-      if (payload?.ok) {
-        showToast('Wix accepted the invitation email request.', 'success');
-        requestNexstorvenProspects();
-        if (state.nsSelectedProspectId)
-          sendToWix('NS_GET_DEMO_PROSPECT',{prospectId:state.nsSelectedProspectId});
-      } else {
-        showToast('Invitation not sent: ' + (payload?.error || 'Unknown error'), 'error');
-      }
+    case 'NS_DEMO_INVITATION_RESULT': {
+      const panel = document.getElementById('nsEmailDiagnostic');
+      const msg = payload?.ok
+        ? 'Wix accepted the email request. Check the inbox and invitation history.'
+        : 'NEXSTORVEN invitation failed.\nStage: ' + String(payload?.stage || 'unknown') +
+          '\nCode: ' + String(payload?.diagnosticCode || payload?.error || 'unknown') +
+          '\nNo invitation email is confirmed sent.';
+      if (panel) { panel.textContent = msg; panel.style.display = 'block'; }
+      showToast(payload?.ok ? 'Email request accepted by Wix.' : 'Invitation failed. See diagnostic panel.', payload?.ok ? 'success' : 'error');
+      requestNexstorvenProspects();
+      if (state.nsSelectedProspectId)
+        sendToWix('NS_GET_DEMO_PROSPECT',{prospectId:state.nsSelectedProspectId});
       break;
+    }
     case 'NS_DEMO_FOLLOWUP_RESULT':
       if (payload?.ok) {
         showToast('Follow-up saved.', 'success');
