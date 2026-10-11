@@ -2502,6 +2502,11 @@ textarea {
         <div class="card" id="nsProspectDetail" style="display:none;margin-top:18px">
           <div class="card-header"><div><div class="card-title" id="nsDetailTitle">Prospect</div><div class="card-subtitle" id="nsDetailSubtitle"></div></div></div>
           <div class="card-body">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
+              <button class="btn btn-primary" onclick="sendNexstorvenInvitation(false)">Send Test Invitation</button>
+              <button class="btn" onclick="sendNexstorvenInvitation(true)">Resend Test Invitation</button>
+              <span style="color:var(--muted);font-size:12px">Only ken@nexstorven.com is allowed during testing.</span>
+            </div>
             <div id="nsDetailHistory"></div>
             <div class="form-grid" style="margin-top:16px">
               <div><label>Follow-up status</label><select id="nsFollowUpStatus">
@@ -4375,6 +4380,16 @@ function handleWixMessage(
         showToast('Prospect saved. Email not sent; delivery is not configured.', 'success');
         requestNexstorvenProspects();
       } else showToast('Enrollment failed: ' + (payload?.error || 'Unknown error'), 'error');
+      break;
+    case 'NS_DEMO_INVITATION_RESULT':
+      if (payload?.ok) {
+        showToast('Wix accepted the invitation email request.', 'success');
+        requestNexstorvenProspects();
+        if (state.nsSelectedProspectId)
+          sendToWix('NS_GET_DEMO_PROSPECT',{prospectId:state.nsSelectedProspectId});
+      } else {
+        showToast('Invitation not sent: ' + (payload?.error || 'Unknown error'), 'error');
+      }
       break;
     case 'NS_DEMO_FOLLOWUP_RESULT':
       if (payload?.ok) {
@@ -13874,6 +13889,17 @@ window.requestNexstorvenProspects=requestNexstorvenProspects;
 window.openNexstorvenEnrollment=openNexstorvenEnrollment;
 window.submitNexstorvenEnrollment=submitNexstorvenEnrollment;
 window.saveNexstorvenFollowUp=saveNexstorvenFollowUp;
+function sendNexstorvenInvitation(resend) {
+  if (!state.nsSelectedProspectId || !state.access?.isPlatformAdmin) return;
+  const p=(state.nsProspects||[]).find(x=>x.id===state.nsSelectedProspectId);
+  if (!p || String(p.email||'').toLowerCase()!=='ken@nexstorven.com') {
+    showToast('Test invitations are limited to ken@nexstorven.com.', 'error');
+    return;
+  }
+  if (!confirm('Send a NEXSTORVEN test invitation to '+p.email+'?')) return;
+  sendToWix('NS_SEND_DEMO_INVITATION',{prospectId:p.id,resend:!!resend});
+}
+window.sendNexstorvenInvitation=sendNexstorvenInvitation;
 
 </script>
 
