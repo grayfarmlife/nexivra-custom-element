@@ -2465,13 +2465,13 @@ textarea {
           <div class="section-heading">
             <div class="eyebrow">SALES INTELLIGENCE</div>
             <h1>Demo Users</h1>
-            <p>Prospects who experienced the Experience NEXSTORVEN course. Select a user to review their conversation intelligence and suggested follow-up.</p>
+            <p>Standalone demo registrations and sessions, alongside legacy course demos. Select a record to review saved business summaries, activity, and follow-up preferences.</p>
           </div>
           <button class="btn" onclick="requestDemoUsers()">Refresh Prospects</button>
         </div>
         <div class="metric-grid" id="demoUserMetrics"></div>
         <div class="card">
-          <div class="card-header"><div><div class="card-title">Prospect Directory</div><div class="card-subtitle">Platform administrator access only · Experience NEXSTORVEN</div></div></div>
+          <div class="card-header"><div><div class="card-title">Prospect Directory</div><div class="card-subtitle">Platform administrator access only · Standalone and legacy demos</div></div></div>
           <div class="card-body"><input id="demoUserSearch" type="search" placeholder="Search by name, company, email, or role" aria-label="Search demo users"></div>
           <div class="table-wrap" id="demoUsersContainer"><div class="empty">Open Demo Users to load prospects.</div></div>
         </div>
@@ -4407,6 +4407,7 @@ function handleWixMessage(
     case 'DEMO_USERS_DATA':
       state.demoUsers = Array.isArray(payload?.users) ? payload.users : [];
       state.demoUsersStatus = payload?.ok === false ? 'error' : 'ready';
+      state.demoUsersPartial = payload?.partial === true;
       renderDemoUsers();
       break;
     case 'DEMO_USERS_ERROR':
@@ -13762,16 +13763,16 @@ function renderDemoUsers() {
   const query = (document.getElementById('demoUserSearch')?.value || '').toLowerCase().trim();
   const filtered = all.filter(u => [u.name,u.company,u.email,u.role].some(v => String(v||'').toLowerCase().includes(query)));
   metrics.innerHTML = [
-    ['Prospects', all.length, 'Unique demo users'],
-    ['Completed', all.filter(x=>x.status==='completed').length, 'Completed demo experiences'],
-    ['Incomplete', all.filter(x=>x.status!=='completed').length, 'Interrupted or unfinished'],
+    ['Demo records', all.length, 'Registrations and legacy course users'],
+    ['Completed', all.filter(x=>x.completedSessionCount>0 || x.status==='completed').length, 'Records with completed demos'],
+    ['Unfinished', all.filter(x=>x.lastDemoAt && !['completed','invited','registered','access_granted'].includes(x.status)).length, 'Started, not completed'],
     ['Follow-up', all.filter(x=>x.followUpRecommended===true).length, 'Suggested follow-ups']
   ].map(([label,value,sub])=>`<div class="metric-card"><div class="metric-label">${label}</div><div class="metric-value">${value}</div><div class="metric-sub">${sub}</div></div>`).join('');
   if (state.demoUsersStatus === 'loading') container.innerHTML = '<div class="empty">Loading demo users…</div>';
   else if (state.demoUsersStatus === 'error') container.innerHTML = '<div class="empty">Demo users could not be loaded. Check the Wix backend integration.</div>';
-  else if (!filtered.length) container.innerHTML = `<div class="empty">${query?'No matching prospects.':'No demo records available yet. Records appear after the demo capture service is connected.'}</div>`;
+  else if (!filtered.length) container.innerHTML = `<div class="empty">${query?'No matching prospects.':'No demo registrations or sessions are available yet.'}</div>`;
   else {
-    container.innerHTML = `<table><thead><tr><th>Prospect</th><th>Company</th><th>Status</th><th>Last Demo</th><th></th></tr></thead><tbody>${filtered.map(u=>`<tr><td><strong>${demoText(u.name)}</strong><div style="color:var(--muted);margin-top:4px">${demoText(u.email)}</div></td><td>${demoText(u.company)}</td><td>${statusBadge(u.status||'unknown')}</td><td>${demoDate(u.lastDemoAt)}</td><td><button class="btn" data-demo-user-id="${escapeAttribute(u.id)}">View Summary →</button></td></tr>`).join('')}</tbody></table>`;
+    container.innerHTML = `<table><thead><tr><th>Prospect</th><th>Company</th><th>Status</th><th>Last Demo</th><th></th></tr></thead><tbody>${filtered.map(u=>`<tr><td><strong>${demoText(u.name)}</strong><div style="color:var(--muted);margin-top:4px">${demoText(u.email)}</div><div style="color:var(--muted);font-size:11px;margin-top:5px">${demoText(u.source||'Legacy course demo')}</div></td><td>${demoText(u.company)}</td><td>${statusBadge(u.status||'unknown')}</td><td>${demoDate(u.lastDemoAt)}</td><td><button class="btn" data-demo-user-id="${escapeAttribute(u.id)}">View Summary →</button></td></tr>`).join('')}</tbody></table>`;
     container.querySelectorAll('[data-demo-user-id]').forEach(button=>button.addEventListener('click',()=>{
       const id=button.getAttribute('data-demo-user-id');
       state.selectedDemoUserId=id;
@@ -13779,6 +13780,7 @@ function renderDemoUsers() {
       sendToWix('GET_DEMO_USER_DETAIL',{userId:id});
     }));
   }
+  if (state.demoUsersPartial) container.insertAdjacentHTML('afterbegin','<p role="status" style="color:#ffc857;padding:12px">One demo source could not be loaded. Some records may be missing; try Refresh Prospects.</p>');
   renderDemoUserDetail();
 }
 function renderDemoUserDetail() {
@@ -13791,14 +13793,22 @@ function renderDemoUserDetail() {
   document.getElementById('demoUserDetailSubtitle').textContent=[u.company,u.role,u.email].filter(Boolean).join(' · ');
   const sessions=Array.isArray(u.sessions)?u.sessions:[];
   document.getElementById('demoUserDetailBody').innerHTML = [
-    demoField('Conversation summary',u.summary),
+    demoField('Demo source',u.source||'Legacy course demo'),
+    demoField('Industry',u.industry),
+    demoField('Number of employees',u.employeeCount),
+    demoField('Training needs from request form',u.registrationChallenge),
+    demoField('Sessions recorded',u.sessionCount ?? (Array.isArray(u.sessions)?u.sessions.length:0)),
+    demoField('Business summary status',u.summaryStatus),
+    demoField('Conversation summary',u.summary || (u.summaryStatus==='declined'?'The visitor declined saving a business summary.':u.summaryStatus==='no_session'?'No demo session has started.':'No saved business summary for the latest session.')),
     demoField('Current training approach',u.trainingApproach),
     demoField('Challenges identified',u.challenges),
+    demoField('Desired outcome',u.desiredOutcome),
     demoField('Capabilities demonstrated',u.capabilitiesDemonstrated),
+    demoField('Follow-up preference',u.followUpStatus),
     demoField('Potential NEXSTORVEN opportunities',u.opportunities),
     demoField('Recommended follow-up',u.recommendedFollowUp),
     demoField('Last demo',demoDate(u.lastDemoAt)),
-    `<div style="margin-top:20px"><div class="eyebrow">SESSION HISTORY</div>${sessions.length?sessions.map(x=>`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)">${demoDate(x.startedAt)} · ${demoText(x.status)}${x.summary?`<div style="margin-top:7px;color:var(--muted)">${demoText(x.summary)}</div>`:''}</div>`).join(''):'<p style="color:var(--muted)">No session history provided.</p>'}</div>`
+    `<div style="margin-top:20px"><div class="eyebrow">SESSION HISTORY</div>${sessions.length?sessions.map(x=>`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)">${demoDate(x.startedAt)} · ${demoText(x.status)}${x.phase?' · '+demoText(x.phase):''}${x.summaryStatus?' · Summary: '+demoText(x.summaryStatus):''}${x.summary?`<div style="margin-top:7px;color:var(--muted)">${demoText(x.summary)}</div>`:''}</div>`).join(''):'<p style="color:var(--muted)">No session history provided.</p>'}</div>`
   ].join('');
   document.getElementById('demoUserCopyButton').onclick=()=>{
     const report=[`NEXSTORVEN Demo Intelligence — ${u.name||'Unnamed prospect'}`,`Company: ${u.company||'Not provided'}`,`Role: ${u.role||'Not provided'}`,`Email: ${u.email||'Not provided'}`,`Summary: ${u.summary||'Not provided'}`,`Training approach: ${u.trainingApproach||'Not provided'}`,`Challenges: ${Array.isArray(u.challenges)?u.challenges.join('; '):u.challenges||'Not provided'}`,`Capabilities: ${Array.isArray(u.capabilitiesDemonstrated)?u.capabilitiesDemonstrated.join('; '):u.capabilitiesDemonstrated||'Not provided'}`,`Opportunities: ${Array.isArray(u.opportunities)?u.opportunities.join('; '):u.opportunities||'Not provided'}`,`Follow-up: ${u.recommendedFollowUp||'Not provided'}`].join('\n');
