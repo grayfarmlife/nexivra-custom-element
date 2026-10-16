@@ -28,7 +28,7 @@ var NexivraHome = class extends HTMLElement {
         if (result.requestId !== this.requestId) return;
         clearTimeout(this.requestTimer);
         const status = this.shadowRoot.getElementById("demo-request-status");
-        status.textContent = result.ok ? "Thank you. Your request is received. Our team will send your personal invitation by email." : "We could not submit your request. Please try again.";
+        status.textContent = result.ok ? result.status === "already_sent" ? "Your invitation was sent recently. Please check your inbox and spam folder for your personal demo link." : "Your invitation is on its way. Please check your inbox and spam folder for your personal demo link." : result.error === "PLEASE_WAIT" ? "Please wait 15 minutes before requesting another invitation. If you just submitted, check your inbox and spam folder." : result.error === "DAILY_LIMIT" ? "You have reached today\u2019s invitation limit. Please use your latest emailed link or try again tomorrow." : "We could not send your invitation. Please try again later or contact ken@nexstorven.com.";
         this.shadowRoot.getElementById("demo-submit").disabled = false;
         this.submitting = false;
         if (result.ok) this.shadowRoot.getElementById("demo-request-form").reset();
@@ -47,7 +47,7 @@ var NexivraHome = class extends HTMLElement {
         return;
       }
       const data = Object.fromEntries(new FormData(form));
-      delete data.consent;
+      data.consent = data.consent === "on";
       this.submitting = true;
       this.requestId = String(Date.now()) + "-" + Math.random().toString(36).slice(2);
       this.shadowRoot.getElementById("demo-submit").disabled = true;
@@ -125,7 +125,7 @@ var NexivraHome = class extends HTMLElement {
 <p>Tell us a little about your company. Elenora will use that context to guide a personal demonstration built around your training needs.</p>
 <ul><li><strong>Learn through conversation.</strong> Explore a practical teaching experience with Elenora.</li><li><strong>Practice without an audience.</strong> Meet Matthew in a realistic role-play when it fits your needs.</li><li><strong>Explore everyday support.</strong> See Hannah demonstrate an AI assistant, and ask about planned support for company knowledge and course creation.</li></ul>
 <p>Up to 12 minutes \xB7 Speak or type \xB7 No camera needed</p>
-<p>This form requests an invitation. Your personal demo link will arrive separately by email.</p>
+<p>Submit your request and we\u2019ll automatically email your personal demo link.</p>
 </div><form id="demo-request-form" class="request-form">
 <label>First name *<input name="firstName" autocomplete="given-name" maxlength="80" required></label>
 <label>Last name *<input name="lastName" autocomplete="family-name" maxlength="80" required></label>
