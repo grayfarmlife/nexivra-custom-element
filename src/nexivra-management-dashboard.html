@@ -13765,12 +13765,13 @@ function renderDemoUsers() {
   const prelaunchOnly=document.getElementById('demoPrelaunchOnly')?.checked===true;
   const seen=new Set();
   const filtered = all.filter(u => {
+    if (![u.name,u.company,u.email,u.role].some(v => String(v||'').toLowerCase().includes(query))) return false;
     if (prelaunchOnly) {
       const email=String(u.email||'').trim().toLowerCase();
       if (u.prelaunchStatus!=='joined' || !email || seen.has(email)) return false;
       seen.add(email);
     }
-    return [u.name,u.company,u.email,u.role].some(v => String(v||'').toLowerCase().includes(query));
+    return true;
   });
   metrics.innerHTML = [
     ['Demo records', all.length, 'Registrations and legacy course users'],
@@ -13781,7 +13782,7 @@ function renderDemoUsers() {
   ].map(([label,value,sub])=>`<div class="metric-card"><div class="metric-label">${label}</div><div class="metric-value">${value}</div><div class="metric-sub">${sub}</div></div>`).join('');
   if (state.demoUsersStatus === 'loading') container.innerHTML = '<div class="empty">Loading demo users…</div>';
   else if (state.demoUsersStatus === 'error') container.innerHTML = '<div class="empty">Demo users could not be loaded. Check the Wix backend integration.</div>';
-  else if (!filtered.length) container.innerHTML = `<div class="empty">${query?'No matching prospects.':'No demo registrations or sessions are available yet.'}</div>`;
+  else if (!filtered.length) container.innerHTML = `<div class="empty">${query?'No matching prospects.':prelaunchOnly?'No one has joined the pre-launch list yet.':'No demo registrations or sessions are available yet.'}</div>`;
   else {
     container.innerHTML = `<table><thead><tr><th>Prospect</th><th>Company</th><th>Status</th><th>Pre-launch</th><th>Last Demo</th><th></th></tr></thead><tbody>${filtered.map(u=>`<tr><td><strong>${demoText(u.name)}</strong><div style="color:var(--muted);margin-top:4px">${demoText(u.email)}</div><div style="color:var(--muted);font-size:11px;margin-top:5px">${demoText(u.source||'Legacy course demo')}</div></td><td>${demoText(u.company)}</td><td>${statusBadge(u.status||'unknown')}</td><td>${demoText(u.prelaunchStatus==='joined'?'Joined':u.prelaunchStatus==='declined'?'Declined':'Not joined')}</td><td>${demoDate(u.lastDemoAt)}</td><td><button class="btn" data-demo-user-id="${escapeAttribute(u.id)}">View Summary →</button></td></tr>`).join('')}</tbody></table>`;
     container.querySelectorAll('[data-demo-user-id]').forEach(button=>button.addEventListener('click',()=>{
