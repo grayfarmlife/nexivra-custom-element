@@ -43,7 +43,50 @@ class NexivraHome extends HTMLElement {
   }
 
 
+  static get observedAttributes() { return ['demo-request-result', 'demo-bridge-ready']; }
+  attributeChangedCallback(name, oldValue, newValue) {
+    if (name === 'demo-request-result' && newValue && this.shadowRoot) {
+      try {
+        const result = JSON.parse(newValue);
+        if (result.requestId !== this.requestId) return;
+        clearTimeout(this.requestTimer);
+        const status = this.shadowRoot.getElementById('demo-request-status');
+        status.textContent = result.ok
+          ? 'Thank you. Your request is received. Our team will send your personal invitation by email.'
+          : 'We could not submit your request. Please try again.';
+        this.shadowRoot.getElementById('demo-submit').disabled = false;
+        this.submitting = false;
+        if (result.ok) this.shadowRoot.getElementById('demo-request-form').reset();
+      } catch (_) {}
+    }
+  }
   bindEvents() {
+    const form = this.shadowRoot.getElementById('demo-request-form');
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      if (this.submitting || !form.reportValidity()) return;
+      const status = this.shadowRoot.getElementById('demo-request-status');
+      if (this.getAttribute('demo-bridge-ready') !== 'true') {
+        status.textContent = 'The request form is still connecting. Please try again shortly.';
+        return;
+      }
+      const data = Object.fromEntries(new FormData(form));
+      delete data.consent;
+      this.submitting = true;
+      this.requestId = String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+      this.shadowRoot.getElementById('demo-submit').disabled = true;
+      status.textContent = 'Submitting your request…';
+      this.dispatchEvent(new CustomEvent('nexstorven-demo-request', {
+        detail: {requestId:this.requestId, prospect:data}
+      }));
+      this.requestTimer = setTimeout(() => {
+        if (!this.submitting) return;
+        status.textContent = 'The request is taking longer than expected. Please wait before trying again.';
+        this.shadowRoot.getElementById('demo-submit').disabled = false;
+        this.submitting = false;
+      }, 30000);
+    });
+
 
     this.shadowRoot
       .querySelectorAll("[data-scroll]")
@@ -991,6 +1034,13 @@ a {
 
 }
 
+
+.header{min-height:100px;padding-top:12px;padding-bottom:12px}.header-logo{width:190px;max-width:24vw}.demo-request{scroll-margin-top:170px}
+/* D2.8: an actual destination for every Request a Demo and Contact button. */
+.demo-request{padding:84px max(6vw,24px);background:linear-gradient(125deg,#061727,#020711);border-top:1px solid #23445f;scroll-margin-top:170px}
+.request-grid{max-width:1180px;margin:auto;display:grid;grid-template-columns:1fr 1.1fr;gap:60px}.request-copy h2{font-size:clamp(30px,4vw,48px);line-height:1.12;margin:18px 0}.request-copy p,.request-copy li{color:#b8c8d8;line-height:1.75}.request-copy li{margin:14px 0}.request-copy strong{color:#00c9fa}.request-form{padding:30px;background:#0b1c2c;border:1px solid #29475f;border-radius:18px;display:grid;grid-template-columns:1fr 1fr;gap:18px}.request-form label{display:flex;flex-direction:column;gap:7px;font-size:13px;color:#dce9f2}.request-form input,.request-form select,.request-form textarea{width:100%;padding:12px;border-radius:8px;border:1px solid #39546a;background:#05111f;color:#fff;font:inherit;box-sizing:border-box}.request-form .wide{grid-column:1/-1}.request-form .consent{flex-direction:row;align-items:flex-start;line-height:1.6}.request-form .consent input{width:auto;margin-top:5px}.request-form button{padding:15px;background:#00c9fa;color:#001b2b;border:0;border-radius:8px;font-weight:700;cursor:pointer}.request-form button:disabled{opacity:.6;cursor:wait}.request-form input:focus-visible,.request-form textarea:focus-visible,.request-form select:focus-visible,.request-form button:focus-visible{outline:3px solid #ff9d18;outline-offset:3px}.request-form .trap{position:absolute;left:-10000px}.request-form p{font-size:13px;line-height:1.6;color:#c1d2df;margin:0}
+@media(max-width:760px){.request-grid{grid-template-columns:1fr;gap:24px}.request-form{grid-template-columns:1fr;padding:20px}.request-form label{grid-column:1/-1}.demo-request{padding:50px 22px}}
+
 </style>
 
 
@@ -1717,7 +1767,7 @@ a {
 ===================================================== -->
 
 <section
-  id="contact"
+  id="demo-overview"
   class="section"
 >
 
@@ -1775,6 +1825,30 @@ a {
 <!-- =====================================================
      FOOTER
 ===================================================== -->
+
+
+<section id="contact" class="demo-request" aria-labelledby="request-title">
+<div class="request-grid"><div class="request-copy">
+<p class="eyebrow">YOUR COMPANY. YOUR PEOPLE. YOUR DEMONSTRATION.</p>
+<h2 id="request-title">SEE HOW NEXSTORVEN COULD HELP <span class="blue">YOUR TEAM.</span></h2>
+<p>Tell us a little about your company. Elenora will use that context to guide a personal demonstration built around your training needs.</p>
+<ul><li><strong>Learn through conversation.</strong> Explore a practical teaching experience with Elenora.</li><li><strong>Practise without an audience.</strong> Meet Matthew in a realistic role-play when it fits your needs.</li><li><strong>Explore everyday support.</strong> See Hannah demonstrate an AI assistant, and ask about planned support for company knowledge and course creation.</li></ul>
+<p>Up to 12 minutes · Speak or type · No camera needed</p>
+<p>This form requests an invitation. Your personal demo link will arrive separately by email.</p>
+</div><form id="demo-request-form" class="request-form">
+<label>First name *<input name="firstName" autocomplete="given-name" maxlength="80" required></label>
+<label>Last name *<input name="lastName" autocomplete="family-name" maxlength="80" required></label>
+<label class="wide">Email address *<input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+<label class="wide">Company name *<input name="companyName" autocomplete="organization" maxlength="160" required></label>
+<label>Your role<input name="jobTitle" autocomplete="organization-title" maxlength="120"></label>
+<label>Industry<select name="industry"><option value="other">Select your industry</option><option>Hospitality</option><option>Healthcare</option><option>Financial services</option><option>Senior living</option><option>Professional services</option><option>Retail</option><option>Multi-location organization</option><option value="other">Other</option></select></label>
+<label class="wide">Number of employees<select name="employeeCount"><option value="">Select a range</option><option>1–25</option><option>26–100</option><option>101–500</option><option>501–1000</option><option>1000+</option></select></label>
+<label class="wide">What would you most like to improve?<textarea name="trainingChallenge" rows="4" maxlength="2000" placeholder="For example: engaging training, confident conversations, consistent onboarding, or finding company information."></textarea></label>
+<label class="trap" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+<label class="wide consent"><input type="checkbox" name="consent" required><span>Please contact me by email about my requested NEXSTORVEN demonstration.</span></label>
+<button id="demo-submit" class="wide" type="submit">Request My Personal Demo →</button>
+<p id="demo-request-status" class="wide" role="status" aria-live="polite"></p>
+</form></div></section>
 
 <footer class="footer">
 
