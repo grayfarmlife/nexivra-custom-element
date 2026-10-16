@@ -1604,6 +1604,9 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* D3.5 communications */
+.comm-layout{display:grid;grid-template-columns:minmax(230px,.65fr) minmax(0,1.35fr);gap:24px;align-items:start}.comm-workflow{display:flex;flex-wrap:wrap;gap:24px;margin:26px 0 16px;font-size:12px;letter-spacing:1px;color:var(--cyan)}.comm-status{padding:14px 18px;border:1px solid var(--border);border-radius:12px;background:rgba(0,200,255,.04);line-height:1.6}.comm-editor{display:grid;gap:18px}.comm-editor label{display:grid;gap:8px;font-size:13px;color:#b8cede}.comm-editor input,.comm-editor textarea,.comm-editor select{width:100%;box-sizing:border-box}.comm-editor textarea{min-height:220px;resize:vertical;line-height:1.7}.comm-actions,.comm-test{display:flex;flex-wrap:wrap;gap:12px;align-items:end}.comm-test label{flex:1;min-width:200px}.comm-review{padding:20px;border:1px solid var(--cyan);border-radius:12px;background:rgba(0,200,255,.06)}.comm-review[hidden]{display:none}.comm-approval{display:flex!important;grid-template-columns:auto 1fr;align-items:center;margin:18px 0;line-height:1.6}.comm-approval input{width:auto}.comm-draft{display:grid;gap:8px;width:100%;padding:18px;margin-bottom:12px;text-align:left;cursor:pointer;color:var(--text);background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:12px}.comm-draft.selected{border-color:var(--cyan);background:rgba(0,200,255,.07)}.comm-draft span{color:var(--muted);font-size:12px;overflow-wrap:anywhere}.comm-delivery{font-size:13px;line-height:1.7;color:var(--muted)}.comm-editor details{border-top:1px solid var(--border);padding-top:16px}.comm-editor summary{cursor:pointer;color:var(--muted);margin-bottom:16px}.comm-editor details label{margin-top:12px}@media(max-width:1000px){.comm-layout{grid-template-columns:1fr}}
 </style>
 </head>
 
@@ -1701,6 +1704,7 @@ textarea {
         <span class="nav-icon">✉</span><span>Demo Prospects</span>
       </button>
 
+<button class="nav-button" data-section="prelaunch-emails" id="prelaunchEmailsNav" style="display:none"><span class="nav-icon">◷</span><span>Pre-Launch Emails</span></button>
       <button class="nav-button" data-section="demo">
         <span class="nav-icon">✦</span>
         <span>Demo Mode</span>
@@ -2459,6 +2463,32 @@ textarea {
         </div>
 
       </section>
+
+<section class="section" id="section-prelaunch-emails">
+  <div class="section-header"><div class="section-heading"><div class="eyebrow">KEEP THE CONVERSATION GOING</div><h1>Pre-Launch Communications</h1><p>Create each update together. Save the draft here, preview it, send yourself a test, then approve the finished message for the confirmed pre-launch list.</p></div><button class="btn" id="commRefresh">Refresh</button></div>
+  <div class="metrics-grid" id="commMetrics"></div>
+  <div class="comm-workflow"><span>01 / Create together</span><span>02 / Preview & test</span><span>03 / Approve & send</span></div>
+  <p id="commStatus" role="status" aria-live="polite" class="comm-status">Loading communications…</p>
+  <div class="comm-layout">
+    <div class="card"><div class="card-header"><div><h2>Drafts & history</h2><p>Every update, in one place.</p></div><button class="btn" id="commNew">+ New draft</button></div><div class="card-body" id="commDrafts"><div class="empty">No drafts yet. We can create your first update together.</div></div></div>
+    <div class="card"><div class="card-header"><div><h2 id="commEditorTitle">Create an update</h2><p id="commEditorMeta">Nothing is sent when you save a draft.</p></div><button class="btn" id="commDuplicate">Duplicate</button></div>
+      <div class="card-body comm-editor">
+        <label>Draft name<input id="commTitle" maxlength="120" placeholder="e.g. October development update"></label>
+        <label>Email subject<input id="commSubject" maxlength="180" placeholder="The subject your subscribers will see"></label>
+        <label>Inbox preview text<input id="commPreheader" maxlength="200" placeholder="A short reason to open this update"></label>
+        <label>Headline<input id="commHeading" maxlength="180" placeholder="Your update starts here"></label>
+        <label>Message<textarea id="commBody" rows="12" maxlength="20000" placeholder="We’ll create the message together. Separate paragraphs with a blank line."></textarea></label>
+        <details><summary>Optional image & button</summary><label>Image URL<input id="commImageUrl" type="url" placeholder="https://…"></label><label>Button text<input id="commCtaLabel" maxlength="80" placeholder="e.g. Explore NEXSTORVEN"></label><label>Button destination<input id="commCtaUrl" type="url" placeholder="https://…"></label></details>
+        <div class="comm-actions"><button class="btn primary" id="commSave">Save draft</button><button class="btn" id="commPreview">Build email preview</button></div>
+        <div class="comm-test"><label>Send a test to<select id="commTestEmail"><option>ken@nexstorven.com</option><option>ken@legacy-edge-partners.com</option></select></label><button class="btn" id="commTest">Send test email</button></div>
+        <div class="comm-actions"><button class="btn" id="commReview">Review recipient count</button><button class="btn" id="commDelivery">Refresh delivery status</button></div>
+        <div id="commReviewBox" class="comm-review" hidden><div class="eyebrow">FINAL REVIEW</div><p id="commReviewText"></p><label class="comm-approval"><input id="commApproval" type="checkbox"> I approve this tested message and its recipient count.</label><button class="btn primary" id="commSend">Approve & send</button></div>
+        <div id="commDeliveryResult" class="comm-delivery"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:24px"><div class="card-header"><div><h2>Email preview</h2><p id="commPreviewNote">A draft preview appears as you write. Build the email preview to see Wix’s rendered version, including its email-preferences footer.</p></div></div><div class="card-body" style="padding:0"><iframe id="commPreviewFrame" title="Pre-launch email preview" sandbox="" referrerpolicy="no-referrer" style="width:100%;height:760px;border:0;background:#020711"></iframe></div></div>
+</section>
 
       <section class="section" id="section-demo-users">
         <div class="section-header">
@@ -3892,6 +3922,7 @@ window.addEventListener(
   () => {
 
     setupNavigation();
+    setupCommunications();
     document.getElementById("demoUserSearch")?.addEventListener("input", renderDemoUsers);
     document.getElementById("demoPrelaunchOnly")?.addEventListener("change", renderDemoUsers);
     document.getElementById("nsProspectSearch")?.addEventListener("input", renderNexstorvenProspects);
@@ -4364,6 +4395,9 @@ function handleWixMessage(
 
       break;
 
+    case 'NS_PRELAUNCH_COMMUNICATION_RESULT':
+      commResult(payload);
+      break;
     case 'NS_DEMO_PROSPECTS_DATA':
       state.nsProspectsStatus = payload?.ok ? 'ready' : 'error';
       state.nsProspects = Array.isArray(payload?.prospects) ? payload.prospects : [];
@@ -8411,6 +8445,8 @@ function renderDashboard(
     applyAccessPolicy();
     const demoNav = document.getElementById("demoUsersNav");
     if (demoNav) demoNav.style.display = state.access.isPlatformAdmin && !state.access.isCompanyAdmin ? "" : "none";
+    const commNav=document.getElementById('prelaunchEmailsNav');
+    if(commNav)commNav.style.display=state.access.isPlatformAdmin&&!state.access.isCompanyAdmin?'':'none';
     const nsNav = document.getElementById('demoProspectsNav');
     if (nsNav) nsNav.style.display = state.access.isPlatformAdmin && !state.access.isCompanyAdmin ? '' : 'none';
 
@@ -13042,6 +13078,7 @@ function goToSection(
     demo:
       'Demo Mode',
 
+    'prelaunch-emails': 'Pre-Launch Communications',
     'demo-users': 'Demo Users',
     'demo-prospects': 'Demo Prospects',
 
@@ -13055,6 +13092,10 @@ function goToSection(
     'NEXSTORVEN'
   );
 
+  if(section==='prelaunch-emails'){
+    if(!state.access?.isPlatformAdmin||state.access?.isCompanyAdmin){goToSection('overview');return;}
+    requestCommunications();
+  }
   if (section === 'demo-prospects') {
     if (!state.access?.isPlatformAdmin || state.access?.isCompanyAdmin) {
       goToSection('overview'); return;
@@ -13932,6 +13973,45 @@ function sendNexstorvenInvitation(resend) {
   sendToWix('NS_SEND_DEMO_INVITATION',{prospectId:p.id,resend:!!resend});
 }
 window.sendNexstorvenInvitation=sendNexstorvenInvitation;
+
+// D3.5 — Private communications workspace. All authorization and recipient selection run server-side.
+const commState={drafts:[],selected:null,busy:false,dirty:false,review:null,audience:null,account:null};
+const commPending=new Map();let commSequence=0;
+const commFields=['title','subject','preheader','heading','body','imageUrl','ctaLabel','ctaUrl'];
+const commId=k=>'comm'+k[0].toUpperCase()+k.slice(1);
+const commEl=id=>document.getElementById(id);
+const commLocked=()=>['sending','submitted','send_uncertain','sent'].includes(commState.selected?.status);
+function commContent(){return Object.fromEntries(commFields.map(k=>[k,commEl(commId(k)).value.trim()]));}
+function commMessage(message,error=false){commEl('commStatus').textContent=message;commEl('commStatus').style.color=error?'#ffb5a6':'#a9c8d9';}
+function commError(code){return ({CONTENT_REQUIRED:'Add a draft name, subject, headline, and message.',HTTPS_URL_REQUIRED:'Use an https:// URL for images and buttons.',BUTTON_REQUIRED:'Add both the button text and its destination.',DRAFT_CHANGED:'This draft changed elsewhere. Refresh before editing it.',ALREADY_SUBMITTED:'This message is already submitted. Duplicate it to create a new update.',TEST_REQUIRED:'Send a test of the current draft before reviewing a subscriber send.',NO_RECIPIENTS:'There are no eligible pre-launch subscribers to send to yet.',CONTACT_REVIEW_REQUIRED:'Some opted-in addresses need a contact record review before sending.',EMAIL_SETUP_REQUIRED:'Wix email setup needs attention before sending.',EMAIL_QUOTA_LOW:'The current Wix email allowance is too low for this recipient count.',APPROVAL_REQUIRED:'Review this tested draft and approve the current recipient count.',AUDIENCE_CHANGED:'The subscriber list changed. Review the new count before sending.',SEND_UNCERTAIN:'The send outcome needs review. Refresh delivery status; do not send it again.',OPERATION_ALREADY_REQUESTED:'That operation has already started. Refresh its status before retrying.',PLEASE_WAIT:'Please wait one minute before another test.',ACCESS_DENIED:'Only a platform administrator can use this workspace.',NOT_AUTHENTICATED:'Please sign in again.'})[code]||'The request could not be completed. Your draft has not been sent. Refresh to check its status.';}
+function commRequest(action,payload={}){const requestId='comm-'+Date.now()+'-'+(++commSequence);return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{commPending.delete(requestId);reject(Error('REQUEST_TIMEOUT'));},60000);commPending.set(requestId,{resolve,reject,timer});sendToWix('NS_PRELAUNCH_COMMUNICATION',{...payload,action,requestId});});}
+function commResult(payload){const pending=commPending.get(payload?.requestId);if(!pending)return;clearTimeout(pending.timer);commPending.delete(payload.requestId);pending.resolve(payload);}
+function commControls(){const saved=!!commState.selected?.id;const locked=commLocked();for(const k of commFields)commEl(commId(k)).disabled=commState.busy||locked;
+for(const id of ['commNew','commDuplicate','commRefresh','commSave','commPreview','commTest','commReview','commDelivery','commSend'])commEl(id).disabled=commState.busy;
+commEl('commSave').disabled=commState.busy||locked;
+for(const id of ['commPreview','commTest','commReview'])commEl(id).disabled=commState.busy||!saved||commState.dirty||locked;
+commEl('commReview').disabled=commEl('commReview').disabled||!commState.selected?.testedAt;
+commEl('commDelivery').disabled=commState.busy||!commState.selected?.providerId;
+commEl('commSend').disabled=commState.busy||!commState.review||!commEl('commApproval').checked||commState.dirty||locked;
+commEl('commReviewBox').hidden=!commState.review;}
+function commMetrics(){const a=commState.audience,acc=commState.account;commEl('commMetrics').innerHTML=[['Pre-launch opt-ins',a?.joined??'—','Unique confirmed email addresses'],['Eligible for updates',a?.eligible??'—','Unsubscribes and delivery blocks excluded'],['Drafts',commState.drafts.filter(x=>!['submitted','sent','sending','send_uncertain'].includes(x.status)).length,'Saved updates in progress'],['Email allowance',acc?.remaining??'—',acc?.status==='ACTIVE'?'Remaining this month':'Email account: '+(acc?.status||'checking')]].map(([label,value,sub])=>`<div class="metric-card"><div class="metric-label">${escapeHTML(label)}</div><div class="metric-value">${escapeHTML(value)}</div><div class="metric-sub">${escapeHTML(sub)}</div></div>`).join('');}
+function commList(){commEl('commDrafts').innerHTML=commState.drafts.length?commState.drafts.map(d=>`<button class="comm-draft ${commState.selected?.id===d.id?'selected':''}" data-comm-draft="${escapeAttribute(d.id)}"><strong>${escapeHTML(d.title)}</strong><span>${escapeHTML(d.status.replace(/_/g,' '))} · ${d.sentAt?demoDate(d.sentAt):demoDate(d.updatedAt||d.createdAt)}</span><span>${escapeHTML(d.subject)}</span></button>`).join(''):'<div class="empty">No drafts yet.<br>Create your first update together, then save it here.</div>';commEl('commDrafts').querySelectorAll('[data-comm-draft]').forEach(b=>b.addEventListener('click',()=>{if(commState.dirty&&!confirm('Discard unsaved changes and open this draft?'))return;commSelect(commState.drafts.find(d=>d.id===b.dataset.commDraft));}));}
+function commPreviewLocal(){const d=commContent(),h=escapeHTML;commEl('commPreviewFrame').srcdoc=`<!doctype html><html><head><meta name="viewport" content="width=device-width"><style>body{margin:0;padding:32px 14px;background:#020711;color:#dceaf4;font:16px/1.7 Arial}main{max-width:600px;margin:auto;background:#06111f;padding:32px;box-sizing:border-box}h1{font-size:30px;line-height:1.2;color:white}p{white-space:pre-wrap}small{color:#8fa4b8}a{display:inline-block;padding:10px 20px;background:#0088bc;color:white;text-decoration:none;border-radius:8px}</style></head><body><main><div style="color:#00c8ff;letter-spacing:3px;font-size:14px">NEXSTORVEN</div><small>PRE-LAUNCH / CONNECTED INTELLIGENCE</small><hr style="border:0;border-top:1px solid #147b9a;margin:24px 0"><h1>${h(d.heading||'Your next update starts here.')}</h1>${d.imageUrl&&/^https:\/\//i.test(d.imageUrl)?`<img src="${escapeAttribute(d.imageUrl)}" style="max-width:100%" alt="Update image">`:''}<p>${h(d.body||'We’ll create and refine the newsletter together, then save the finished draft in this workspace.')}</p>${d.ctaLabel?`<a>${h(d.ctaLabel)}</a>`:''}<p><small>Draft layout preview. Build the email preview for the complete Wix-rendered message and email-preferences footer.</small></p></main></body></html>`;commEl('commPreviewNote').textContent='Draft layout preview. Build the email preview before testing and approval.';}
+function commSelect(d=null){commState.selected=d;commState.dirty=false;commState.review=null;commEl('commApproval').checked=false;for(const k of commFields)commEl(commId(k)).value=d?.[k]||'';commEl('commEditorTitle').textContent=d?'Edit your update':'Create an update';commEl('commEditorMeta').textContent=d?`Status: ${d.status.replace(/_/g,' ')}${d.testedAt?' · Test requested '+demoDate(d.testedAt):''}`:'Nothing is sent when you save a draft.';commDelivery(d);commList();commPreviewLocal();commControls();}
+function commDelivery(d){const stats=d?.statistics;commEl('commDeliveryResult').textContent=d?.providerId?`Distribution: ${d.distributionStatus||'Not submitted'}${d.recipientCount?' · Approved recipients: '+d.recipientCount:''}${stats?' · Sent: '+(stats.total?.mailsSent??'—')+' · Delivered: '+(stats.emailCampaign?.delivered??'—')+' · Bounced: '+(stats.emailCampaign?.bounced??'—'):''}${d.error?' · '+d.error:''}`:'';}
+async function commRun(action,payload={}){if(commState.busy)return;commState.busy=true;commControls();commMessage(({save:'Saving draft…',prepare:'Building the email preview…',test:'Requesting a test email…',review:'Checking consent, recipient addresses, and email allowance…',send:'Submitting the approved campaign…',refresh:'Checking delivery status…',list:'Loading communications…'})[action]);try{const result=await commRequest(action,payload);if(!result.ok)throw Error(result.code);if(action==='list'){commState.drafts=result.drafts||[];commState.audience=result.audience;commState.account=result.account;commMetrics();commList();commMessage(result.audience?.unavailable?'Drafts loaded. The recipient check is temporarily unavailable.':'Ready. Create together, preview, test, and approve before sending.');}if(result.draft){const ix=commState.drafts.findIndex(d=>d.id===result.draft.id);if(ix<0)commState.drafts.unshift(result.draft);else commState.drafts[ix]=result.draft;commSelect(result.draft);commMetrics();}if(result.html){commEl('commPreviewFrame').srcdoc=result.html;commEl('commPreviewNote').textContent='Wix-rendered email preview. Email clients may display small differences.';}if(result.review){commState.review=result.review;commEl('commReviewText').textContent=`“${result.review.subject}” will be sent to ${result.review.count} eligible pre-launch subscriber${result.review.count===1?'':'s'}. ${result.review.suppressed} suppressed address${result.review.suppressed===1?'':'es'} excluded. This review expires in 10 minutes.`;commEl('commApproval').checked=false;}if(action!=='list')commMessage(result.message||({save:'Draft saved. No email has been sent.',prepare:'Email preview ready. You can send yourself a test.',review:'Review the subject and recipient count before approving.',refresh:'Delivery status refreshed.'})[action]||'Updated.');return result;}catch(e){commMessage(e.message==='REQUEST_TIMEOUT'?'The request is taking longer than expected. Refresh status before retrying a test or send.':commError(e.message),true);}finally{commState.busy=false;commControls();}}
+function requestCommunications(){if(!state.access?.isPlatformAdmin||state.access?.isCompanyAdmin)return;commRun('list');}
+function setupCommunications(){for(const k of commFields)commEl(commId(k)).addEventListener('input',()=>{commState.dirty=true;commState.review=null;commEl('commApproval').checked=false;commPreviewLocal();commControls();});
+commEl('commRefresh').addEventListener('click',requestCommunications);
+commEl('commNew').addEventListener('click',()=>{if(commState.dirty&&!confirm('Discard unsaved changes and start a new draft?'))return;commSelect();commMessage('New draft. We can create the message together before saving it.');});
+commEl('commDuplicate').addEventListener('click',()=>{const c=commContent();commSelect();for(const k of commFields)commEl(commId(k)).value=c[k];commEl('commTitle').value=c.title?c.title+' — copy':'';commState.dirty=true;commPreviewLocal();commControls();});
+commEl('commSave').addEventListener('click',()=>commRun('save',{id:commState.selected?.id,version:commState.selected?.version,content:commContent()}));
+commEl('commPreview').addEventListener('click',()=>commRun('prepare',{id:commState.selected?.id}));
+commEl('commTest').addEventListener('click',()=>{if(confirm('Send a test of this saved draft to '+commEl('commTestEmail').value+'?'))commRun('test',{id:commState.selected?.id,email:commEl('commTestEmail').value});});
+commEl('commReview').addEventListener('click',()=>commRun('review',{id:commState.selected?.id}));
+commEl('commDelivery').addEventListener('click',()=>commRun('refresh',{id:commState.selected?.id}));
+commEl('commApproval').addEventListener('change',commControls);
+commEl('commSend').addEventListener('click',()=>{if(!commState.review||!commEl('commApproval').checked)return;if(confirm('Send “'+commState.review.subject+'” to '+commState.review.count+' confirmed pre-launch subscriber(s) now?'))commRun('send',{id:commState.selected.id,token:commState.review.token,approved:true});});commSelect();}
 
 </script>
 
