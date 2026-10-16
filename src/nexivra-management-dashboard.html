@@ -2472,7 +2472,7 @@ textarea {
         <div class="metric-grid" id="demoUserMetrics"></div>
         <div class="card">
           <div class="card-header"><div><div class="card-title">Prospect Directory</div><div class="card-subtitle">Platform administrator access only · Standalone and legacy demos</div></div></div>
-          <div class="card-body"><input id="demoUserSearch" type="search" placeholder="Search by name, company, email, or role" aria-label="Search demo users"></div>
+          <div class="card-body"><input id="demoUserSearch" type="search" placeholder="Search by name, company, email, or role" aria-label="Search demo users"><label style="display:flex;align-items:center;gap:10px;margin-top:14px;color:var(--muted)"><input id="demoPrelaunchOnly" type="checkbox" style="width:auto"> Show pre-launch list only (one entry per email)</label></div>
           <div class="table-wrap" id="demoUsersContainer"><div class="empty">Open Demo Users to load prospects.</div></div>
         </div>
         <div class="card" id="demoUserDetailCard" style="display:none;margin-top:18px">
@@ -3893,6 +3893,7 @@ window.addEventListener(
 
     setupNavigation();
     document.getElementById("demoUserSearch")?.addEventListener("input", renderDemoUsers);
+    document.getElementById("demoPrelaunchOnly")?.addEventListener("change", renderDemoUsers);
     document.getElementById("nsProspectSearch")?.addEventListener("input", renderNexstorvenProspects);
 
     document
@@ -13761,18 +13762,28 @@ function renderDemoUsers() {
   if (!container || !metrics) return;
   const all = state.demoUsers || [];
   const query = (document.getElementById('demoUserSearch')?.value || '').toLowerCase().trim();
-  const filtered = all.filter(u => [u.name,u.company,u.email,u.role].some(v => String(v||'').toLowerCase().includes(query)));
+  const prelaunchOnly=document.getElementById('demoPrelaunchOnly')?.checked===true;
+  const seen=new Set();
+  const filtered = all.filter(u => {
+    if (prelaunchOnly) {
+      const email=String(u.email||'').trim().toLowerCase();
+      if (u.prelaunchStatus!=='joined' || !email || seen.has(email)) return false;
+      seen.add(email);
+    }
+    return [u.name,u.company,u.email,u.role].some(v => String(v||'').toLowerCase().includes(query));
+  });
   metrics.innerHTML = [
     ['Demo records', all.length, 'Registrations and legacy course users'],
     ['Completed', all.filter(x=>x.completedSessionCount>0 || x.status==='completed').length, 'Records with completed demos'],
     ['Unfinished', all.filter(x=>x.lastDemoAt && !['completed','invited','registered','access_granted'].includes(x.status)).length, 'Started, not completed'],
-    ['Follow-up', all.filter(x=>x.followUpRecommended===true).length, 'Suggested follow-ups']
+    ['Follow-up', all.filter(x=>x.followUpRecommended===true).length, 'Suggested follow-ups'],
+    ['Pre-launch list', new Set(all.filter(x=>x.prelaunchStatus==='joined').map(x=>String(x.email||'').trim().toLowerCase())).size, 'Confirmed email opt-ins']
   ].map(([label,value,sub])=>`<div class="metric-card"><div class="metric-label">${label}</div><div class="metric-value">${value}</div><div class="metric-sub">${sub}</div></div>`).join('');
   if (state.demoUsersStatus === 'loading') container.innerHTML = '<div class="empty">Loading demo users…</div>';
   else if (state.demoUsersStatus === 'error') container.innerHTML = '<div class="empty">Demo users could not be loaded. Check the Wix backend integration.</div>';
   else if (!filtered.length) container.innerHTML = `<div class="empty">${query?'No matching prospects.':'No demo registrations or sessions are available yet.'}</div>`;
   else {
-    container.innerHTML = `<table><thead><tr><th>Prospect</th><th>Company</th><th>Status</th><th>Last Demo</th><th></th></tr></thead><tbody>${filtered.map(u=>`<tr><td><strong>${demoText(u.name)}</strong><div style="color:var(--muted);margin-top:4px">${demoText(u.email)}</div><div style="color:var(--muted);font-size:11px;margin-top:5px">${demoText(u.source||'Legacy course demo')}</div></td><td>${demoText(u.company)}</td><td>${statusBadge(u.status||'unknown')}</td><td>${demoDate(u.lastDemoAt)}</td><td><button class="btn" data-demo-user-id="${escapeAttribute(u.id)}">View Summary →</button></td></tr>`).join('')}</tbody></table>`;
+    container.innerHTML = `<table><thead><tr><th>Prospect</th><th>Company</th><th>Status</th><th>Pre-launch</th><th>Last Demo</th><th></th></tr></thead><tbody>${filtered.map(u=>`<tr><td><strong>${demoText(u.name)}</strong><div style="color:var(--muted);margin-top:4px">${demoText(u.email)}</div><div style="color:var(--muted);font-size:11px;margin-top:5px">${demoText(u.source||'Legacy course demo')}</div></td><td>${demoText(u.company)}</td><td>${statusBadge(u.status||'unknown')}</td><td>${demoText(u.prelaunchStatus==='joined'?'Joined':u.prelaunchStatus==='declined'?'Declined':'Not joined')}</td><td>${demoDate(u.lastDemoAt)}</td><td><button class="btn" data-demo-user-id="${escapeAttribute(u.id)}">View Summary →</button></td></tr>`).join('')}</tbody></table>`;
     container.querySelectorAll('[data-demo-user-id]').forEach(button=>button.addEventListener('click',()=>{
       const id=button.getAttribute('data-demo-user-id');
       state.selectedDemoUserId=id;
@@ -13794,6 +13805,9 @@ function renderDemoUserDetail() {
   const sessions=Array.isArray(u.sessions)?u.sessions:[];
   document.getElementById('demoUserDetailBody').innerHTML = [
     demoField('Demo source',u.source||'Legacy course demo'),
+    demoField('Pre-launch list',u.prelaunchStatus==='joined'?'Joined — email updates and early-access information':u.prelaunchStatus||'not_joined'),
+    demoField('Pre-launch joined',u.prelaunchJoinedAt?demoDate(u.prelaunchJoinedAt):'Not joined'),
+    demoField('Pre-launch consent version',u.prelaunchConsentVersion),
     demoField('Industry',u.industry),
     demoField('Number of employees',u.employeeCount),
     demoField('Training needs from request form',u.registrationChallenge),
@@ -13811,7 +13825,7 @@ function renderDemoUserDetail() {
     `<div style="margin-top:20px"><div class="eyebrow">SESSION HISTORY</div>${sessions.length?sessions.map(x=>`<div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)">${demoDate(x.startedAt)} · ${demoText(x.status)}${x.phase?' · '+demoText(x.phase):''}${x.summaryStatus?' · Summary: '+demoText(x.summaryStatus):''}${x.summary?`<div style="margin-top:7px;color:var(--muted)">${demoText(x.summary)}</div>`:''}</div>`).join(''):'<p style="color:var(--muted)">No session history provided.</p>'}</div>`
   ].join('');
   document.getElementById('demoUserCopyButton').onclick=()=>{
-    const report=[`NEXSTORVEN Demo Intelligence — ${u.name||'Unnamed prospect'}`,`Company: ${u.company||'Not provided'}`,`Role: ${u.role||'Not provided'}`,`Email: ${u.email||'Not provided'}`,`Summary: ${u.summary||'Not provided'}`,`Training approach: ${u.trainingApproach||'Not provided'}`,`Challenges: ${Array.isArray(u.challenges)?u.challenges.join('; '):u.challenges||'Not provided'}`,`Capabilities: ${Array.isArray(u.capabilitiesDemonstrated)?u.capabilitiesDemonstrated.join('; '):u.capabilitiesDemonstrated||'Not provided'}`,`Opportunities: ${Array.isArray(u.opportunities)?u.opportunities.join('; '):u.opportunities||'Not provided'}`,`Follow-up: ${u.recommendedFollowUp||'Not provided'}`].join('\n');
+    const report=[`NEXSTORVEN Demo Intelligence — ${u.name||'Unnamed prospect'}`,`Company: ${u.company||'Not provided'}`,`Role: ${u.role||'Not provided'}`,`Email: ${u.email||'Not provided'}`,`Pre-launch: ${u.prelaunchStatus||'not_joined'}`,`Pre-launch joined: ${u.prelaunchJoinedAt||'Not joined'}`,`Summary: ${u.summary||'Not provided'}`,`Training approach: ${u.trainingApproach||'Not provided'}`,`Challenges: ${Array.isArray(u.challenges)?u.challenges.join('; '):u.challenges||'Not provided'}`,`Capabilities: ${Array.isArray(u.capabilitiesDemonstrated)?u.capabilitiesDemonstrated.join('; '):u.capabilitiesDemonstrated||'Not provided'}`,`Opportunities: ${Array.isArray(u.opportunities)?u.opportunities.join('; '):u.opportunities||'Not provided'}`,`Follow-up: ${u.recommendedFollowUp||'Not provided'}`].join('\n');
     if(navigator.clipboard?.writeText) navigator.clipboard.writeText(report).then(()=>showToast('Report copied.','success')).catch(()=>showToast('Unable to copy report.','error'));
     else showToast('Clipboard unavailable in this browser.','error');
   };
