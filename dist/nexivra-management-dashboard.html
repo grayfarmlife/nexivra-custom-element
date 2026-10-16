@@ -2505,7 +2505,7 @@ textarea {
             <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px">
               <button class="btn btn-primary" onclick="sendNexstorvenInvitation(false)">Send Test Invitation</button>
               <button class="btn" onclick="sendNexstorvenInvitation(true)">Resend Test Invitation</button>
-              <span style="color:var(--muted);font-size:12px">Only ken@nexstorven.com is allowed during testing.</span>
+              <span style="color:var(--muted);font-size:12px">Test recipients: ken@nexstorven.com and ken@legacy-edge-partners.com.</span>
             </div>
             <div id="nsEmailDiagnostic" role="status" aria-live="polite" style="display:none;white-space:pre-wrap;padding:12px;margin:0 0 16px;border:1px solid #F59E0B;border-radius:8px;color:#FDE68A;background:#2B2115"></div>
             <div id="nsDetailHistory"></div>
@@ -13899,8 +13899,8 @@ window.saveNexstorvenFollowUp=saveNexstorvenFollowUp;
 function sendNexstorvenInvitation(resend) {
   if (!state.nsSelectedProspectId || !state.access?.isPlatformAdmin) return;
   const p=(state.nsProspects||[]).find(x=>x.id===state.nsSelectedProspectId);
-  if (!p || String(p.email||'').toLowerCase()!=='ken@nexstorven.com') {
-    showToast('Test invitations are limited to ken@nexstorven.com.', 'error');
+  if (!p || !['ken@nexstorven.com','ken@legacy-edge-partners.com'].includes(String(p.email||'').toLowerCase())) {
+    showToast('Test invitations are limited to the two approved Ken addresses.', 'error');
     return;
   }
   if (!confirm('Send a NEXSTORVEN test invitation to '+p.email+'?')) return;
