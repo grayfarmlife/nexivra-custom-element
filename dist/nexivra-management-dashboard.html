@@ -1614,6 +1614,8 @@ textarea {
 #commMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:24px}
 @media(max-width:1100px){#commMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){#commMetrics{grid-template-columns:1fr}}
+/* D3.6 health */
+.health-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:22px 0}.health-check,.health-row{display:flex;justify-content:space-between;align-items:center;gap:16px}.health-check{padding:18px 0;border-bottom:1px solid #1b3449}.health-check p,.health-finding p{color:#b6c6d5;line-height:1.65;margin:8px 0}.health-badge{display:inline-block;border:1px solid #405569;border-radius:30px;padding:6px 10px;font-size:12px;white-space:nowrap;color:#bdd2e2}.health-badge.pass{color:#87e2b5;border-color:#276b53}.health-badge.fail{color:#ffb0a8;border-color:#85423c}.health-badge.warn,.health-badge.unknown{color:#ffd99a;border-color:#7a6338}.health-badge.approved{color:#7fddff;border-color:#277d9b}.health-finding{background:#0b1c2c;border:1px solid #294257;border-radius:14px;padding:22px;margin:14px 0}.health-finding h3{margin:0;font-size:18px}.health-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.health-note{color:#aabed0;line-height:1.7}.health-history{white-space:pre-wrap;color:#aec1d0;line-height:1.8}.health-brief{width:100%;min-height:260px;background:#06121f;color:#e1edf5;padding:16px;margin-top:16px;border:1px solid #2b6582;border-radius:10px}@media(max-width:900px){.health-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.health-row{align-items:flex-start;flex-direction:column}}@media(max-width:520px){.health-check{align-items:flex-start}.health-badge{white-space:normal}}
 </style>
 </head>
 
@@ -1711,6 +1713,7 @@ textarea {
         <span class="nav-icon">✉</span><span>Demo Prospects</span>
       </button>
 
+<button class="nav-button" data-section="system-health" id="systemHealthNav" style="display:none"><span class="nav-icon">♡</span><span>System Health</span></button>
 <button class="nav-button" data-section="prelaunch-emails" id="prelaunchEmailsNav" style="display:none"><span class="nav-icon">◷</span><span>Pre-Launch Emails</span></button>
       <button class="nav-button" data-section="demo">
         <span class="nav-icon">✦</span>
@@ -2470,6 +2473,16 @@ textarea {
         </div>
 
       </section>
+
+<section class="section" id="section-system-health">
+<div class="section-heading"><div><div class="eyebrow">PLATFORM RELIABILITY</div><h1>System Health</h1><p class="health-note">See what needs attention. Review the evidence. Approve the next step.</p></div></div>
+<div class="health-actions"><button class="btn btn-primary" id="healthRun">Run checks</button><button class="btn" id="healthRefresh">Refresh saved results</button><button class="btn" id="healthBriefButton">View repair brief</button></div>
+<p id="healthStatus" role="status" aria-live="polite" class="health-note">Loading health monitoring…</p><div class="health-metrics" id="healthMetrics"></div>
+<p class="health-note" id="healthSchedule"></p>
+<div class="panel" style="padding:24px;margin:22px 0"><h2>Service checks</h2><div id="healthChecks"></div><p class="health-note">Coverage: public page responses, deployed assets, backend collection reads, voice-agent configuration, email allowance, and sampled demo operations. These checks do not test live video, microphone access, answer quality, inbox delivery, or every user journey. No paid avatar sessions or emails are started by the monitor.</p></div>
+<div class="panel" style="padding:24px;margin:22px 0"><h2>Review &amp; approve repairs</h2><p class="health-note">Approval records your decision for investigation and implementation. It does not automatically apply a fix. Bring the repair brief to our chat so we can prepare, implement, and verify an approved change. A later successful check marks recovery.</p><div id="healthFindings"></div><textarea id="healthBrief" aria-label="Repair brief" class="health-brief" readonly hidden></textarea></div>
+<details class="panel" style="padding:24px;margin:22px 0"><summary>Recent checks &amp; recovered issues</summary><pre class="health-history" id="healthHistory"></pre><h3>Recovered findings</h3><pre class="health-history" id="healthResolved"></pre></details>
+</section>
 
 <section class="section" id="section-prelaunch-emails">
   <div class="section-header"><div class="section-heading"><div class="eyebrow">KEEP THE CONVERSATION GOING</div><h1>Pre-Launch Communications</h1><p>Create each update together. Save the draft here, preview it, send yourself a test, then approve the finished message for the confirmed pre-launch list.</p></div><button class="btn" id="commRefresh">Refresh</button></div>
@@ -4402,6 +4415,9 @@ function handleWixMessage(
 
       break;
 
+    case 'NS_SYSTEM_HEALTH_RESULT':
+      healthResult(payload);
+      break;
     case 'NS_PRELAUNCH_COMMUNICATION_RESULT':
       commResult(payload);
       break;
@@ -8452,6 +8468,8 @@ function renderDashboard(
     applyAccessPolicy();
     const demoNav = document.getElementById("demoUsersNav");
     if (demoNav) demoNav.style.display = state.access.isPlatformAdmin && !state.access.isCompanyAdmin ? "" : "none";
+    const healthNav=document.getElementById('systemHealthNav');
+    if(healthNav)healthNav.style.display=state.access.isPlatformAdmin&&!state.access.isCompanyAdmin?'':'none';
     const commNav=document.getElementById('prelaunchEmailsNav');
     if(commNav)commNav.style.display=state.access.isPlatformAdmin&&!state.access.isCompanyAdmin?'':'none';
     const nsNav = document.getElementById('demoProspectsNav');
@@ -13085,6 +13103,7 @@ function goToSection(
     demo:
       'Demo Mode',
 
+    'system-health': 'System Health',
     'prelaunch-emails': 'Pre-Launch Communications',
     'demo-users': 'Demo Users',
     'demo-prospects': 'Demo Prospects',
@@ -13099,6 +13118,10 @@ function goToSection(
     'NEXSTORVEN'
   );
 
+  if(section==='system-health'){
+    if(!state.access?.isPlatformAdmin||state.access?.isCompanyAdmin){goToSection('overview');return;}
+    healthRun();
+  }
   if(section==='prelaunch-emails'){
     if(!state.access?.isPlatformAdmin||state.access?.isCompanyAdmin){goToSection('overview');return;}
     requestCommunications();
@@ -14019,6 +14042,21 @@ commEl('commReview').addEventListener('click',()=>commRun('review',{id:commState
 commEl('commDelivery').addEventListener('click',()=>commRun('refresh',{id:commState.selected?.id}));
 commEl('commApproval').addEventListener('change',commControls);
 commEl('commSend').addEventListener('click',()=>{if(!commState.review||!commEl('commApproval').checked)return;if(confirm('Send “'+commState.review.subject+'” to '+commState.review.count+' confirmed pre-launch subscriber(s) now?'))commRun('send',{id:commState.selected.id,token:commState.review.token,approved:true});});commSelect();}
+
+// D3.6 — Health observations and repair decisions. Never executes repairs.
+const healthState={view:null,busy:false};const healthPending=new Map();let healthSequence=0;
+function healthRequest(action,payload={}){const requestId='health-'+Date.now()+'-'+(++healthSequence);return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{healthPending.delete(requestId);reject(Error('TIMEOUT'));},60000);healthPending.set(requestId,{resolve,timer});sendToWix('NS_SYSTEM_HEALTH',{...payload,action,requestId});});}
+function healthResult(p){const r=healthPending.get(p?.requestId);if(!r)return;clearTimeout(r.timer);healthPending.delete(p.requestId);r.resolve(p);}
+function healthDate(v){return v?new Date(v).toLocaleString():'Not yet';}
+async function healthRun(action='load',payload={}){if(healthState.busy)return;healthState.busy=true;document.getElementById('healthRun').disabled=true;document.getElementById('healthStatus').textContent=action==='run'?'Checking services and recording results…':action==='decision'?'Recording your decision…':'Loading saved health results…';try{const r=await healthRequest(action,payload);if(!r.ok)throw Error(r.code);healthState.view=r;healthRender();}catch(e){document.getElementById('healthStatus').textContent=({ACCESS_DENIED:'Only a platform administrator can view this workspace.',RUN_CHECKS_FIRST:'Run fresh checks before approving a repair.',ISSUE_CHANGED:'This issue changed. Refresh and review the current proposal.',TIMEOUT:'The request is taking longer than expected. Refresh saved results before retrying.'})[e.message]||'Health monitoring is unavailable. No healthy result has been assumed.';}finally{healthState.busy=false;document.getElementById('healthRun').disabled=false;}}
+function healthRender(){const v=healthState.view,h=escapeHTML,s=v.latest;const open=v.findings.filter(f=>f.state!=='resolved');document.getElementById('healthStatus').textContent=({stale:'Results need refreshing',attention:'Attention needed',partial:'Partial coverage',passing:'Configured checks are passing'})[v.overall]+' · Last completed '+healthDate(s?.checkedAt);document.getElementById('healthMetrics').innerHTML=[['Active findings',open.length,'Includes unknown checks'],['Awaiting approval',open.filter(f=>f.decision==='pending').length,'Review before implementation'],['Approved repairs',open.filter(f=>f.decision==='approved').length,'Awaiting implementation'],['Reply time p95',s?.observed?.p95Ms==null?'—':(s.observed.p95Ms/1000).toFixed(1)+'s',(s?.observed?.replySamples||0)+' observed replies / past 24h']].map(([a,b,c])=>`<div class="metric-card"><div class="metric-label">${h(a)}</div><div class="metric-value">${h(b)}</div><div class="metric-sub">${h(c)}</div></div>`).join('');
+document.getElementById('healthSchedule').textContent='Hourly background checks · Last scheduled completion: '+healthDate(v.scheduler?.lastCompletedAt)+(v.schedulerStale?' · OVERDUE':!v.scheduler?.lastCompletedAt?' · Awaiting the first scheduled run':'')+'. Your Mac can be turned off. Dashboard refreshes saved results every five minutes while open.';
+document.getElementById('healthChecks').innerHTML=s?.checks?.length?s.checks.map(c=>`<div class="health-check"><div><strong>${h(c.label)}</strong><p>${h(c.detail)}</p></div><span class="health-badge ${h(c.status)}">${h(({pass:'Passing',fail:'Failed',unknown:'Unknown',warn:'Review'})[c.status]||c.status)}</span></div>`).join(''):'<p>No checks recorded yet. Select Run checks to establish the first baseline.</p>';
+document.getElementById('healthFindings').innerHTML=open.length?open.map(f=>`<article class="health-finding"><div class="health-row"><h3>${h(f.title)}</h3><span class="health-badge ${f.decision==='approved'?'approved':'warn'}">${h(({pending:'Awaiting approval',approved:'Approved · awaiting implementation',deferred:'Deferred'})[f.decision]||f.decision)}</span></div><p><strong>Evidence:</strong> ${h(f.evidence)}</p><p><strong>Proposed next step:</strong> ${h(f.proposal.action)}</p><p><strong>Considerations:</strong> ${h(f.proposal.risk)}</p><p><strong>Verification:</strong> ${h(f.proposal.validation)}</p><small>First seen ${h(healthDate(f.firstSeen))} · Last seen ${h(healthDate(f.lastSeen))}</small><div class="health-actions"><button class="btn btn-primary" data-health-decision="approved" data-health-id="${h(f.id)}" ${v.stale||f.decision==='approved'?'disabled':''}>Review approval</button><button class="btn" data-health-decision="deferred" data-health-id="${h(f.id)}" ${v.stale?'disabled':''}>Defer</button>${f.decision==='approved'?`<button class="btn" data-health-decision="pending" data-health-id="${h(f.id)}">Withdraw approval</button>`:''}</div></article>`).join(''):'<p>No active findings. New issues and proposed next steps will appear here.</p>';
+document.querySelectorAll('[data-health-decision]').forEach(b=>b.addEventListener('click',()=>{const f=v.findings.find(x=>x.id===b.dataset.healthId);if(b.dataset.healthDecision==='approved'&&!confirm('Approve this investigation and proposed repair scope?\n\n'+f.proposal.action+'\n\n'+f.proposal.risk+'\n\nThis records approval for implementation and verification. It does not deploy code, purchase services, change credentials, or send emails.'))return;healthRun('decision',{id:f.id,fingerprint:f.fingerprint,decision:b.dataset.healthDecision});}));
+document.getElementById('healthHistory').textContent=v.history.length?v.history.map(x=>healthDate(x.checkedAt)+' · '+x.source+' · '+x.issues+' checks needing review').join('\n'):'No history yet.';document.getElementById('healthResolved').textContent=v.findings.filter(f=>f.state==='resolved').map(f=>f.title+' · Recovered '+healthDate(f.resolvedAt)).join('\n')||'No recovered findings yet.';}
+function healthBrief(){const v=healthState.view;if(!v)return;document.getElementById('healthBrief').hidden=false;document.getElementById('healthBrief').value='NEXSTORVEN SYSTEM HEALTH — '+healthDate(v.latest?.checkedAt)+'\n\n'+v.findings.filter(f=>f.state!=='resolved').map(f=>f.title+'\nDecision: '+f.decision+'\nEvidence: '+f.evidence+'\nProposed scope: '+f.proposal.action+'\nConsiderations: '+f.proposal.risk+'\nVerify: '+f.proposal.validation+'\nFingerprint: '+f.fingerprint).join('\n\n')+'\n\nApprovals record investigation/repair scope only. No automatic deployment, purchase, credential change, or email send is authorized.';document.getElementById('healthBrief').focus();document.getElementById('healthBrief').select();}
+document.getElementById('healthRun').addEventListener('click',()=>healthRun('run'));document.getElementById('healthRefresh').addEventListener('click',()=>healthRun());document.getElementById('healthBriefButton').addEventListener('click',healthBrief);setInterval(()=>{if(document.getElementById('section-system-health').classList.contains('active')&&state.access?.isPlatformAdmin&&!state.access?.isCompanyAdmin)healthRun();},300000);
 
 </script>
 
