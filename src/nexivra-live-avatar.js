@@ -6161,14 +6161,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                   event?.preventDefault?.();
                                                                                                                   event?.stopPropagation?.();
 
-                                                                                                                  this.dispatchRuntimeEvent(
-                                                                                                                    "nexivra-logout",
-                                                                                                                    {
-                                                                                                                      sessionId:
-                                                                                                                        this.runtimeSessionId ||
-                                                                                                                        ""
-                                                                                                                    }
-                                                                                                                  );
+                                                                                                                  this.requestLogout().catch(error => console.error('NEXSTORVEN LOGOUT FAILED:', error));
                                                                                                                 };
                                                                                                             }
 
