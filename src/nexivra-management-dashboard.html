@@ -4241,6 +4241,8 @@ function handleWixMessage(
 
       renderCourses();
 
+      renderAssignments();
+
       populateCourseSelects();
 
       if (
@@ -4329,6 +4331,8 @@ function handleWixMessage(
         [];
 
       renderUsers();
+
+      renderAssignments();
 
       break;
 
@@ -11030,76 +11034,39 @@ window.disconnectKnowledgeSourceFromModule =
    ASSIGNMENTS
 ====================================================== */
 
+// Resolve display labels without changing the underlying assignment references.
+function assignmentMemberName(user) {
+  if (!user) return 'Learner unavailable';
+  return String(user.preferredName || '').trim() ||
+    [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+    'Learner name unavailable';
+}
+
 function renderAssignments() {
-
-  const container =
-    document.getElementById(
-      'assignmentsContainer'
-    );
-
+  const container = document.getElementById('assignmentsContainer');
+  if (!container) return;
   if (!state.assignments.length) {
-
-    container.innerHTML =
-      emptyState(
-        'No assignments',
-        'Course assignments will appear here.'
-      );
-
+    container.innerHTML = emptyState('No assignments', 'Course assignments will appear here.');
     return;
   }
-
+  const key = (organizationId, id) => JSON.stringify([organizationId || '', id || '']);
+  const members = new Map(state.users.map(user => [key(user.organizationId, user.memberId), user]));
+  const courses = new Map(state.courses.map(course => [key(course.organizationId, course.id || course._id), course]));
   container.innerHTML = `
     <table>
-      <thead>
-        <tr>
-          <th>Member</th>
-          <th>Organization</th>
-          <th>Course</th>
-          <th>Progress</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        ${state.assignments.map(item => `
-          <tr>
-            <td>
-              ${escapeHTML(
-                item.memberId
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                item.organizationId
-              )}
-            </td>
-
-            <td>
-              ${escapeHTML(
-                item.courseId
-              )}
-            </td>
-
-            <td>
-              ${Number(
-                item.progressPercent ||
-                0
-              )}%
-            </td>
-
-            <td>
-              ${statusBadge(
-                item.status ||
-                'assigned'
-              )}
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
-
+      <thead><tr><th>Member</th><th>Organization</th><th>Course</th><th>Progress</th><th>Status</th></tr></thead>
+      <tbody>${state.assignments.map(item => {
+        const member = members.get(key(item.organizationId, item.memberId));
+        const course = courses.get(key(item.organizationId, item.courseId));
+        return `<tr>
+          <td>${escapeHTML(assignmentMemberName(member))}</td>
+          <td>${escapeHTML(item.organizationId)}</td>
+          <td>${escapeHTML(String(course?.title || '').trim() || 'Course unavailable')}</td>
+          <td>${Number(item.progressPercent || 0)}%</td>
+          <td>${statusBadge(item.status || 'assigned')}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
 }
 
 /* ======================================================
