@@ -14223,7 +14223,6 @@ let nsLoggingOut = false;
 document.getElementById('nsLogoutButton').onclick = () => {
   if (nsLoggingOut) return;
   if (state.knowledgeUploadInProgress) { showToast('Finish the current upload before signing out.', 'error'); return; }
-  if (!window.confirm('Log out? Save any unsaved changes first.')) return;
   nsLoggingOut = true;
   const button = document.getElementById('nsLogoutButton');
   button.disabled = true; button.textContent = 'Logging out…';
