@@ -30070,7 +30070,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
       "client-course-image-url",
       "client-journey-image-url",
       "resume-checkpoint",
-      "learner-dashboard-view"
+      "learner-dashboard-view",
+      "preferred-name-save-result"
     ];
   }
   constructor() {
@@ -30710,12 +30711,12 @@ ${tail}`;
       const input = `width:100%;box-sizing:border-box;margin-top:7px;padding:12px;border-radius:8px;border:1px solid #315063;background:#071722;color:white;`;
       panel.innerHTML = `<div class="learner-momentum"><div class="learner-momentum-line"><strong>My Profile</strong></div><div class="learner-momentum-copy">Manage the information NEXIVRA uses to personalize your learning experience.</div></div><section class="learner-panel"><div class="learner-panel-inner"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
                                 <label><b>Name</b><input value="${esc(systemName)}" readonly style="${input}background:#0a1d29;color:#9fb3c2"></label>
-                                <label><b>Preferred Name</b><input id="r2Preferred" value="${esc(saved.preferredName || learner.preferredName || "")}" placeholder="What should NEXIVRA call you?" style="${input}"></label>
+                                <label><b>Preferred Name</b><input id="r2Preferred" maxlength="80" value="${esc(saved.preferredName || learner.preferredName || "")}" placeholder="What should NEXIVRA call you?" style="${input}"></label>
                                 <label><b>Email</b><input id="r2Email" type="email" value="${esc(saved.email || systemEmail)}" placeholder="Email address" style="${input}"></label>
                                 <label><b>Phone Number</b><input id="r2Phone" type="tel" value="${esc(saved.phone || learner.phone || learner.phoneNumber || "")}" placeholder="Phone number" style="${input}"></label>
                                 <label><b>Organization</b><input value="${esc(learner.organizationName || learner.companyName || learner.organizationId || "Centier Bank")}" readonly style="${input}background:#0a1d29;color:#9fb3c2"></label>
                                 <label><b>Role / Title</b><input id="r2Role" value="${esc(saved.role || learner.title || learner.roleTitle || learner.role || "Learner")}" style="${input}"></label>
-                              </div><div style="margin-top:20px;display:flex;align-items:center;gap:14px"><button id="r2SaveProfile" class="final-resume-button">Save Changes</button><span id="r2SaveStatus" class="learner-panel-subtitle"></span></div></div></section>`;
+                              </div><div style="margin-top:20px;display:flex;align-items:center;gap:14px"><button id="r2SaveProfile" class="final-resume-button" ${this.preferredNameSavePending ? "disabled" : ""}>Save Changes</button><span id="r2SaveStatus" class="learner-panel-subtitle"></span></div></div></section>`;
       panel.querySelector("#r2SaveProfile")?.addEventListener("click", () => this.saveM5B3R2ProfileFromView());
     } else if (view === "certificates") {
       const completed = assignments.filter((a3) => String(a3.status || "").toLowerCase() === "completed");
@@ -30736,25 +30737,77 @@ ${tail}`;
     return `nexivra:r2:profile:${String(learner.id || learner._id || learner.memberId || learner.email || learner.displayName || "learner")}`;
   }
   getM5B3R2SavedProfile() {
+    let saved = {};
     try {
-      return JSON.parse(localStorage.getItem(this.getM5B3R2ProfileStorageKey()) || "{}") || {};
+      saved = JSON.parse(localStorage.getItem(this.getM5B3R2ProfileStorageKey()) || "{}") || {};
     } catch (error) {
-      return {};
     }
+    const accountName = this.dashboardData?.learner?.preferredName;
+    if (typeof accountName === "string") saved.preferredName = accountName;
+    return saved;
+  }
+  requestM5B3R2PreferredNameSave(preferredName) {
+    if (this.preferredNameSavePending) return;
+    this.preferredNameSavePending = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const panel = this.shadowRoot?.getElementById("m5b3rNativeDashboardView");
+    const button = panel?.querySelector("#r2SaveProfile");
+    if (button) button.disabled = true;
+    const requestId = this.preferredNameSavePending;
+    this.preferredNameSaveTimer = setTimeout(() => this.applyM5B3R2PreferredNameSaveResult(JSON.stringify({ requestId, ok: false })), 45e3);
+    this.dispatchRuntimeEvent("nexivra-save-preferred-name", { preferredName, requestId: this.preferredNameSavePending });
+  }
+  syncM5B3R2PreferredName() {
+    if (this.preferredNameMigrationAttempted || typeof this.dashboardData?.learner?.preferredName === "string") return;
+    this.preferredNameMigrationAttempted = true;
+    const name = String(this.getM5B3R2SavedProfile().preferredName || "").trim();
+    if (name && name.length <= 80) this.requestM5B3R2PreferredNameSave(name);
+  }
+  applyM5B3R2PreferredNameSaveResult(raw) {
+    let result;
+    try {
+      result = JSON.parse(raw);
+    } catch (error) {
+      return;
+    }
+    if (!this.preferredNameSavePending || result.requestId !== this.preferredNameSavePending) return;
+    this.preferredNameSavePending = null;
+    clearTimeout(this.preferredNameSaveTimer);
+    if (result.ok && typeof result.preferredName === "string") {
+      if (this.dashboardData?.learner) this.dashboardData.learner.preferredName = result.preferredName;
+      let saved = {};
+      try {
+        saved = JSON.parse(localStorage.getItem(this.getM5B3R2ProfileStorageKey()) || "{}") || {};
+      } catch (error) {
+      }
+      saved.preferredName = result.preferredName;
+      try {
+        localStorage.setItem(this.getM5B3R2ProfileStorageKey(), JSON.stringify(saved));
+      } catch (error) {
+      }
+      this.setUnifiedText?.("learnerMomentumFirstName", result.preferredName || this.dashboardData?.learner?.firstName || "Learner");
+    }
+    const panel = this.shadowRoot?.getElementById("m5b3rNativeDashboardView");
+    const button = panel?.querySelector("#r2SaveProfile");
+    if (button) button.disabled = false;
+    const status = panel?.querySelector("#r2SaveStatus");
+    if (status) status.textContent = result.ok ? "Saved." : "Preferred name could not be saved to your account. Please try Save Changes again.";
   }
   saveM5B3R2ProfileFromView() {
     const panel = this.shadowRoot?.getElementById("m5b3rNativeDashboardView");
-    if (!panel) return;
+    if (!panel || this.preferredNameSavePending) return;
     const profile = { preferredName: String(panel.querySelector("#r2Preferred")?.value || "").trim(), email: String(panel.querySelector("#r2Email")?.value || "").trim(), phone: String(panel.querySelector("#r2Phone")?.value || "").trim(), role: String(panel.querySelector("#r2Role")?.value || "").trim(), updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const status = panel.querySelector("#r2SaveStatus");
+    if (profile.preferredName.length > 80) {
+      if (status) status.textContent = "Please keep your preferred name to 80 characters or fewer.";
+      return;
+    }
     try {
       localStorage.setItem(this.getM5B3R2ProfileStorageKey(), JSON.stringify(profile));
     } catch (error) {
     }
-    if (profile.preferredName) this.setUnifiedText?.("learnerMomentumFirstName", profile.preferredName);
-    const status = panel.querySelector("#r2SaveStatus");
-    if (status) status.textContent = "Saved.";
+    if (status) status.textContent = "Saving preferred name to your account\u2026";
+    this.requestM5B3R2PreferredNameSave(profile.preferredName);
     this.dispatchRuntimeEvent("nexivra-m5b3r2-profile-updated", { profile });
-    console.log("NEXIVRA M5B-3L-R2 PROFILE SAVED");
   }
   formatM5B3R2CertificateDate(value) {
     try {
@@ -30843,6 +30896,10 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD NAV ACTIVE:", buttons.map((b3) => b3.dataset.dashboardView));
   }
   attributeChangedCallback(name, oldValue, newValue) {
+    if (name === "preferred-name-save-result") {
+      this.applyM5B3R2PreferredNameSaveResult(newValue);
+      return;
+    }
     if (name === "resume-checkpoint") {
       try {
         this.resumeCheckpoint = newValue ? JSON.parse(newValue) : null;
@@ -31031,6 +31088,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
           newValue
         );
         this.renderUnifiedDashboard();
+        this.syncM5B3R2PreferredName();
       } catch (error) {
         console.error(
           "NEXIVRA DASHBOARD DATA ATTRIBUTE ERROR:",
