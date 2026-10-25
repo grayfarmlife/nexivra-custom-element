@@ -30574,6 +30574,7 @@ ${tail}`;
       return false;
     }
     try {
+      if (!this.isExperienceNexstorvenDemo() && ["m5b3c-learner-turn", "learner-text"].includes(label)) this.recordLearnerReplyDispatch(label === "learner-text" ? "typed" : "spoken");
       const result = this.session?.message?.(safe);
       if (result?.catch) result.catch((error) => console.error("NEXIVRA LIVEAVATAR MESSAGE ERROR:", { label, error }));
       console.log("NEXIVRA LIVEAVATAR MESSAGE SENT:", { label, bytes });
@@ -31644,7 +31645,8 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     if (!this.session) {
       return false;
     }
-    this.sendLiveAvatarMessageSafely(clean, "runtime");
+    this.lastLearnerTextAt = Date.now();
+    this.sendLiveAvatarMessageSafely(clean, "learner-text");
     this.dispatchRuntimeEvent(
       "nexivra-learner-message",
       {
@@ -35363,6 +35365,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
           () => {
             this.avatarSpeaking = true;
             console.log("NEXIVRA SPEECH EVENT: avatar started speaking");
+            if (!this.isExperienceNexstorvenDemo()) this.recordLearnerReplySpeechStart();
             if (this.m5b3e3SilentStandbyLock) {
               console.log("NEXIVRA M5B-3E3 STANDBY SPEECH BLOCKED");
               try {
@@ -35451,6 +35454,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
             console.log(
               "NEXIVRA SPEECH EVENT: avatar started speaking"
             );
+            if (!this.isExperienceNexstorvenDemo()) this.recordLearnerReplySpeechStart();
             if (this.m5b3yDemoHandoffArmed && !this.m5b3yDemoHandoffRequested) {
               this.m5b3zSynthesisSpeechStarted = true;
               console.log("NEXIVRA M5B-3Z SYNTHESIS SPEECH START CONFIRMED");
@@ -36642,6 +36646,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
   }
   async startSession() {
+    this.learnerReplyTiming = null;
     const sessionButton = this.shadowRoot.getElementById(
       "sessionButton"
     );
@@ -36993,6 +36998,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     this.m5b2HardShutdownActive = false;
   }
   async endSession() {
+    this.learnerReplyTiming = null;
     if (this.sessionEnding) return;
     this.sessionEnding = true;
     const sessionButton = this.shadowRoot?.getElementById("sessionButton");
@@ -37528,6 +37534,21 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     );
     return observation;
   }
+  shouldHoldPassiveObservation(type, now = Date.now()) {
+    if (!["sustained_orientation_away", "orientation_returned_forward", "posture_pattern_changed", "posture_pattern_returned"].includes(type)) return false;
+    const recent = [this.lastLearnerTranscriptAt, this.lastLearnerTextAt].some((at2) => Number.isFinite(at2) && now >= at2 && now - at2 < 3e4);
+    return Boolean(this.avatarSpeaking || this.learnerSpeaking || this.learnerMicSpeaking || recent);
+  }
+  recordLearnerReplyDispatch(kind) {
+    this.learnerReplyTiming = { kind, dispatchedAt: performance.now() };
+  }
+  recordLearnerReplySpeechStart() {
+    const timing = this.learnerReplyTiming;
+    if (!timing) return;
+    this.learnerReplyTiming = null;
+    const elapsed = performance.now() - timing.dispatchedAt;
+    if (Number.isFinite(elapsed) && elapsed >= 0 && elapsed <= 12e4) console.log("NEXSTORVEN LEARNER REPLY TIMING:", { input: timing.kind, dispatchToFirstSpeechMs: Math.round(elapsed) });
+  }
   async handleAdaptiveObservation(type, details = {}) {
     const observation = this.recordObservation(type, details);
     if (!this.session || !this.sessionActive || this.sessionEnding) {
@@ -37535,6 +37556,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
     if (this.isExperienceNexstorvenDemo()) {
       console.log("NEXIVRA M5B-3V DEMO PASSIVE OBSERVATION RECORDED WITHOUT INSTRUCTOR INTERRUPTION", observation.type);
+      return;
+    }
+    if (this.shouldHoldPassiveObservation(type)) {
+      console.log("NEXSTORVEN PASSIVE OBSERVATION HELD DURING CONVERSATION:", type);
       return;
     }
     const internalContext = `
