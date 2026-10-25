@@ -698,7 +698,8 @@ The next instructor response must teach, practice, check understanding, or trans
                             const bytes=this.utf8ByteLength(safe);
                             if(bytes>52000){console.error("NEXIVRA CONTEXT BLOCKED — TOO LARGE:",{label,bytes});return false;}
                             try{
-                              const result=this.session?.message?.(safe);
+                              if(!this.isExperienceNexstorvenDemo()&&['m5b3c-learner-turn','learner-text'].includes(label))this.recordLearnerReplyDispatch(label==='learner-text'?'typed':'spoken');
+ const result=this.session?.message?.(safe);
                               if(result?.catch)result.catch(error=>console.error("NEXIVRA LIVEAVATAR MESSAGE ERROR:",{label,error}));
                               console.log("NEXIVRA LIVEAVATAR MESSAGE SENT:",{label,bytes});
                           console.log("NEXIVRA INSTRUCTOR IDENTITY LOCK SENT:",{name:"Elenora",platform:"NEXIVRA"});
@@ -2009,7 +2010,8 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                                                                                                               return false;
                                                                                                             }
 
-                                                                                                            this.sendLiveAvatarMessageSafely(clean,"runtime");
+                                                                                                            this.lastLearnerTextAt=Date.now();
+ this.sendLiveAvatarMessageSafely(clean,"learner-text");
 
                                                                                                             this.dispatchRuntimeEvent(
                                                                                                               "nexivra-learner-message",
@@ -6531,6 +6533,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                   ()=>{
                                                                                                                     this.avatarSpeaking=true;
                                                                                                                     console.log("NEXIVRA SPEECH EVENT: avatar started speaking");
+ if(!this.isExperienceNexstorvenDemo())this.recordLearnerReplySpeechStart();
                                                                                                                     if(this.m5b3e3SilentStandbyLock){
                                                                                                                       console.log("NEXIVRA M5B-3E3 STANDBY SPEECH BLOCKED");
                                                                                                                       try{
@@ -6647,6 +6650,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar started speaking"
                                                                                                                   );
+ if(!this.isExperienceNexstorvenDemo())this.recordLearnerReplySpeechStart();
                                                                                                                   if(this.m5b3yDemoHandoffArmed && !this.m5b3yDemoHandoffRequested){
                                                                                                                     this.m5b3zSynthesisSpeechStarted=true;
                                                                                                                     console.log('NEXIVRA M5B-3Z SYNTHESIS SPEECH START CONFIRMED');
@@ -8239,6 +8243,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
 
                                                                                                           async startSession() {
+ this.learnerReplyTiming=null;
 
                                                                                                             const sessionButton =
                                                                                                               this.shadowRoot.getElementById(
@@ -8773,6 +8778,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
 
                                                                                                           async endSession() {
+ this.learnerReplyTiming=null;
                                                                                                             if(this.sessionEnding)return;
                                                                                                             this.sessionEnding=true;
 
@@ -9944,7 +9950,22 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                           }
 
 
-                                                                                                          async handleAdaptiveObservation(type, details = {}) {
+                                                                                                          shouldHoldPassiveObservation(type, now=Date.now()) {
+ if(!['sustained_orientation_away','orientation_returned_forward','posture_pattern_changed','posture_pattern_returned'].includes(type))return false;
+ const recent=[this.lastLearnerTranscriptAt,this.lastLearnerTextAt].some(at=>Number.isFinite(at)&&now>=at&&now-at<30000);
+ return Boolean(this.avatarSpeaking||this.learnerSpeaking||this.learnerMicSpeaking||recent);
+}
+recordLearnerReplyDispatch(kind) {
+ this.learnerReplyTiming={kind,dispatchedAt:performance.now()};
+}
+recordLearnerReplySpeechStart() {
+ const timing=this.learnerReplyTiming;
+ if(!timing)return;
+ this.learnerReplyTiming=null;
+ const elapsed=performance.now()-timing.dispatchedAt;
+ if(Number.isFinite(elapsed)&&elapsed>=0&&elapsed<=120000)console.log('NEXSTORVEN LEARNER REPLY TIMING:',{input:timing.kind,dispatchToFirstSpeechMs:Math.round(elapsed)});
+}
+async handleAdaptiveObservation(type, details = {}) {
 
                                                                                                             const observation =
                                                                                                               this.recordObservation(type, details);
@@ -9962,7 +9983,12 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                               return;
                                                                                                             }
 
-                                                                                                            const internalContext = `
+                                                                                                            if(this.shouldHoldPassiveObservation(type)) {
+ console.log('NEXSTORVEN PASSIVE OBSERVATION HELD DURING CONVERSATION:',type);
+ return;
+}
+
+const internalContext = `
                                                                                                         INTERNAL NEXIVRA OBSERVATION
 
                                                                                                         A subject-neutral behavior event was detected during the current learning interaction.
