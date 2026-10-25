@@ -6331,6 +6331,10 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 
 
                                                                                                           setStatus(message) {
+ if (this.learnerRecognitionError && /^Session active\.?$/i.test(String(message)) && !this.isExperienceNexstorvenDemo()) {
+   message = this.learnerRecognitionFailureMessage();
+ }
+
 
                                                                                                             console.log(
                                                                                                               "NEXIVRA STATUS:",
@@ -7799,10 +7803,26 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                             this.speechRecognition.onresult({resultIndex:0,results:[Object.assign([{transcript:answer}],{isFinal:true})]});
                                                                                                           }
 
-                                                                                                          startLearnerTranscriptCapture() {
+                                                                                                          learnerRecognitionFailureMessage() {
+ const code=this.learnerRecognitionError;
+ if(code==='not-allowed'||code==='service-not-allowed')return 'Voice input is blocked. Check microphone permissions, or type your reply below.';
+ if(code==='audio-capture')return 'No microphone input is available. Check your microphone, or type your reply below.';
+ if(code==='unsupported')return 'This browser does not support voice recognition. Type your reply below or use a supported browser.';
+ return 'Voice recognition could not connect. Type your reply below, or end the session and retry in another browser.';
+}
+handleLearnerRecognitionFailure(code) {
+ // Keep the existing demonstration route unchanged.
+ if(this.isExperienceNexstorvenDemo())return;
+ this.learnerRecognitionError=code;
+ this.speechRecognitionActive=false;
+ try{this.speechRecognition?.abort();}catch(_){}
+ this.setStatus(this.learnerRecognitionFailureMessage());
+}
+startLearnerTranscriptCapture() {
                                                                                                             if(this.speechRecognitionActive)return;
                                                                                                             const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-                                                                                                            if(!Recognition){console.warn("NEXIVRA TRANSCRIPT: browser speech recognition unavailable.");return;}
+                                                                                                            if(!Recognition){console.warn("NEXIVRA TRANSCRIPT: browser speech recognition unavailable.");this.handleLearnerRecognitionFailure("unsupported");return;}
+ this.learnerRecognitionError=null;
                                                                                                             try{
                                                                                                               const recognition=new Recognition();recognition.continuous=true;recognition.interimResults=true;recognition.lang="en-US";
                                                                                                               recognition.onresult=event=>{for(let i=event.resultIndex;i<event.results.length;i++){const result=event.results[i];const text=String(result?.[0]?.transcript||"").trim();if(!text)continue;
@@ -8188,10 +8208,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                             this.sendLiveAvatarMessageSafely(routed,"m5b3c-learner-turn");
                                           }
                                         }};
-                                                                                                              recognition.onerror=event=>{const error=String(event?.error||"");if(!["no-speech","aborted"].includes(error))console.warn("NEXIVRA TRANSCRIPT ERROR:",error);};
+                                                                                                              recognition.onerror=event=>{const error=String(event?.error||"");if(!["no-speech","aborted"].includes(error)){console.warn("NEXIVRA TRANSCRIPT ERROR:",error);this.handleLearnerRecognitionFailure(error);}};
                                                                                                               recognition.onend=()=>{if(this.speechRecognitionActive&&this.sessionActive){try{recognition.start();}catch(error){}}};
                                                                                                               this.speechRecognition=recognition;this.speechRecognitionActive=true;recognition.start();console.log("NEXIVRA TRANSCRIPT CAPTURE ACTIVE");
-                                                                                                            }catch(error){this.speechRecognitionActive=false;this.speechRecognition=null;console.warn("NEXIVRA TRANSCRIPT START ERROR:",error);}
+                                                                                                            }catch(error){this.speechRecognitionActive=false;this.speechRecognition=null;console.warn("NEXIVRA TRANSCRIPT START ERROR:",error);this.handleLearnerRecognitionFailure("start-failed");}
                                                                                                           }
 
                                                                                                           stopLearnerTranscriptCapture() {
