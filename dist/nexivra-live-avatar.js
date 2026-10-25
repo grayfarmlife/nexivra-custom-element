@@ -35191,8 +35191,9 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     this.renderUnifiedDashboard();
   }
   setStatus(message) {
-    if (this.learnerRecognitionError && /^Session active\.?$/i.test(String(message)) && !this.isExperienceNexstorvenDemo()) {
-      message = this.learnerRecognitionFailureMessage();
+    if (this.learnerRecognitionError && this.sessionActive && !this.isExperienceNexstorvenDemo()) {
+      const voiceStatus = this.learnerRecognitionFailureMessage();
+      if (!String(message).includes(voiceStatus)) message = String(message) + " " + voiceStatus;
     }
     console.log(
       "NEXIVRA STATUS:",
