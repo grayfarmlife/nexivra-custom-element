@@ -33056,6 +33056,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     );
   }
   showUnifiedDashboard() {
+    this.releaseLearnerCapture("dashboard_return");
     const dashboard = this.shadowRoot?.getElementById(
       "unifiedDashboardView"
     );
@@ -35247,6 +35248,42 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
    * LIVEAVATAR RUNTIME RESET
    * =========================================================
    */
+  stopCapturedTracks(stream) {
+    try {
+      stream?.getTracks?.().forEach((track) => {
+        try {
+          track.enabled = false;
+          track.stop();
+        } catch (_4) {
+        }
+      });
+    } catch (_4) {
+    }
+  }
+  learnerCaptureIsCurrent(epoch, stream = null) {
+    const valid = epoch === this.localMediaEpoch && !this.sessionEnding;
+    if (!valid) this.stopCapturedTracks(stream);
+    return valid;
+  }
+  releaseLearnerCapture(reason) {
+    this.localMediaEpoch = (this.localMediaEpoch || 0) + 1;
+    this.sessionActive = false;
+    this.learnerReplyTiming = null;
+    for (const name of ["stopLearnerTranscriptCapture", "stopVisualAnalysis", "stopLearnerAudioMonitor"]) {
+      try {
+        this[name]();
+      } catch (_4) {
+      }
+    }
+    try {
+      this.hardReleaseLocalMedia(reason);
+    } catch (_4) {
+    }
+    try {
+      this.stopCamera();
+    } catch (_4) {
+    }
+  }
   hardReleaseLocalMedia(reason = "session_end") {
     console.log("NEXIVRA HARD MEDIA RELEASE START:", reason);
     const stopStream = (stream) => {
@@ -35938,6 +35975,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     );
   }
   async exitTrainingFast() {
+    this.releaseLearnerCapture("navigation_exit");
     this.emitProgressCheckpoint(
       "navigation_exit"
     );
@@ -36265,6 +36303,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
       recognition.interimResults = true;
       recognition.lang = "en-US";
       recognition.onresult = (event) => {
+        if (!this.speechRecognitionActive || !this.sessionActive || this.sessionEnding) return;
         for (let i3 = event.resultIndex; i3 < event.results.length; i3++) {
           const result = event.results[i3];
           const text = String(result?.[0]?.transcript || "").trim();
@@ -36627,13 +36666,21 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     clearTimeout(this.m5b3zSynthesisWatchdog);
     this.m5b3zSynthesisSpeechStarted = false;
     this.speechRecognitionActive = false;
-    if (this.speechRecognition) {
+    const recognition = this.speechRecognition;
+    this.speechRecognition = null;
+    if (recognition) {
+      recognition.onend = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
       try {
-        this.speechRecognition.stop();
-      } catch (error) {
+        recognition.abort();
+      } catch (_4) {
+        try {
+          recognition.stop();
+        } catch (_5) {
+        }
       }
     }
-    this.speechRecognition = null;
   }
   async toggleSession() {
     if (this.sessionEnding) {
@@ -36646,6 +36693,8 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
   }
   async startSession() {
+    const captureEpoch = (this.localMediaEpoch || 0) + 1;
+    this.localMediaEpoch = captureEpoch;
     this.learnerReplyTiming = null;
     const sessionButton = this.shadowRoot.getElementById(
       "sessionButton"
@@ -36725,6 +36774,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
       this.setStatus(
         "Connecting camera and microphone..."
       );
+      if (!this.learnerCaptureIsCurrent(captureEpoch)) return;
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -36741,9 +36791,11 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
           }
         }
       });
+      if (!this.learnerCaptureIsCurrent(captureEpoch, stream)) return;
       this.cameraStream = stream;
       learnerVideo.srcObject = stream;
       await learnerVideo.play();
+      if (!this.learnerCaptureIsCurrent(captureEpoch, stream)) return;
       learnerPreview.classList.add(
         "active"
       );
@@ -36762,17 +36814,20 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
       await this.startLearnerAudioMonitor(
         stream
       );
+      if (!this.learnerCaptureIsCurrent(captureEpoch, stream)) return;
       this.sessionStartupStage = "vision";
       this.setStatus(
         "Starting visual analysis..."
       );
       await this.initializeVision();
+      if (!this.learnerCaptureIsCurrent(captureEpoch, stream)) return;
       this.startVisualAnalysis();
       this.sessionStartupStage = "runtime_context";
       this.setStatus(
         "Preparing learning context..."
       );
       await this.injectRuntimeContext();
+      if (!this.learnerCaptureIsCurrent(captureEpoch, stream)) return;
       this.sessionStartupStage = "voice_chat";
       this.setStatus(
         "Starting NEXIVRA input router..."
@@ -36786,6 +36841,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
       }
       this.m5b3cInputRouterActive = true;
       console.log("NEXIVRA M5B-3C INPUT ROUTER ACTIVE \u2014 ELENORA AUTONOMOUS MIC OFF");
+      if (!this.learnerCaptureIsCurrent(captureEpoch, stream)) return;
       this.sessionStartupStage = "active";
       this.sessionActive = true;
       this.m5b3e1AwaitingManualRestart = false;
@@ -36861,6 +36917,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
   }
   async hardEndAllNexivraMedia(reason = "end_session") {
+    this.releaseLearnerCapture(reason);
     if (this.m5b2HardShutdownActive) return;
     this.m5b2HardShutdownActive = true;
     console.log("NEXIVRA M5B-2D HARD SHUTDOWN START:", reason);
@@ -37679,14 +37736,25 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
    * =========================================================
    */
   async startLearnerAudioMonitor(stream) {
+    const monitorEpoch = this.localMediaEpoch;
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) {
         return;
       }
       this.learnerAudioContext = new AudioContextClass();
+      const ownedAudioContext = this.learnerAudioContext;
       if (this.learnerAudioContext.state === "suspended") {
         await this.learnerAudioContext.resume();
+      }
+      if (!this.learnerCaptureIsCurrent(monitorEpoch, stream)) {
+        try {
+          ownedAudioContext.close()?.catch?.(() => {
+          });
+        } catch (_4) {
+        }
+        if (this.learnerAudioContext === ownedAudioContext) this.learnerAudioContext = null;
+        return;
       }
       this.learnerSource = this.learnerAudioContext.createMediaStreamSource(
         stream
@@ -38188,6 +38256,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     );
   }
   disconnectedCallback() {
+    this.releaseLearnerCapture("element_disconnected");
     this.stopGuestInfrastructureTest("element_disconnected").catch(() => {
     });
     if (this.attachTimer) {
