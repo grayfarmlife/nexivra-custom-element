@@ -35276,13 +35276,42 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
       }
     }
     try {
-      this.hardReleaseLocalMedia(reason);
+      this.releaseOwnedLearnerMedia();
     } catch (_4) {
     }
     try {
       this.stopCamera();
     } catch (_4) {
     }
+  }
+  releaseOwnedLearnerMedia() {
+    const fields = ["mediaStream", "localStream", "cameraStream", "microphoneStream", "audioStream", "userMediaStream"];
+    for (const field of fields) {
+      this.stopCapturedTracks(this[field]);
+      this[field] = null;
+    }
+    const preview = this.shadowRoot?.getElementById("learnerVideo");
+    if (preview) {
+      this.stopCapturedTracks(preview.srcObject);
+      preview.srcObject = null;
+      try {
+        preview.pause?.();
+      } catch (_4) {
+      }
+    }
+    for (const field of ["audioProcessor", "microphoneSource"]) {
+      try {
+        this[field]?.disconnect?.();
+      } catch (_4) {
+      }
+      this[field] = null;
+    }
+    try {
+      this.audioContext?.close?.()?.catch?.(() => {
+      });
+    } catch (_4) {
+    }
+    this.audioContext = null;
   }
   hardReleaseLocalMedia(reason = "session_end") {
     console.log("NEXIVRA HARD MEDIA RELEASE START:", reason);
