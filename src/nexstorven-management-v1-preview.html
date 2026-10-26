@@ -11064,7 +11064,7 @@ function renderAssignments() {
           <td>${escapeHTML(String(course?.title || '').trim() || 'Course unavailable')}</td>
           <td>${Number(item.progressPercent || 0)}%</td>
           <td>${statusBadge(item.status || 'assigned')}</td>
-          ${state.nsPrivateReportsEnabled ? `<td><button class="button secondary" data-ns-learning-report="${escapeAttribute(item._id || item.id || '')}">View summary</button></td>` : ''}
+          ${state.nsPrivateReportsEnabled ? `<td><button class="btn btn-ghost" data-ns-learning-report="${escapeAttribute(item._id || item.id || '')}">View summary</button></td>` : ''}
         </tr>`;
       }).join('')}</tbody>
     </table>`;
@@ -14206,7 +14206,7 @@ window.addEventListener('message', event => {
 </script>
 <div class="modal-overlay" id="nsLearningReportModal" role="dialog" aria-modal="true" aria-labelledby="nsLearningReportTitle">
  <div class="modal" style="width:min(860px,100%)">
-  <div class="modal-header"><h2 id="nsLearningReportTitle">Course learning summary</h2><button class="button secondary" id="nsLearningReportClose" aria-label="Close learning summary">Close</button></div>
+  <div class="modal-header"><h2 id="nsLearningReportTitle">Course learning summary</h2><button class="btn btn-ghost" id="nsLearningReportClose" aria-label="Close learning summary">Close</button></div>
   <div class="modal-body" id="nsLearningReportContent" aria-live="polite"></div>
  </div>
 </div>
