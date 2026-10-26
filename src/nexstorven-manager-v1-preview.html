@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NEXSTORVEN Manager</title><style>
+:root{color-scheme:dark;font-family:Arial,sans-serif;background:#030b14;color:#eaf5ff}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(135deg,#031522,#060a12)}header{border-bottom:1px solid #164357;padding:24px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}header strong{letter-spacing:3px;color:#00c9ee;font-size:14px}nav{display:flex;gap:10px;margin-left:auto;flex-wrap:wrap}.btn{cursor:pointer;border:1px solid #1f5870;border-radius:10px;color:#eaf5ff;background:#072334;padding:12px 17px;font-size:15px;font-weight:600}.btn:hover,.btn:focus-visible{outline:2px solid #00c9ee;outline-offset:3px}.primary{background:#04b7e3;color:#00121f}main{max-width:1200px;padding:32px 24px;margin:auto}h1{font-size:clamp(28px,5vw,40px);margin:6px 0 12px}p{line-height:1.6;color:#b6cddc}.eyebrow{font-size:12px;letter-spacing:3px;color:#00c9ee;font-weight:bold}.card{margin-top:26px;padding:24px;border:1px solid #164357;border-radius:16px;background:#04121d}.scroll{overflow-x:auto}table{border-collapse:collapse;width:100%;text-align:left}th,td{padding:16px 12px;border-bottom:1px solid #16303f}th{font-size:12px;letter-spacing:1px;color:#a6c4d5}td{font-size:14px}#workspaceStatus{min-height:24px}.modal-overlay{display:none;position:fixed;inset:0;background:#000b;z-index:50;padding:24px;align-items:center;justify-content:center}.modal-overlay.open{display:flex}.modal{background:#071825;border:1px solid #23627c;border-radius:16px;max-height:90vh;overflow:auto}.modal-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px;border-bottom:1px solid #164357}.modal-header h2{font-size:22px;margin:0}.modal-body{padding:24px}.modal-body p{margin-top:0}@media(max-width:600px){header,main{padding:18px}.card{padding:16px}.modal-overlay{padding:10px}nav{margin-left:0}.btn{padding:10px 14px}}
+</style></head><body>
+<header><strong>NEXSTORVEN · MANAGER</strong><nav aria-label="Manager navigation"><button class="btn primary" id="myLearning">My Learning</button><button class="btn" id="refresh">Refresh team</button><button class="btn" id="logout">Log out</button></nav></header>
+<main><span class="eyebrow">TEAM LEARNING</span><h1>Your team’s progress</h1><p>View course assignments and structured learning summaries for learners assigned to your team. Open My Learning to take your own courses.</p><section class="card" aria-labelledby="teamTitle"><h2 id="teamTitle">Team assignments</h2><p id="workspaceStatus" role="status">Connecting to your team workspace…</p><div class="scroll" id="teamAssignments"></div></section><p>Learning summaries contain approved course results. Personal conversations, recordings and personal memory are excluded from these summaries.</p></main>
+<script>
+const state={nsPrivateReportsEnabled:false};
+const escapeHTML=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+function sendToWix(type,payload={}){window.parent.postMessage({source:'NEXIVRA_MANAGEMENT',type,payload},'*');}
+function renderAssignments(){}
+let workspaceTimer;
+function managerLoading(){document.getElementById('teamAssignments').textContent='';document.getElementById('workspaceStatus').textContent='Loading authorized team assignments…';clearTimeout(workspaceTimer);workspaceTimer=setTimeout(()=>{document.getElementById('workspaceStatus').textContent='The team workspace could not be loaded. Please refresh to try again.';},20000);}
+function renderManagerAssignments(payload){
+ clearTimeout(workspaceTimer);
+ const content=document.getElementById('teamAssignments'),status=document.getElementById('workspaceStatus');content.textContent='';
+ if(!payload?.ok||!Array.isArray(payload.assignments)){status.textContent=payload?.code==='ACCESS_DENIED'?'This team workspace is not available to your account.':'The team workspace could not be loaded. Please refresh to try again.';return;}
+ const labels={assigned:'Assigned',in_progress:'In progress',paused:'Paused',completed:'Completed'};
+ status.textContent=payload.assignments.length?'Only assignments covered by your current team access are shown.':'No published course assignments are available for your approved team yet. Your own courses are under My Learning.';
+ if(!payload.assignments.length)return;
+ content.innerHTML='<table><thead><tr><th scope="col">Member</th><th scope="col">Course</th><th scope="col">Status</th><th scope="col">Learning summary</th></tr></thead><tbody>'+payload.assignments.map(item=>'<tr><td>'+escapeHTML(item.preferredName)+'</td><td>'+escapeHTML(item.courseTitle)+'</td><td>'+escapeHTML(labels[item.status]||'Unknown')+'</td><td><button class="btn" data-ns-learning-report="'+escapeHTML(item.assignmentId)+'">View summary</button></td></tr>').join('')+'</tbody></table>';
+}
+window.addEventListener('message',event=>{if(event.source!==window.parent||event.data?.source!=='NEXIVRA_WIX')return;if(event.data.type==='NS_MANAGER_WORKSPACE_RESULT')renderManagerAssignments(event.data.payload);});
+document.getElementById('myLearning').addEventListener('click',()=>sendToWix('NS_OPEN_MY_LEARNING'));
+document.getElementById('logout').addEventListener('click',()=>sendToWix('LOGOUT'));
+document.getElementById('refresh').addEventListener('click',()=>{managerLoading();sendToWix('NS_MANAGER_REFRESH');});
+</script>
+<div class="modal-overlay" id="nsLearningReportModal" role="dialog" aria-modal="true" aria-labelledby="nsLearningReportTitle">
+ <div class="modal" style="width:min(860px,100%)">
+  <div class="modal-header"><h2 id="nsLearningReportTitle">Course learning summary</h2><button class="btn btn-ghost" id="nsLearningReportClose" aria-label="Close learning summary">Close</button></div>
+  <div class="modal-body" id="nsLearningReportContent" aria-live="polite"></div>
+ </div>
+</div>
+<script>
+// Isolated V1 preview only. All report authority remains in the Wix backend.
+let nsLearningReportPending=null;
+let nsLearningReportTimer=null;
+let nsLearningReportCounter=0;
+function nsLearningReportClose(){
+ clearTimeout(nsLearningReportTimer);nsLearningReportTimer=null;nsLearningReportPending=null;
+ document.getElementById('nsLearningReportModal').classList.remove('open');
+ document.querySelector('[data-ns-learning-report]')?.focus();
+}
+function nsLearningReportError(code){
+ const messages={
+  ACCESS_DENIED:'This learning summary is not available to your account.',
+  RUBRIC_NOT_READY:'This course does not yet have an approved reporting rubric assigned. Existing conversations will not be converted into management reports.',
+  EVIDENCE_NOT_READY:'The structured assessment history is not ready. A partial report will not be shown.',
+  EVIDENCE_CONFLICT:'Conflicting assessment records need review before a summary can be shown.'
+ };
+ document.getElementById('nsLearningReportContent').innerHTML='<p>'+escapeHTML(messages[code]||'The summary could not be loaded. Close this window and try again.')+'</p>';
+}
+function nsLearningReportRender(report){
+ const statusLabels={assigned:'Assigned',in_progress:'In progress',completed:'Completed',paused:'Paused',revoked:'Revoked',unknown:'Unknown'};
+ const skillLabels={demonstrated:'Demonstrated',developing:'Developing',needs_reinforcement:'Needs reinforcement',not_observed:'Not assessed'};
+ const trendLabels={improved:'Improved',needs_review:'Needs review',unchanged:'Unchanged',not_established:'Not established'};
+ document.getElementById('nsLearningReportTitle').textContent=report.courseTitle||'Course learning summary';
+ document.getElementById('nsLearningReportContent').innerHTML=`
+  <p>Structured course results. Private conversations, personal memory, recordings and camera observations are excluded from this report.</p>
+  <p><strong>Progress:</strong> ${report.progressPercent===null?'Unknown':escapeHTML(report.progressPercent)+'%'} · <strong>Status:</strong> ${escapeHTML(statusLabels[report.completionStatus]||'Unknown')}</p>
+  <p><strong>Skills assessed:</strong> ${escapeHTML(report.assessedSkills)} of ${escapeHTML(report.totalSkills)}</p>
+  <div style="overflow-x:auto"><table><thead><tr><th>Skill</th><th>Assessment</th><th>Trend</th><th>Recommended coaching</th></tr></thead><tbody>${report.skills.map(skill=>`<tr><td>${escapeHTML(skill.label)}</td><td>${escapeHTML(skillLabels[skill.status]||'Unknown')}</td><td>${escapeHTML(trendLabels[skill.trend]||'Not established')}</td><td>${escapeHTML(skill.recommendedAction)}</td></tr>`).join('')}</tbody></table></div>
+  <p>“Not assessed” means there is no structured assessment for that skill. It is not a failing result.</p>`;
+}
+function nsLearningReportOpen(assignmentId){
+ if(state.nsPrivateReportsEnabled!==true||!assignmentId)return;
+ clearTimeout(nsLearningReportTimer);
+ nsLearningReportPending='ns-report-'+Date.now()+'-'+(++nsLearningReportCounter);
+ document.getElementById('nsLearningReportTitle').textContent='Course learning summary';
+ document.getElementById('nsLearningReportContent').textContent='Loading authorized learning summary…';
+ document.getElementById('nsLearningReportModal').classList.add('open');
+ document.getElementById('nsLearningReportClose').focus();
+ nsLearningReportTimer=setTimeout(()=>{nsLearningReportPending=null;nsLearningReportError('REPORT_UNAVAILABLE');},20000);
+ sendToWix('NS_PRIVATE_LEARNING_REPORT',{assignmentId,requestId:nsLearningReportPending});
+}
+document.getElementById('nsLearningReportClose').addEventListener('click',nsLearningReportClose);
+document.addEventListener('click',event=>{const button=event.target.closest?.('[data-ns-learning-report]');if(button)nsLearningReportOpen(button.dataset.nsLearningReport);});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('nsLearningReportModal').classList.contains('open'))nsLearningReportClose();});
+window.addEventListener('message',event=>{
+ if(event.source!==window.parent||event.data?.source!=='NEXIVRA_WIX')return;
+ const {type,payload}=event.data;
+ if(type==='NS_PRIVATE_REPORT_CAPABILITIES'){
+  state.nsPrivateReportsEnabled=payload?.enabled===true;
+  if(!state.nsPrivateReportsEnabled)nsLearningReportClose();
+  renderAssignments();return;
+ }
+ if(type!=='NS_PRIVATE_LEARNING_REPORT_RESULT'||!nsLearningReportPending||payload?.requestId!==nsLearningReportPending)return;
+ clearTimeout(nsLearningReportTimer);nsLearningReportTimer=null;nsLearningReportPending=null;
+ if(payload?.ok&&payload.report&&Array.isArray(payload.report.skills))nsLearningReportRender(payload.report);
+ else nsLearningReportError(payload?.code);
+});
+</script>
+<script>managerLoading();sendToWix('NEXIVRA_READY');</script></body></html>

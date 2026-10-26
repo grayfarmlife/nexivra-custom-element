@@ -3722,7 +3722,8 @@ textarea {
                 Learner
               </option>
 
-              <option value="company_admin">
+              <option value="manager">Manager</option>
+<option value="company_admin">
                 Company Admin
               </option>
 
@@ -9570,7 +9571,7 @@ function renderUsers() {
               ${escapeHTML(
                 user.role === 'nexivra_admin'
                   ? 'NEXSTORVEN Admin'
-                  : user.role === 'company_admin'
+                  : user.role === 'manager' ? 'Manager' : user.role === 'company_admin'
                     ? 'Company Admin'
                     : 'Learner'
               )}
@@ -9776,7 +9777,8 @@ function openUserModal(
           Learner
         </option>
 
-        <option value="company_admin">
+        <option value="manager">Manager</option>
+<option value="company_admin">
           Company Admin
         </option>
 
