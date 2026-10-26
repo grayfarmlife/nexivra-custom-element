@@ -4072,6 +4072,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                           }
 
                                                                                                           showUnifiedDashboard() {
+ this.releaseLearnerCapture("dashboard_return");
 
                                                                                                             const dashboard =
                                                                                                               this.shadowRoot
@@ -6429,7 +6430,26 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                            * =========================================================
                                                                                                            */
 
-                                                                                                      hardReleaseLocalMedia(reason="session_end") {
+                                                                                                      stopCapturedTracks(stream) {
+ try{stream?.getTracks?.().forEach(track=>{try{track.enabled=false;track.stop();}catch(_){}});}catch(_){}
+}
+learnerCaptureIsCurrent(epoch, stream=null) {
+ const valid=epoch===this.localMediaEpoch&&!this.sessionEnding;
+ if(!valid)this.stopCapturedTracks(stream);
+ return valid;
+}
+releaseLearnerCapture(reason) {
+ this.localMediaEpoch=(this.localMediaEpoch||0)+1;
+ this.sessionActive=false;
+ this.learnerReplyTiming=null;
+ // Local privacy cleanup must not wait for remote SDK/network shutdown.
+ for(const name of ['stopLearnerTranscriptCapture','stopVisualAnalysis','stopLearnerAudioMonitor']){
+  try{this[name]();}catch(_){}
+ }
+ try{this.hardReleaseLocalMedia(reason);}catch(_){}
+ try{this.stopCamera();}catch(_){}
+}
+hardReleaseLocalMedia(reason="session_end") {
                                                                                                         console.log("NEXIVRA HARD MEDIA RELEASE START:",reason);
                                                                                                         const stopStream=stream=>{
                                                                                                           if(!stream)return;
@@ -7363,6 +7383,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 
 
                                                                                                           async exitTrainingFast() {
+ this.releaseLearnerCapture("navigation_exit");
 
                                                                                                             /*
                                                                                                              * Progress has already been saving throughout the
@@ -7830,7 +7851,7 @@ startLearnerTranscriptCapture() {
  this.learnerRecognitionError=null;
                                                                                                             try{
                                                                                                               const recognition=new Recognition();recognition.continuous=true;recognition.interimResults=true;recognition.lang="en-US";
-                                                                                                              recognition.onresult=event=>{for(let i=event.resultIndex;i<event.results.length;i++){const result=event.results[i];const text=String(result?.[0]?.transcript||"").trim();if(!text)continue;
+                                                                                                              recognition.onresult=event=>{if(!this.speechRecognitionActive||!this.sessionActive||this.sessionEnding)return;for(let i=event.resultIndex;i<event.results.length;i++){const result=event.results[i];const text=String(result?.[0]?.transcript||"").trim();if(!text)continue;
                                                                                                                 if(!result?.isFinal){
                                                                                                                   if(
                                                                                                                     this.rolePlayActive&&
@@ -8221,7 +8242,9 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
                                                                                                           stopLearnerTranscriptCapture() {
                                                                                                             clearTimeout(this.m5b3ySpeechTimer);this.m5b3ySpeechParts=[];clearTimeout(this.m5b3zSynthesisWatchdog);this.m5b3zSynthesisSpeechStarted=false;
-                                                                                                            this.speechRecognitionActive=false;if(this.speechRecognition){try{this.speechRecognition.stop();}catch(error){}}this.speechRecognition=null;
+                                                                                                            this.speechRecognitionActive=false;
+ const recognition=this.speechRecognition;this.speechRecognition=null;
+ if(recognition){recognition.onend=null;recognition.onresult=null;recognition.onerror=null;try{recognition.abort();}catch(_){try{recognition.stop();}catch(_){}}}
                                                                                                           }
 
                                                                                                           async toggleSession() {
@@ -8243,6 +8266,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
 
                                                                                                           async startSession() {
+ const captureEpoch=(this.localMediaEpoch||0)+1;this.localMediaEpoch=captureEpoch;
  this.learnerReplyTiming=null;
 
                                                                                                             const sessionButton =
@@ -8347,7 +8371,8 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                               );
 
 
-                                                                                                              const stream =
+                                                                                                              if(!this.learnerCaptureIsCurrent(captureEpoch))return;
+ const stream =
                                                                                                                 await navigator.mediaDevices
                                                                                                                   .getUserMedia({
 
@@ -8372,7 +8397,8 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                                   });
 
 
-                                                                                                              this.cameraStream =
+                                                                                                              if(!this.learnerCaptureIsCurrent(captureEpoch,stream))return;
+ this.cameraStream =
                                                                                                                 stream;
 
 
@@ -8381,6 +8407,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
 
                                                                                                               await learnerVideo.play();
+ if(!this.learnerCaptureIsCurrent(captureEpoch,stream))return;
 
 
                                                                                                               learnerPreview.classList.add(
@@ -8419,6 +8446,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                               await this.startLearnerAudioMonitor(
                                                                                                                 stream
                                                                                                               );
+ if(!this.learnerCaptureIsCurrent(captureEpoch,stream))return;
 
 
                                                                                                               this.sessionStartupStage =
@@ -8431,6 +8459,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
 
                                                                                                               await this.initializeVision();
+ if(!this.learnerCaptureIsCurrent(captureEpoch,stream))return;
 
 
                                                                                                               this.startVisualAnalysis();
@@ -8446,6 +8475,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
 
 
                                                                                                               await this.injectRuntimeContext();
+ if(!this.learnerCaptureIsCurrent(captureEpoch,stream))return;
 
 
                                                                                                               this.sessionStartupStage =
@@ -8472,7 +8502,8 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                               this.m5b3cInputRouterActive=true;
                                                                                                               console.log("NEXIVRA M5B-3C INPUT ROUTER ACTIVE — ELENORA AUTONOMOUS MIC OFF");
 
-                                                                                                              this.sessionStartupStage =
+                                                                                                              if(!this.learnerCaptureIsCurrent(captureEpoch,stream))return;
+ this.sessionStartupStage =
                                                                                                                 "active";
 
 
@@ -8638,6 +8669,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                                                                                           }
 
                                                                                                           async hardEndAllNexivraMedia(reason="end_session") {
+ this.releaseLearnerCapture(reason);
                                                                                                             if(this.m5b2HardShutdownActive)return;
                                                                                                             this.m5b2HardShutdownActive=true;
 
@@ -10203,6 +10235,8 @@ const internalContext = `
                                                                                                           async startLearnerAudioMonitor(
                                                                                                             stream
                                                                                                           ) {
+ const monitorEpoch=this.localMediaEpoch;
+
 
                                                                                                             try {
 
@@ -10218,6 +10252,7 @@ const internalContext = `
 
                                                                                                               this.learnerAudioContext =
                                                                                                                 new AudioContextClass();
+ const ownedAudioContext=this.learnerAudioContext;
 
 
                                                                                                               if (
@@ -10231,7 +10266,12 @@ const internalContext = `
                                                                                                               }
 
 
-                                                                                                              this.learnerSource =
+                                                                                                              if(!this.learnerCaptureIsCurrent(monitorEpoch,stream)){
+ try{ownedAudioContext.close()?.catch?.(()=>{});}catch(_){}
+ if(this.learnerAudioContext===ownedAudioContext)this.learnerAudioContext=null;
+ return;
+}
+this.learnerSource =
                                                                                                                 this.learnerAudioContext
                                                                                                                   .createMediaStreamSource(
                                                                                                                     stream
@@ -11221,6 +11261,7 @@ const internalContext = `
 
 
                                                                                                           disconnectedCallback() {
+ this.releaseLearnerCapture("element_disconnected");
                                                                                                             this.stopGuestInfrastructureTest("element_disconnected").catch(() => {});
 
                                                                                                             if (this.attachTimer) {
