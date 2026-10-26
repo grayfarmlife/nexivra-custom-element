@@ -9426,6 +9426,7 @@ function renderCourses() {
             <td>
               <strong>
                 ${escapeHTML(course.title)}
+                ${state.nsCourseSkillsEnabled===true&&course.status!=='archived'?'<button class="btn btn-ghost" data-ns-course-skills="'+escapeHTML(course._id||course.id)+'">Reporting skills</button>':''}
               </strong>
 
               <div
@@ -14278,5 +14279,83 @@ window.addEventListener('message',event=>{
  if(event.source!==window.parent||event.data?.source!=='NEXIVRA_WIX'||event.data.type!=='NS_MY_LEARNING_CAPABILITY')return;
  document.getElementById('nsMyLearning').hidden=event.data.payload?.enabled!==true;
 });
-</script></body>
+</script><div class="modal-overlay" id="nsCourseSkillsModal" role="dialog" aria-modal="true" aria-labelledby="nsCourseSkillsTitle">
+ <div class="modal" style="width:min(760px,100%)">
+  <div class="modal-header"><h2 id="nsCourseSkillsTitle">Course skills for reporting</h2><button class="btn btn-ghost" id="nsCourseSkillsClose">Close</button></div>
+  <div class="modal-body">
+   <p id="nsCourseSkillsCourse"></p>
+   <p>Define the professional skills this course will assess. Use one skill per line. Do not include learner names, personal circumstances, private conversations or medical information.</p>
+   <label for="nsCourseSkillsInput">Professional skills</label>
+   <textarea id="nsCourseSkillsInput" rows="6" maxlength="16000" placeholder="Explain the approved process clearly&#10;Choose the appropriate next step" style="width:100%"></textarea>
+   <p id="nsCourseSkillsStatus" role="status" aria-live="polite"></p>
+   <div id="nsCourseSkillsReview" hidden>
+    <p>Review these exact skills before approval. Approval creates a fixed version; existing learner assignments are not changed.</p>
+    <label><input type="checkbox" id="nsCourseSkillsConfirm"> I confirm these are course-related professional skills suitable for company learning reports.</label>
+   </div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-ghost" id="nsCourseSkillsEdit" hidden>Edit as a new draft</button><button class="btn btn-primary" id="nsCourseSkillsSave">Save draft for review</button><button class="btn btn-primary" id="nsCourseSkillsApprove" hidden disabled>Approve these skills</button></div>
+ </div>
+</div>
+<script>
+// No assessments or learner evidence are accepted by this authoring interface.
+let nsSkills={enabled:false,courseId:null,draftId:null,pending:null,timer:null,sequence:0,approved:false,returnFocus:null};
+const nsSkillsEl=id=>document.getElementById('nsCourseSkills'+id);
+function nsSkillsControls(){
+ const busy=!!nsSkills.pending,review=!!nsSkills.draftId;
+ nsSkillsEl('Input').readOnly=busy||review||nsSkills.approved;
+ nsSkillsEl('Save').hidden=review||nsSkills.approved;
+ nsSkillsEl('Save').disabled=busy||!nsSkills.enabled;
+ nsSkillsEl('Review').hidden=!review||nsSkills.approved;
+ nsSkillsEl('Approve').hidden=!review||nsSkills.approved;
+ nsSkillsEl('Approve').disabled=busy||!nsSkills.enabled||!nsSkillsEl('Confirm').checked;
+ nsSkillsEl('Confirm').disabled=busy;
+ nsSkillsEl('Edit').hidden=!review&&!nsSkills.approved;
+ nsSkillsEl('Edit').disabled=busy;
+}
+function nsSkillsCancelPending(){clearTimeout(nsSkills.timer);nsSkills.timer=null;nsSkills.pending=null;}
+function nsSkillsClose(){nsSkillsCancelPending();nsSkills.courseId=null;nsSkills.draftId=null;nsSkills.approved=false;nsSkillsEl('Input').value='';nsSkillsEl('Confirm').checked=false;nsSkillsEl('Modal').classList.remove('open');nsSkills.returnFocus?.focus();}
+function nsSkillsOpen(courseId,button){
+ if(!nsSkills.enabled)return;
+ const course=state.courses.find(row=>(row._id||row.id)===courseId);
+ if(!course)return;
+ nsSkillsCancelPending();nsSkills.courseId=courseId;nsSkills.draftId=null;nsSkills.approved=false;nsSkills.returnFocus=button;
+ nsSkillsEl('Input').value='';nsSkillsEl('Confirm').checked=false;nsSkillsEl('Course').textContent=course.title||'Course';nsSkillsEl('Status').textContent='No new draft has been saved.';
+ nsSkillsEl('Modal').classList.add('open');nsSkillsControls();nsSkillsEl('Input').focus();
+}
+function nsSkillsRequest(action,payload){
+ if(!nsSkills.enabled||nsSkills.pending||!nsSkills.courseId)return;
+ const requestId='ns-skills-'+Date.now()+'-'+(++nsSkills.sequence);
+ nsSkills.pending={requestId,action,courseId:nsSkills.courseId};nsSkillsControls();
+ nsSkillsEl('Status').textContent=action==='draft'?'Saving your draft…':'Saving your approved skill version…';
+ nsSkills.timer=setTimeout(()=>{if(nsSkills.pending?.requestId!==requestId)return;nsSkillsCancelPending();nsSkillsEl('Status').textContent=action==='approve'?'The approval result could not be confirmed. Retrying this same draft will not replace an existing approved version.':'The save result could not be confirmed. A draft may have been saved; no approval was requested.';nsSkillsControls();},25000);
+ sendToWix('NS_COURSE_SKILLS',{action,requestId,...payload});
+}
+nsSkillsEl('Save').addEventListener('click',()=>{
+ const labels=nsSkillsEl('Input').value.split(/\r?\n/).map(value=>value.trim()).filter(Boolean);
+ if(!labels.length||labels.length>100||labels.some(label=>label.length>160||/[\u0000-\u001f\u007f]/.test(label))||new Set(labels.map(label=>label.toLowerCase())).size!==labels.length){nsSkillsEl('Status').textContent='Add 1–100 distinct professional skills, with no more than 160 characters per line.';return;}
+ nsSkillsRequest('draft',{courseId:nsSkills.courseId,competencies:labels.map((label,index)=>({id:'skill-'+String(index+1).padStart(3,'0'),label}))});
+});
+nsSkillsEl('Approve').addEventListener('click',()=>{if(nsSkills.draftId&&nsSkillsEl('Confirm').checked)nsSkillsRequest('approve',{draftId:nsSkills.draftId,confirmProfessionalSkillsOnly:true});});
+nsSkillsEl('Confirm').addEventListener('change',nsSkillsControls);
+nsSkillsEl('Edit').addEventListener('click',()=>{if(nsSkills.pending)return;nsSkills.draftId=null;nsSkills.approved=false;nsSkillsEl('Confirm').checked=false;nsSkillsEl('Status').textContent='Editing a new draft. Any earlier approved version stays unchanged.';nsSkillsControls();nsSkillsEl('Input').focus();});
+nsSkillsEl('Close').addEventListener('click',nsSkillsClose);
+document.addEventListener('click',event=>{const button=event.target.closest?.('[data-ns-course-skills]');if(button)nsSkillsOpen(button.dataset.nsCourseSkills,button);});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&nsSkillsEl('Modal').classList.contains('open'))nsSkillsClose();});
+window.addEventListener('message',event=>{
+ if(event.source!==window.parent||event.data?.source!=='NEXIVRA_WIX')return;
+ const {type,payload}=event.data;
+ if(type==='NS_COURSE_SKILLS_CAPABILITY'){
+  nsSkills.enabled=payload?.enabled===true;state.nsCourseSkillsEnabled=nsSkills.enabled;
+  if(!nsSkills.enabled)nsSkillsClose();renderCourses();return;
+ }
+ if(type!=='NS_COURSE_SKILLS_RESULT'||!nsSkills.pending||payload?.requestId!==nsSkills.pending.requestId||nsSkills.pending.courseId!==nsSkills.courseId)return;
+ const action=nsSkills.pending.action;nsSkillsCancelPending();
+ if(payload.ok===true&&action==='draft'&&payload.status==='draft'&&typeof payload.draftId==='string'&&payload.draftId){nsSkills.draftId=payload.draftId;nsSkillsEl('Confirm').checked=false;nsSkillsEl('Status').textContent='Draft saved. Review the skills above and confirm before approving.';}
+ else if(payload.ok===true&&action==='approve'&&payload.status==='approved'&&payload.rubricVersion===nsSkills.draftId){nsSkills.approved=true;nsSkillsEl('Status').textContent='Skill version approved. Existing learner assignments have not been changed.';}
+ else {nsSkillsEl('Status').textContent=({ACCESS_DENIED:'This course is not available for approval by your account.',APPROVAL_REQUIRED:'Review the skills and confirm their professional scope before approval.',INVALID_RUBRIC:'Check the professional skills and save a valid draft.'})[payload.code]||'The request could not be confirmed. No earlier approved version has been replaced.';}
+ nsSkillsControls();
+});
+</script>
+
+</body>
 </html>
