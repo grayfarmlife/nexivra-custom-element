@@ -6446,8 +6446,18 @@ releaseLearnerCapture(reason) {
  for(const name of ['stopLearnerTranscriptCapture','stopVisualAnalysis','stopLearnerAudioMonitor']){
   try{this[name]();}catch(_){}
  }
- try{this.hardReleaseLocalMedia(reason);}catch(_){}
+ try{this.releaseOwnedLearnerMedia();}catch(_){}
  try{this.stopCamera();}catch(_){}
+}
+releaseOwnedLearnerMedia() {
+ // Incoming avatar playback is not learner capture. Never stop remote video here.
+ const fields=['mediaStream','localStream','cameraStream','microphoneStream','audioStream','userMediaStream'];
+ for(const field of fields){this.stopCapturedTracks(this[field]);this[field]=null;}
+ const preview=this.shadowRoot?.getElementById('learnerVideo');
+ if(preview){this.stopCapturedTracks(preview.srcObject);preview.srcObject=null;try{preview.pause?.();}catch(_){}}
+ for(const field of ['audioProcessor','microphoneSource']){try{this[field]?.disconnect?.();}catch(_){}this[field]=null;}
+ try{this.audioContext?.close?.()?.catch?.(()=>{});}catch(_){}
+ this.audioContext=null;
 }
 hardReleaseLocalMedia(reason="session_end") {
                                                                                                         console.log("NEXIVRA HARD MEDIA RELEASE START:",reason);
