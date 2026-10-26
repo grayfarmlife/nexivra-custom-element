@@ -36307,6 +36307,30 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     if (code === "unsupported") return "This browser does not support voice recognition. Type your reply below or use a supported browser.";
     return "Voice recognition could not connect. Type your reply below, or end the session and retry in another browser.";
   }
+  retrySafariAudioCapture(recognition) {
+    const ua2 = String(window.navigator?.userAgent || "");
+    if (!/Safari\//.test(ua2) || /Chrome|Chromium|CriOS|Edg|OPR|FxiOS/.test(ua2) || this.isExperienceNexstorvenDemo() || this.safariAudioRetryUsed || !this.sessionActive || this.sessionEnding) return false;
+    this.safariAudioRetryUsed = true;
+    this.speechRecognitionActive = false;
+    this.learnerRecognitionError = null;
+    recognition.onend = null;
+    recognition.onerror = null;
+    recognition.onresult = null;
+    try {
+      recognition.abort();
+    } catch (_4) {
+    }
+    if (this.speechRecognition === recognition) this.speechRecognition = null;
+    const epoch = this.localMediaEpoch;
+    this.setStatus("Reconnecting microphone input...");
+    this.safariAudioRetryTimer = setTimeout(() => {
+      this.safariAudioRetryTimer = null;
+      if (!this.sessionActive || this.sessionEnding || epoch !== this.localMediaEpoch || this.speechRecognitionActive) return;
+      console.log("NEXSTORVEN SAFARI AUDIO CAPTURE: single recovery attempt");
+      this.startLearnerTranscriptCapture();
+    }, 500);
+    return true;
+  }
   handleLearnerRecognitionFailure(code) {
     if (this.isExperienceNexstorvenDemo()) return;
     this.learnerRecognitionError = code;
@@ -36664,14 +36688,16 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
         }
       };
       recognition.onerror = (event) => {
+        if (this.speechRecognition !== recognition) return;
         const error = String(event?.error || "");
+        if (error === "audio-capture" && this.retrySafariAudioCapture(recognition)) return;
         if (!["no-speech", "aborted"].includes(error)) {
           console.warn("NEXIVRA TRANSCRIPT ERROR:", error);
           this.handleLearnerRecognitionFailure(error);
         }
       };
       recognition.onend = () => {
-        if (this.speechRecognitionActive && this.sessionActive) {
+        if (this.speechRecognition === recognition && this.speechRecognitionActive && this.sessionActive && !this.sessionEnding) {
           try {
             recognition.start();
           } catch (error) {
@@ -36690,6 +36716,9 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
   }
   stopLearnerTranscriptCapture() {
+    clearTimeout(this.safariAudioRetryTimer);
+    this.safariAudioRetryTimer = null;
+    this.safariAudioRetryUsed = false;
     clearTimeout(this.m5b3ySpeechTimer);
     this.m5b3ySpeechParts = [];
     clearTimeout(this.m5b3zSynthesisWatchdog);
