@@ -1749,6 +1749,9 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                     - Never substitute a default industry, employer, scenario or skill catalog.
                     - If historical context conflicts with the active course, ignore the historical setting and preserve only valid competency/progress evidence.
 
+                    ${this.isConfiguredGuestRolePlayEnabled() ? '' : `ACTIVE COURSE PRACTICE MODE — AUTHORITATIVE:
+                    Formal guest-avatar role-play is disabled for this course/module. Requests to practice mean Elenora-led guided rehearsal, not a guest handoff. Remain Elenora: explain and model the authorized lesson, invite one learner response, and wait. You may model the lesson's taught language as an instructor. Do not prepare, announce, request or wait for a separate guest avatar. Do not invent a scenario, biography, company setting, assessment or completion. These active course controls take priority over generic formal-role-play gateway recommendations below.`}
+
                     AVATAR ROLE OWNERSHIP — NON-NEGOTIABLE:
                     - Elenora is the instructor only.
                     - Pedro is a separate guest avatar only.
@@ -2124,7 +2127,14 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                                                                                                           }
 
 
-                                                                                                          isExplicitRolePlayRequest(text = "") {
+                                                                                                          isConfiguredGuestRolePlayEnabled() {
+ const course=this.runtimeContext?.course?.courseConfig||{};
+ const module=this.runtimeContext?.module?.moduleConfig||{};
+ return !course.incidentContainmentId && !module.incidentContainmentId &&
+  course.rolePlayEnabled!==false && module.rolePlayEnabled!==false && module.dynamicRolePlayEnabled!==false;
+}
+
+isExplicitRolePlayRequest(text = "") {
                                                                                                             const value=String(text||"").trim().toLowerCase().replace(/[’]/g,"'");
                                                                                                             if(!value)return false;
                                                                                                             return /\b(?:bring\s+(?:in\s+)?pedro|start\s+(?:the\s+)?role[ -]?play\s+now|launch\s+(?:the\s+)?role[ -]?play|begin\s+(?:the\s+)?simulation\s+now)\b/i.test(value);
@@ -2132,6 +2142,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
 
 
                                                                                                           requestDeterministicRolePlayFromLearner(text = "") {
+if(!this.isConfiguredGuestRolePlayEnabled())return false;
                                                                                                             if (
                                                                                                               !this.sessionActive ||
                                                                                                               this.rolePlayActive ||
@@ -2188,6 +2199,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 
 
                                                                                                           maybeStartAdaptiveRolePlay(trigger = "") {
+if(!this.isConfiguredGuestRolePlayEnabled())return;
                                                                                                             const now = Date.now();
 
                                                                                                             if (
@@ -2218,6 +2230,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 
 
                                                                                                           requestAdaptiveRolePlay(options = {}) {
+if(!this.isConfiguredGuestRolePlayEnabled()){this.rolePlayRequestPending=false;this.rolePlayRecommended=false;return false;}
                                                                             this.dispatchRuntimeEvent(
                                                                               "nexivra-request-role-play",
                                                                               {
@@ -2618,6 +2631,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 
 
                                                                           requestFormalRolePlayWithGuest(guestId,guestName="") {
+if(!this.isConfiguredGuestRolePlayEnabled())return false;
                                                             const normalized=String(guestId||"").trim().toLowerCase().replaceAll(" ","_");
                                                             if(!normalized)return;
                                                             this.dispatchRuntimeEvent("nexivra-formal-role-play-start",{guestId:normalized,guestName:guestName||guestId,guestRelationship:"returning guest",source:"learner_requested"});
@@ -8148,7 +8162,7 @@ startLearnerTranscriptCapture() {
                                               }
                                 const lowerText=String(text||"").toLowerCase();const gatewayNow=Date.now();
                                       const explicitRolePlayRequest=/(?:^|\b)(?:let'?s|can we|can i|could we|i want to|i would like to|please|start|begin|do|try|practice|continue|new)\b[\s\S]{0,55}\b(?:role[- ]?play|scenario|practice)\b/i.test(lowerText)||/^(?:role[- ]?play|practice|start role[- ]?play|new role[- ]?play)$/i.test(lowerText);
-                                      if(!this.rolePlayActive&&!this.rolePlayGatewayLocked&&gatewayNow>=Number(this.rolePlayGatewayRearmAt||0)&&explicitRolePlayRequest&&!this.isExperienceNexstorvenDemo()){
+                                      if(this.isConfiguredGuestRolePlayEnabled()&&!this.rolePlayActive&&!this.rolePlayGatewayLocked&&gatewayNow>=Number(this.rolePlayGatewayRearmAt||0)&&explicitRolePlayRequest&&!this.isExperienceNexstorvenDemo()){
                                         if(/\b(?:with\s+)?sally\b/.test(lowerText))this.requestFormalRolePlayWithGuest("sally","Sally");
                                         else if(/\b(?:with\s+)?ron\b/.test(lowerText))this.requestFormalRolePlayWithGuest("ron","Ron");
                                         else if(
