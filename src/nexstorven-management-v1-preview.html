@@ -9966,11 +9966,11 @@ function renderAssets() {
       <tbody>
         ${assets.map(x=>`
           <tr>
-            <td><div style="width:90px;height:54px;border-radius:8px;overflow:hidden;background:#071523"><button type="button" data-ns-private-image="${escapeHtml(x.id||x._id||'')}" style="font-size:11px">View protected image</button></div></td>
-            <td><strong>${escapeHtml(x.assetTitle||x.fileName||'Asset')}</strong><div class="table-sub">${escapeHtml(x.fileName||'')}</div></td>
-            <td>${escapeHtml(assetPurposeLabel(x.assetPurpose))}</td>
-            <td>${escapeHtml(x.version||'1.0')}</td>
-            <td>${escapeHtml(x.approvalStatus||'draft')}</td>
+            <td><div style="width:90px;height:54px;border-radius:8px;overflow:hidden;background:#071523"><button type="button" data-ns-private-image="${escapeHTML(x.id||x._id||'')}" style="font-size:11px">View protected image</button></div></td>
+            <td><strong>${escapeHTML(x.assetTitle||x.fileName||'Asset')}</strong><div class="table-sub">${escapeHTML(x.fileName||'')}</div></td>
+            <td>${escapeHTML(assetPurposeLabel(x.assetPurpose))}</td>
+            <td>${escapeHTML(x.version||'1.0')}</td>
+            <td>${escapeHTML(x.approvalStatus||'draft')}</td>
             <td>${x.isCurrent!==false?'✓':'—'}</td>
           </tr>`).join('')}
       </tbody>
