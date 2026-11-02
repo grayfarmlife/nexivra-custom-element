@@ -9966,7 +9966,7 @@ function renderAssets() {
       <tbody>
         ${assets.map(x=>`
           <tr>
-            <td><div style="width:90px;height:54px;border-radius:8px;overflow:hidden;background:#071523">${x.fileUrl?`<img src="${escapeHtml(x.fileUrl)}" style="width:100%;height:100%;object-fit:cover">`:''}</div></td>
+            <td><div style="width:90px;height:54px;border-radius:8px;overflow:hidden;background:#071523"><button type="button" data-ns-private-image="${escapeHtml(x.id||x._id||'')}" style="font-size:11px">View protected image</button></div></td>
             <td><strong>${escapeHtml(x.assetTitle||x.fileName||'Asset')}</strong><div class="table-sub">${escapeHtml(x.fileName||'')}</div></td>
             <td>${escapeHtml(assetPurposeLabel(x.assetPurpose))}</td>
             <td>${escapeHtml(x.version||'1.0')}</td>
@@ -14357,5 +14357,125 @@ window.addEventListener('message',event=>{
 });
 </script>
 
+<script>
+const nsPrivateImageEnvelope = (() => {
+const MAX_BYTES = 6_000_000;
+const MAX_PIXELS = 40_000_000;
+function assertImage(bytes, mimeType) {
+  if (!(bytes instanceof Uint8Array) || !bytes.length || bytes.length > MAX_BYTES) throw new Error('INVALID_IMAGE_SIZE');
+  if (mimeType === 'image/png') {
+    const magic = [137,80,78,71,13,10,26,10];
+    if (bytes.length < 24 || !magic.every((v,i) => bytes[i] === v)) throw new Error('INVALID_IMAGE_FORMAT');
+    const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const width = v.getUint32(16), height = v.getUint32(20);
+    if (!width || !height || width * height > MAX_PIXELS) throw new Error('INVALID_IMAGE_DIMENSIONS');
+  } else if (mimeType === 'image/jpeg') {
+    if (bytes[0] !== 255 || bytes[1] !== 216 || bytes[2] !== 255) throw new Error('INVALID_IMAGE_FORMAT');
+    let offset=2, found=false;
+    while (offset < bytes.length) {
+      if (bytes[offset++] !== 255) throw new Error('INVALID_IMAGE_FORMAT');
+      while (bytes[offset]===255) offset++;
+      const marker=bytes[offset++];
+      if (marker===217 || marker===218) break;
+      if (marker===1 || (marker>=208 && marker<=215)) continue;
+      if (offset+2>bytes.length) throw new Error('INVALID_IMAGE_FORMAT');
+      const length=(bytes[offset]<<8)|bytes[offset+1];
+      if (length<2 || offset+length>bytes.length) throw new Error('INVALID_IMAGE_FORMAT');
+      if ([192,193,194,195,197,198,199,201,202,203,205,206,207].includes(marker)) {
+        if(length<8) throw new Error('INVALID_IMAGE_FORMAT');
+        const height=(bytes[offset+3]<<8)|bytes[offset+4], width=(bytes[offset+5]<<8)|bytes[offset+6];
+        if (!width || !height || width*height>MAX_PIXELS) throw new Error('INVALID_IMAGE_DIMENSIONS');
+        found=true; break;
+      }
+      offset+=length;
+    }
+    if(!found) throw new Error('INVALID_IMAGE_FORMAT');
+  } else throw new Error('UNSUPPORTED_IMAGE_TYPE');
+}
+async function digest(bytes) {
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash), x => x.toString(16).padStart(2,'0')).join('');
+}
+async function createEnvelope(bytes, mimeType) {
+  assertImage(bytes, mimeType);
+  let binary = '';
+  for (let i=0;i<bytes.length;i+=8192) binary += String.fromCharCode(...bytes.subarray(i,i+8192));
+  return {format:'nexstorven-private-image-v1', mimeType, byteLength:bytes.length, sha256:await digest(bytes), data:btoa(binary)};
+}
+async function decodeEnvelope(value) {
+  if (!value || value.format !== 'nexstorven-private-image-v1' || !['image/png','image/jpeg'].includes(value.mimeType) ||
+      !Number.isInteger(value.byteLength) || value.byteLength < 1 || value.byteLength > MAX_BYTES ||
+      typeof value.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.sha256) ||
+      typeof value.data !== 'string' || value.data.length !== 4*Math.ceil(value.byteLength/3) ||
+      /[^A-Za-z0-9+/=]/.test(value.data)) throw new Error('INVALID_IMAGE_ENVELOPE');
+  const binary = atob(value.data);
+  const bytes = Uint8Array.from(binary, x => x.charCodeAt(0));
+  if (bytes.length !== value.byteLength || btoa(binary) !== value.data) throw new Error('INVALID_IMAGE_ENCODING');
+  assertImage(bytes, value.mimeType);
+  if (await digest(bytes) !== value.sha256) throw new Error('IMAGE_INTEGRITY_FAILED');
+  return new Blob([bytes], {type:value.mimeType});
+}
+
+return {decodeEnvelope};
+})();
+(() => {
+  const pending = new Map();
+  const objectUrls = new Set();
+  const prefix = 'nspi-';
+  function releaseImages() {
+    for (const url of objectUrls) URL.revokeObjectURL(url);
+    objectUrls.clear();
+    for (const entry of pending.values()) clearTimeout(entry.timer);
+    pending.clear();
+  }
+  window.addEventListener('pagehide', releaseImages);
+  document.addEventListener('click', event => {
+    const button = event.target.closest?.('[data-ns-private-image]');
+    if (!button || button.disabled) return;
+    const uploadId = button.dataset.nsPrivateImage;
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(uploadId || '') || pending.size >= 20) return;
+    const requestId = prefix + crypto.randomUUID();
+    button.disabled = true; button.textContent = 'Loading…';
+    const timer = setTimeout(() => {
+      pending.delete(requestId);button.disabled=false;button.textContent='Try image again';
+    },30000);
+    pending.set(requestId,{button,uploadId,timer});
+    sendToWix('NS_PRIVATE_IMAGE_REQUEST',{uploadId,requestId});
+  });
+  async function readLimitedJson(response) {
+    if (!response.ok || !response.body) throw new Error('IMAGE_UNAVAILABLE');
+    const reader=response.body.getReader();let size=0;const chunks=[];
+    try { while(true) {
+      const {done,value}=await reader.read();if(done)break;
+      size+=value.length;if(size>8_100_000)throw new Error('IMAGE_TOO_LARGE');chunks.push(value);
+    }} catch(error){await reader.cancel();throw error;}
+    const bytes=new Uint8Array(size);let offset=0;
+    for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+    return JSON.parse(new TextDecoder().decode(bytes));
+  }
+  window.addEventListener('message',async event=>{
+    if(event.source!==window.parent || event.data?.source!=='NEXIVRA_WIX' || event.data.type!=='NS_PRIVATE_IMAGE_RESULT')return;
+    const value=event.data.payload;const entry=pending.get(value?.requestId);
+    if(!entry || value.uploadId!==entry.uploadId)return;
+    pending.delete(value.requestId);clearTimeout(entry.timer);
+    const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),20000);
+    try {
+      if(value.ok!==true || value.image?.format!=='nexstorven-private-image-v1' || value.validForMs<=0 || value.validForMs>120000)throw new Error('IMAGE_ACCESS_DENIED');
+      const url=new URL(value.url);if(url.protocol!=='https:' || url.username || url.password)throw new Error('INVALID_IMAGE_URL');
+      const response=await fetch(url.href,{credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',signal:controller.signal});
+      const envelope=await readLimitedJson(response);
+      if(envelope.sha256!==value.image.sha256 || envelope.mimeType!==value.image.mimeType || envelope.byteLength!==value.image.byteLength)throw new Error('IMAGE_BINDING_MISMATCH');
+      const blob=await nsPrivateImageEnvelope.decodeEnvelope(envelope);
+      if(!entry.button.isConnected)return;
+      const objectUrl=URL.createObjectURL(blob);objectUrls.add(objectUrl);
+      const image=document.createElement('img');image.alt='Authorized course image';image.style.cssText='max-width:240px;max-height:160px;object-fit:contain;display:block';image.src=objectUrl;
+      image.onerror=()=>{URL.revokeObjectURL(objectUrl);objectUrls.delete(objectUrl);image.replaceWith(document.createTextNode('Image unavailable'));};
+      entry.button.replaceWith(image);
+    }catch(_){if(entry.button.isConnected){entry.button.disabled=false;entry.button.textContent='Image unavailable — retry';}}
+    finally{clearTimeout(timer);}
+  });
+})();
+
+</script>
 </body>
 </html>
