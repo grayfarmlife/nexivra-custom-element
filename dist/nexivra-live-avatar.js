@@ -30426,6 +30426,16 @@ The next instructor response must teach, practice, check understanding, or trans
     return true;
   }
   buildDeterministicResumeDirective() {
+    const liveState = this.runtimeContext?.session?.state || {};
+    const bound = liveState.contextBinding;
+    const course = this.runtimeContext?.course || {};
+    const module = this.runtimeContext?.module || {};
+    const cpBound = this.resumeCheckpoint?.contextBinding;
+    const verified = Boolean(bound && bound.courseId === course.id && bound.moduleId === module.id && bound.organizationId === this.runtimeContext?.learner?.organizationId && (liveState.instructionalLedger?.currentObjectiveSummary || cpBound && cpBound.courseId === bound.courseId && cpBound.moduleId === bound.moduleId));
+    if (this.getAttribute("first-session") !== "true" && !verified) return `SESSION_POSITION \u2014 UNCONFIRMED
+The saved lesson position is unavailable or not verified for this course and module.
+Do not infer ability, mastery, completed teaching, or a next/harder task from elapsed time or turn counts.
+Acknowledge the learner and ask one brief question about where they want to resume within the current approved lesson. Wait for the answer. Do not name an unsupported previous activity or another organization's material.`;
     if (this.resumeContinuationState === "RESUME_LOCKED") {
       console.log("NEXIVRA RESUME SOURCE:", "POST_SUMMARY_RESUME_LOCK");
       console.log("NEXIVRA RESUME BOUNDARY:", "FORWARD_ONLY");
@@ -30462,7 +30472,7 @@ The next instructor response must teach, practice, check understanding, or trans
     This is a resumed learning session.
 
     RESUME EXPERIENCE \u2014 NON-NEGOTIABLE:
-    - Do NOT restart the course.
+    - Do not repeat confirmed completed material; if position is unknown, ask where to resume before continuing.
     - Do NOT repeat your original introduction.
     - Do NOT resume in the middle of a sentence.
     - Do NOT replay the final words from the prior session.
@@ -30491,7 +30501,7 @@ The next instructor response must teach, practice, check understanding, or trans
     The deterministic checkpoint collection is not populated yet, so use the persisted NEXIVRA instructional ledger as the migration source.
 
     RESUME EXPERIENCE \u2014 NON-NEGOTIABLE:
-    - Do NOT restart the course.
+    - Do not repeat confirmed completed material; if position is unknown, ask where to resume before continuing.
     - Do NOT repeat your original introduction.
     - Do NOT continue a sentence that was interrupted when the previous session ended.
     - Do NOT quote the learner's or instructor's final transcript fragment.
@@ -30517,7 +30527,7 @@ The next instructor response must teach, practice, check understanding, or trans
     Do NOT state your name, title, role, or platform.
     Do NOT say "I'm Elenora", "My name is Elenora", or "I'm your NEXIVRA instructor".
     Treat the learner as someone you already know and continue naturally from the supplied instructional ledger.
-    Do NOT restart the course.
+    Do not repeat confirmed completed material; if position is unknown, ask where to resume before continuing.
     Do NOT begin with a fragment from an earlier transcript.
     Give a brief natural acknowledgment that the learner is returning, summarize only the reliable recent learning supplied in runtime context, and continue at the next complete instructional thought.`;
     }
@@ -30715,7 +30725,7 @@ ${tail}`;
                                 <label><b>Preferred Name</b><input id="r2Preferred" maxlength="80" value="${esc(saved.preferredName || learner.preferredName || "")}" placeholder="What should NEXIVRA call you?" style="${input}"></label>
                                 <label><b>Email</b><input id="r2Email" type="email" value="${esc(saved.email || systemEmail)}" placeholder="Email address" style="${input}"></label>
                                 <label><b>Phone Number</b><input id="r2Phone" type="tel" value="${esc(saved.phone || learner.phone || learner.phoneNumber || "")}" placeholder="Phone number" style="${input}"></label>
-                                <label><b>Organization</b><input value="${esc(learner.organizationName || learner.companyName || learner.organizationId || "Centier Bank")}" readonly style="${input}background:#0a1d29;color:#9fb3c2"></label>
+                                <label><b>Organization</b><input value="${esc(learner.organizationName || learner.companyName || learner.organizationId || "Your organization")}" readonly style="${input}background:#0a1d29;color:#9fb3c2"></label>
                                 <label><b>Role / Title</b><input id="r2Role" value="${esc(saved.role || learner.title || learner.roleTitle || learner.role || "Learner")}" style="${input}"></label>
                               </div><div style="margin-top:20px;display:flex;align-items:center;gap:14px"><button id="r2SaveProfile" class="final-resume-button" ${this.preferredNameSavePending ? "disabled" : ""}>Save Changes</button><span id="r2SaveStatus" class="learner-panel-subtitle"></span></div></div></section>`;
       panel.querySelector("#r2SaveProfile")?.addEventListener("click", () => this.saveM5B3R2ProfileFromView());
@@ -30825,7 +30835,7 @@ ${tail}`;
     const systemName = [learner.firstName, learner.lastName].filter(Boolean).join(" ") || learner.displayName || learner.name || "Learner";
     const saved = this.getM5B3R2SavedProfile();
     const name = systemName;
-    const title = a3.courseTitle || a3.title || "Centier Hospitality Foundations";
+    const title = a3.courseTitle || a3.title || "Assigned Course";
     const date = this.formatM5B3R2CertificateDate(a3.completedAt || a3.completionDate || a3.updatedAt || /* @__PURE__ */ new Date());
     const certificateId = a3.certificateId || a3.certificationId || `CHF-${new Date(a3.completedAt || a3.completionDate || a3.updatedAt || Date.now()).getFullYear()}-${String(a3.id || a3._id || "NEXIVRA").replace(/[^a-z0-9]/gi, "").slice(-8).toUpperCase()}`;
     const art = this.getM5B3R3CertificateArt();
@@ -30854,7 +30864,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
 <body>
 <div class="actions"><button onclick="window.print()">Print / Save PDF</button></div>
 <div class="page">
-<img class="art" src="${art}" alt="Centier Hospitality Foundations Certificate">
+<img class="art" src="${art}" alt="Course Certificate">
 <div class="data">
 <div class="recipient">${esc(name)}</div>
 <div class="course">${esc(title)}</div>
@@ -30876,7 +30886,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
   downloadM5B3R2Certificate(a3, learner) {
     const blob = new Blob([this.buildM5B3R2CertificateHtml(a3, learner)], { type: "text/html" }), url = URL.createObjectURL(blob), link = document.createElement("a");
     link.href = url;
-    link.download = `${String(a3.courseTitle || "Centier-Hospitality-Foundations").replace(/[^a-z0-9]+/gi, "-")}-Certificate.html`;
+    link.download = `${String(a3.courseTitle || "Course").replace(/[^a-z0-9]+/gi, "-")}-Certificate.html`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -31375,8 +31385,8 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                     - The CURRENT organization, course, module, approved knowledge, and module configuration in this message are authoritative.
                     - Historical instructional ledgers preserve learner progress only. They do NOT preserve a prior industry's setting, scenario, guest identity, location, or role-play narrative.
                     - Never allow historical hotel, lodging, front-desk, room, reservation, or other unrelated scenario context to redefine the current course.
-                    - For the active Centier Foundations course, the environment is banking and the competency focus is hospitality.
-                    - Banking provides the situation. Hospitality provides the competency.
+                    - Use only the subject and setting supplied by the authorized current course.
+                    - Never substitute a default industry, employer, scenario or skill catalog.
                     - If historical context conflicts with the active course, ignore the historical setting and preserve only valid competency/progress evidence.
 
                     AVATAR ROLE OWNERSHIP \u2014 NON-NEGOTIABLE:
@@ -32007,7 +32017,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                         ${scenario.situation || "The guest needs assistance."}
 
                                                                         HIDDEN DEVELOPMENT TARGET:
-                                                                        ${scenario.targetCompetencyName || "general Centier client experience application"}
+                                                                        ${scenario.targetCompetencyName || "the approved current lesson"}
 
                                                                         RELATIONSHIP MEMORY:
                                                                         ${JSON.stringify(scenario.relationshipMemory || {})}
@@ -32174,7 +32184,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     const debrief = String(evaluation.debrief || "").trim();
     const nextAction = String(evaluation.nextAction || "continue_course");
     const isProductDemo = this.isExperienceNexstorvenDemo();
-    const instruction = isProductDemo ? `You are Elenora, the NEXSTORVEN enterprise product demonstration host, NOT a hospitality trainer. Pedro's example is complete. Remain in the product-demo closing stage and do not switch to any training curriculum. Briefly explain the observable strengths and any improvement opportunities using ONLY this evaluation: ${JSON.stringify(debrief)}. Explain that this is a sample of how NEXSTORVEN can provide realistic role-play, behavioral evidence, targeted reinforcement, company-approved knowledge, personalized teaching and manager visibility. Tie the explanation to the prospect's previously mentioned company and training approach when known; never invent details. This is a product demonstration, not a Centier training course. You MUST lead the conclusion yourself. Do not ask 'what would you like to do next', 'what should we explore', or any equivalent open-ended navigation question. End with a clear, natural invitation to discuss implementing NEXSTORVEN for their organization with the sales team. Do not start another role-play or repeat training unless explicitly requested. Be conversational, concise, and speak in English.` : `The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction === "repeat_role_play" ? "explain that another practice attempt will help and prepare the learner for another attempt" : nextAction === "targeted_coaching" ? "give one brief targeted coaching point and then continue forward" : "continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro. Speak in English.`;
+    const instruction = isProductDemo ? `You are Elenora, the NEXSTORVEN enterprise product demonstration host, NOT a hospitality trainer. Pedro's example is complete. Remain in the product-demo closing stage and do not switch to any training curriculum. Briefly explain the observable strengths and any improvement opportunities using ONLY this evaluation: ${JSON.stringify(debrief)}. Explain that this is a sample of how NEXSTORVEN can provide realistic role-play, behavioral evidence, targeted reinforcement, company-approved knowledge, personalized teaching and manager visibility. Tie the explanation to the prospect's previously mentioned company and training approach when known; never invent details. This is a product demonstration, not a company-specific training course. You MUST lead the conclusion yourself. Do not ask 'what would you like to do next', 'what should we explore', or any equivalent open-ended navigation question. End with a clear, natural invitation to discuss implementing NEXSTORVEN for their organization with the sales team. Do not start another role-play or repeat training unless explicitly requested. Be conversational, concise, and speak in English.` : `The completed role-play has been evaluated. Deliver this coaching naturally in your own voice, preserving its meaning without adding unsupported claims: "${debrief}" After the coaching, ${nextAction === "repeat_role_play" ? "explain that another practice attempt will help and prepare the learner for another attempt" : nextAction === "targeted_coaching" ? "give one brief targeted coaching point and then continue forward" : "continue the course from the next appropriate point"}. Do not restart completed material and do not speak as Pedro. Speak in English.`;
     console.log("NEXSTORVEN M5B-4A POST-PEDRO LEADERSHIP:", { isProductDemo, nextAction });
     this.sendLiveAvatarMessageSafely(instruction, "m5b3a-structured-role-play-debrief");
     console.log("NEXIVRA M5B-3L-Q STRUCTURED DEBRIEF DISPATCHED TO LIVE ELENORA:", {
@@ -33152,17 +33162,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     const organizationId = String(
       this.runtimeContext?.learner?.organizationId || this.dashboardData?.learner?.organizationId || ""
     ).trim().toUpperCase();
-    const presets = {
-      CENTIER: {
-        name: "Centier Bank",
-        tagline: "People. Progress. Possibility.",
-        logoUrl: "https://static.wixstatic.com/media/433270_3976b84a984d4241a3f61ec285e66ccc~mv2.png",
-        heroImageUrl: "https://static.wixstatic.com/media/433270_0878bc90b26840fe875ecab862b8f245~mv2.png",
-        courseImageUrl: "https://static.wixstatic.com/media/433270_d2614d4f88654aeb8f64f7213a42809d~mv2.png",
-        journeyImageUrl: "https://static.wixstatic.com/media/433270_df3281e6f4684b689e72910950c23e61~mv2.png",
-        communityImageUrl: "https://static.wixstatic.com/media/433270_a8f6e904a622462b93119aa0f2910c3a~mv2.png"
-      }
-    };
+    const presets = {};
     const preset = presets[organizationId] || {};
     return {
       name: attr("client-name") || preset.name || organizationId || "Client Organization",
@@ -35680,7 +35680,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
               this.completeAdaptiveRolePlay({
                 outcome: "completed",
                 needsAnotherAttempt: false,
-                outcomeSummary: "Centier banking client interaction reached an explicit natural close.",
+                outcomeSummary: "The current practice interaction reached an explicit natural close.",
                 guestOutcome: "Pedro confirmed he did not need anything else."
               });
               return;
