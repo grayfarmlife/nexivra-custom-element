@@ -8186,6 +8186,7 @@ scheduleAutomaticUtterance() {
  },500);
 }
 stopAutomaticLanguageCapture() {
+ this.learnerReplyTiming=null;this.responseSpeechEndedAtMs=0;
  clearTimeout(this.automaticUtteranceTimer);this.automaticUtteranceTimer=null;
  this.automaticClient?.stop();this.automaticClient=null;this.automaticCapture?.reset();this.automaticCapture=null;this.automaticTurnEvidence=null;this.automaticValidatedTurn=null;
  for(const f of this.automaticPreRoll||[])f.fill(0);this.automaticPreRoll=[];
@@ -10365,7 +10366,9 @@ if(this.isExperienceNexstorvenDemo())this.resetLiveState();
  return Boolean(this.avatarSpeaking||this.learnerSpeaking||this.learnerMicSpeaking||recent);
 }
 recordLearnerReplyDispatch(kind) {
- this.learnerReplyTiming={kind,dispatchedAt:performance.now()};
+ const speechEndedAt=Number(this.responseSpeechEndedAtMs||0);
+ const now=Date.now();
+ this.learnerReplyTiming={kind,dispatchedAt:performance.now(),speechEndedAt:kind==='spoken'&&speechEndedAt>Number(this.responseLastRecordedEndAtMs||0)&&now>=speechEndedAt&&now-speechEndedAt<=20000?speechEndedAt:null,sessionId:this.runtimeSessionId};
 }
 recordLearnerReplySpeechStart() {
  const timing=this.learnerReplyTiming;
@@ -10373,6 +10376,13 @@ recordLearnerReplySpeechStart() {
  this.learnerReplyTiming=null;
  const elapsed=performance.now()-timing.dispatchedAt;
  if(Number.isFinite(elapsed)&&elapsed>=0&&elapsed<=120000)console.log('NEXSTORVEN LEARNER REPLY TIMING:',{input:timing.kind,dispatchToFirstSpeechMs:Math.round(elapsed)});
+ const totalMs=Date.now()-timing.speechEndedAt;
+ if(timing.kind==='spoken'&&timing.speechEndedAt&&timing.sessionId===this.runtimeSessionId&&this.sessionActive&&!this.sessionEnding&&Number.isFinite(totalMs)&&totalMs>=0&&totalMs<=120000){
+  this.responseLastRecordedEndAtMs=timing.speechEndedAt;
+  this.responseTimingSequence=(this.responseTimingSequence||0)+1;
+  if(this.responseTimingSequence<=512)this.dispatchRuntimeEvent('nexstorven-response-timing',{sessionId:this.runtimeSessionId,sample:timing.speechEndedAt,totalMs:Math.round(totalMs)});
+ }
+
 }
 async handleAdaptiveObservation(type, details = {}) {
 
@@ -10990,6 +11000,8 @@ this.m5b3d1SpeechBeganDuringInstructor=Boolean(this.avatarSpeaking);
                                                                                                                           this.thresholds
                                                                                                                             .learnerSpeechStopHoldMs
                                                                                                                       ) {
+
+                                                                                                                        this.responseSpeechEndedAtMs=Number(this.learnerSpeechBelowSince)||Date.now();
 
                                                                                                                         this.learnerMicSpeaking =
                                                                                                                           false;
