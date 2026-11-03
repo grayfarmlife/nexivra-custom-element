@@ -36690,7 +36690,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
   }
   automaticLanguageAvailable() {
     const c3 = this.runtimeContext?.course, m3 = this.runtimeContext?.module, cfg = m3?.config || m3?.moduleConfig || {};
-    return !this.isExperienceNexstorvenDemo() && c3?.id === "0b936c77-347d-4323-a1cf-9c37b7a6af0f" && m3?.id === "b9b73f57-3b4f-4f59-95c6-5d884052fe1d" && c3.courseConfig?.editorialTestOnly === true && cfg.activeLessonPacket?.audience === "adults" && cfg.automaticTranscriptionEnabled === true && cfg.automaticTrialId === "automatic-language-20261103-v1" && Date.parse(cfg.automaticTrialExpiresAt) > Date.now();
+    return this.getAttribute?.("automatic-voice-bridge") === "v1" && !this.isExperienceNexstorvenDemo() && c3?.id === "0b936c77-347d-4323-a1cf-9c37b7a6af0f" && m3?.id === "b9b73f57-3b4f-4f59-95c6-5d884052fe1d" && c3.courseConfig?.editorialTestOnly === true && cfg.activeLessonPacket?.audience === "adults" && cfg.automaticTranscriptionEnabled === true && cfg.automaticTrialId === "automatic-language-20261103-v1" && Date.parse(cfg.automaticTrialExpiresAt) > Date.now();
   }
   requestAutomaticTranscription(input) {
     return new Promise((resolve, reject) => {
