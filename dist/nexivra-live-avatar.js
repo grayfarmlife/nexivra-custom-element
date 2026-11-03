@@ -36843,6 +36843,8 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     }, 500);
   }
   stopAutomaticLanguageCapture() {
+    this.learnerReplyTiming = null;
+    this.responseSpeechEndedAtMs = 0;
     clearTimeout(this.automaticUtteranceTimer);
     this.automaticUtteranceTimer = null;
     this.automaticClient?.stop();
@@ -38229,7 +38231,9 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     return Boolean(this.avatarSpeaking || this.learnerSpeaking || this.learnerMicSpeaking || recent);
   }
   recordLearnerReplyDispatch(kind) {
-    this.learnerReplyTiming = { kind, dispatchedAt: performance.now() };
+    const speechEndedAt = Number(this.responseSpeechEndedAtMs || 0);
+    const now = Date.now();
+    this.learnerReplyTiming = { kind, dispatchedAt: performance.now(), speechEndedAt: kind === "spoken" && speechEndedAt > Number(this.responseLastRecordedEndAtMs || 0) && now >= speechEndedAt && now - speechEndedAt <= 2e4 ? speechEndedAt : null, sessionId: this.runtimeSessionId };
   }
   recordLearnerReplySpeechStart() {
     const timing = this.learnerReplyTiming;
@@ -38237,6 +38241,12 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     this.learnerReplyTiming = null;
     const elapsed = performance.now() - timing.dispatchedAt;
     if (Number.isFinite(elapsed) && elapsed >= 0 && elapsed <= 12e4) console.log("NEXSTORVEN LEARNER REPLY TIMING:", { input: timing.kind, dispatchToFirstSpeechMs: Math.round(elapsed) });
+    const totalMs = Date.now() - timing.speechEndedAt;
+    if (timing.kind === "spoken" && timing.speechEndedAt && timing.sessionId === this.runtimeSessionId && this.sessionActive && !this.sessionEnding && Number.isFinite(totalMs) && totalMs >= 0 && totalMs <= 12e4) {
+      this.responseLastRecordedEndAtMs = timing.speechEndedAt;
+      this.responseTimingSequence = (this.responseTimingSequence || 0) + 1;
+      if (this.responseTimingSequence <= 512) this.dispatchRuntimeEvent("nexstorven-response-timing", { sessionId: this.runtimeSessionId, sample: timing.speechEndedAt, totalMs: Math.round(totalMs) });
+    }
   }
   async handleAdaptiveObservation(type, details = {}) {
     const observation = this.recordObservation(type, details);
@@ -38555,6 +38565,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
               this.learnerSpeechBelowSince = now;
             }
             if (now - this.learnerSpeechBelowSince >= this.thresholds.learnerSpeechStopHoldMs) {
+              this.responseSpeechEndedAtMs = Number(this.learnerSpeechBelowSince) || Date.now();
               this.learnerMicSpeaking = false;
               this.learnerSpeaking = false;
               this.learnerSpeechBelowSince = null;
