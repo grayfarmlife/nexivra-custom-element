@@ -6549,6 +6549,7 @@ lessonConversationStatus(now=Date.now()) {
  if(this.avatarSpeaking||this.m5b2jPedroSpeaking||this.m5b2GuestSpeaking)return {state:'speaking',label:'Avatar is talking',hint:'Wait for Listening before answering.'};
  if(this.learnerRecognitionError)return {state:'error',label:'Voice input needs attention',hint:this.learnerRecognitionFailureMessage()};
  if(this.automaticClient?.pending)return {state:'recognizing',label:'Recognizing your reply',hint:'English or Spanish is recognized automatically. Please wait.'};
+ if(this.currentLessonSpeechLanguage()==='auto'&&(!this.learnerCalibrationComplete||!this.metrics?.faceDetected||!this.automaticAudioContext))return {state:'connecting',label:'Getting ready to listen',hint:'Keep your face in view and wait for Listening before speaking.'};
  if(!this.learnerRecognitionReady)return {state:'connecting',label:'Connecting voice input',hint:'Please wait before speaking. You can also type.'};
  if(this.lessonReplyPendingAt&&now-this.lessonReplyPendingAt<45000)return {state:'thinking',label:'Preparing a reply',hint:'Your reply was heard. Please wait.'};
  if(this.lessonReplyPendingAt)return {state:'delayed',label:'Reply is taking longer',hint:'You can try again or type your reply.'};
