@@ -35276,7 +35276,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 <label id="lessonSpeechLanguageControl" class="lesson-speech-language" hidden>
  <span>Voice input:</span>
  <select id="lessonSpeechLanguage" aria-label="Voice input language"></select>
- <small>Choose Spanish for practice or English for questions.</small>
+ <small>Automatic recognizes English and Spanish. Manual options are available if needed.</small>
 </label>
 
                                                                                                                   <input
@@ -38484,7 +38484,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
               if (!this.learnerSpeechAboveSince) {
                 this.learnerSpeechAboveSince = now;
               }
-              if (now - this.learnerSpeechAboveSince >= this.thresholds.learnerSpeechStartHoldMs) {
+              if (now - this.learnerSpeechAboveSince >= (this.currentLessonSpeechLanguage() === "auto" ? 80 : this.thresholds.learnerSpeechStartHoldMs)) {
                 this.learnerMicSpeaking = true;
                 this.learnerSpeaking = true;
                 this.learnerSpeechAboveSince = null;
