@@ -31707,7 +31707,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
   }
   canAcceptShortLanguageReply(text, evidence = {}) {
     const course = this.runtimeContext?.course?.courseConfig || {};
-    const module = this.runtimeContext?.module?.moduleConfig || {};
+    const module = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
     const value = String(text || "").trim();
     const started = Number(this.learnerAudioWindowStartedAtMs || 0);
     const stopped = Number(this.learnerAudioWindowStoppedAtMs || 0);
@@ -31716,7 +31716,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
   }
   isConfiguredGuestRolePlayEnabled() {
     const course = this.runtimeContext?.course?.courseConfig || {};
-    const module = this.runtimeContext?.module?.moduleConfig || {};
+    const module = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
     return !course.incidentContainmentId && !module.incidentContainmentId && course.rolePlayEnabled !== false && module.rolePlayEnabled !== false && module.dynamicRolePlayEnabled !== false;
   }
   isExplicitRolePlayRequest(text = "") {
@@ -35242,20 +35242,20 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
   }
   lessonSpeechLanguageOptions() {
     if (this.isExperienceNexstorvenDemo()) return [];
-    const cfg = this.runtimeContext?.module?.moduleConfig || {};
+    const cfg = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
     const labels = { "es-MX": "Spanish", "en-US": "English" };
     const configured = Array.isArray(cfg.speechRecognitionLanguages) ? cfg.speechRecognitionLanguages : [];
     return [...new Set(configured)].filter((code) => Object.hasOwn(labels, code)).map((code) => ({ code, label: labels[code] }));
   }
   lessonSpeechLanguageKey() {
-    return JSON.stringify([this.runtimeContext?.courseId || this.runtimeContext?.course?._id || "", this.runtimeContext?.moduleId || this.runtimeContext?.module?._id || ""]);
+    return JSON.stringify([this.runtimeContext?.courseId || this.runtimeContext?.course?.id || this.runtimeContext?.course?._id || "", this.runtimeContext?.moduleId || this.runtimeContext?.module?.id || this.runtimeContext?.module?._id || ""]);
   }
   currentLessonSpeechLanguage() {
     const options = this.lessonSpeechLanguageOptions();
     if (!options.length) return "en-US";
     const key = this.lessonSpeechLanguageKey();
     if (this.lessonSpeechLanguageChoice?.key === key && options.some((o4) => o4.code === this.lessonSpeechLanguageChoice.code)) return this.lessonSpeechLanguageChoice.code;
-    const preferred = this.runtimeContext?.module?.moduleConfig?.speechRecognitionLanguage;
+    const preferred = (this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig)?.speechRecognitionLanguage;
     return options.some((o4) => o4.code === preferred) ? preferred : options[0].code;
   }
   refreshLessonSpeechControls() {
