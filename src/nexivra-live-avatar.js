@@ -8110,7 +8110,7 @@ this.learnerRecognitionError=code;
 }
 automaticLanguageAvailable() {
  const c=this.runtimeContext?.course, m=this.runtimeContext?.module, cfg=m?.config||m?.moduleConfig||{};
- return !this.isExperienceNexstorvenDemo() && c?.id==='0b936c77-347d-4323-a1cf-9c37b7a6af0f' && m?.id==='b9b73f57-3b4f-4f59-95c6-5d884052fe1d' && c.courseConfig?.editorialTestOnly===true && cfg.activeLessonPacket?.audience==='adults' && cfg.automaticTranscriptionEnabled===true && cfg.automaticTrialId==='automatic-language-20261103-v1' && Date.parse(cfg.automaticTrialExpiresAt)>Date.now();
+ return this.getAttribute?.('automatic-voice-bridge')==='v1' && !this.isExperienceNexstorvenDemo() && c?.id==='0b936c77-347d-4323-a1cf-9c37b7a6af0f' && m?.id==='b9b73f57-3b4f-4f59-95c6-5d884052fe1d' && c.courseConfig?.editorialTestOnly===true && cfg.activeLessonPacket?.audience==='adults' && cfg.automaticTranscriptionEnabled===true && cfg.automaticTrialId==='automatic-language-20261103-v1' && Date.parse(cfg.automaticTrialExpiresAt)>Date.now();
 }
 requestAutomaticTranscription(input) {
  return new Promise((resolve,reject)=>{
