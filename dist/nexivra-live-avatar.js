@@ -33421,7 +33421,11 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
                                                                                                                   font-size: 10px;
                                                                                                                 }
 
-                                                                                                                .lesson-conversation-status {position:absolute;left:16px;right:16px;top:52px;z-index:66;display:flex;flex-direction:column;gap:3px;padding:10px 13px;border:1px solid #476476;border-radius:10px;background:rgba(3,15,25,.94);color:#fff;font-size:13px;line-height:1.35;pointer-events:none;max-width:380px;box-sizing:border-box;}
+                                                                                                                .lesson-speech-language {display:flex;align-items:center;flex-wrap:wrap;gap:8px;flex-basis:100%;padding:7px 10px;border-radius:8px;background:rgba(3,15,25,.95);color:#fff;font-size:12px;box-sizing:border-box;}
+.lesson-speech-language[hidden]{display:none;}
+.lesson-speech-language select{padding:5px 8px;border:1px solid #00b9d4;border-radius:5px;background:#0b2432;color:#fff;font-size:13px;}
+.lesson-speech-language small{color:#c8d7df;font-size:11px;}
+.lesson-conversation-status {position:absolute;left:16px;right:16px;top:52px;z-index:66;display:flex;flex-direction:column;gap:3px;padding:10px 13px;border:1px solid #476476;border-radius:10px;background:rgba(3,15,25,.94);color:#fff;font-size:13px;line-height:1.35;pointer-events:none;max-width:380px;box-sizing:border-box;}
 .lesson-conversation-status span {font-size:12px;color:#c8d7df;}
 .lesson-conversation-status[data-state="listening"] {border-color:#00cee8;}
 .lesson-conversation-status[data-state="speaking"] {border-color:#ffab39;}
@@ -35109,6 +35113,11 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
  <span data-conversation-hint>Start or resume your lesson.</span>
 </div>
 <div class="controls">
+<label id="lessonSpeechLanguageControl" class="lesson-speech-language" hidden>
+ <span>I'm speaking:</span>
+ <select id="lessonSpeechLanguage" aria-label="Voice input language"></select>
+ <small>Choose Spanish for practice or English for questions.</small>
+</label>
 
                                                                                                                   <input
                                                                                                                     id="messageInput"
@@ -35231,6 +35240,87 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     );
     this.renderUnifiedDashboard();
   }
+  lessonSpeechLanguageOptions() {
+    if (this.isExperienceNexstorvenDemo()) return [];
+    const cfg = this.runtimeContext?.module?.moduleConfig || {};
+    const labels = { "es-MX": "Spanish", "en-US": "English" };
+    const configured = Array.isArray(cfg.speechRecognitionLanguages) ? cfg.speechRecognitionLanguages : [];
+    return [...new Set(configured)].filter((code) => Object.hasOwn(labels, code)).map((code) => ({ code, label: labels[code] }));
+  }
+  lessonSpeechLanguageKey() {
+    return JSON.stringify([this.runtimeContext?.courseId || this.runtimeContext?.course?._id || "", this.runtimeContext?.moduleId || this.runtimeContext?.module?._id || ""]);
+  }
+  currentLessonSpeechLanguage() {
+    const options = this.lessonSpeechLanguageOptions();
+    if (!options.length) return "en-US";
+    const key = this.lessonSpeechLanguageKey();
+    if (this.lessonSpeechLanguageChoice?.key === key && options.some((o4) => o4.code === this.lessonSpeechLanguageChoice.code)) return this.lessonSpeechLanguageChoice.code;
+    const preferred = this.runtimeContext?.module?.moduleConfig?.speechRecognitionLanguage;
+    return options.some((o4) => o4.code === preferred) ? preferred : options[0].code;
+  }
+  refreshLessonSpeechControls() {
+    const wrap = this.shadowRoot?.getElementById("lessonSpeechLanguageControl");
+    const select = this.shadowRoot?.getElementById("lessonSpeechLanguage");
+    if (!wrap || !select) return;
+    const options = this.lessonSpeechLanguageOptions();
+    wrap.hidden = !options.length;
+    if (!options.length) return;
+    const signature = JSON.stringify(options);
+    if (select.dataset.options !== signature) {
+      select.replaceChildren(...options.map((item) => {
+        const option = document.createElement("option");
+        option.value = item.code;
+        option.textContent = item.label;
+        return option;
+      }));
+      select.dataset.options = signature;
+    }
+    select.value = this.currentLessonSpeechLanguage();
+    select.disabled = Boolean(this.sessionEnding || this.learnerMicSpeaking);
+    select.onchange = () => this.changeLessonSpeechLanguage(select.value);
+  }
+  changeLessonSpeechLanguage(code) {
+    if (!this.lessonSpeechLanguageOptions().some((o4) => o4.code === code) || this.sessionEnding || this.learnerMicSpeaking) return false;
+    const previous = this.currentLessonSpeechLanguage();
+    this.lessonSpeechLanguageChoice = { key: this.lessonSpeechLanguageKey(), code };
+    this.refreshLessonSpeechControls();
+    if (previous === code || !this.sessionActive) return true;
+    const old = this.speechRecognition;
+    this.speechRecognitionActive = false;
+    this.learnerRecognitionReady = false;
+    this.speechRecognition = null;
+    clearTimeout(this.lessonRecognitionRestartTimer);
+    const epoch = this.localMediaEpoch, key = this.lessonSpeechLanguageKey();
+    let started = false;
+    const restart = () => {
+      if (started) return;
+      started = true;
+      clearTimeout(this.lessonRecognitionRestartTimer);
+      this.lessonRecognitionRestartTimer = null;
+      if (!this.sessionActive || this.sessionEnding || epoch !== this.localMediaEpoch || key !== this.lessonSpeechLanguageKey()) return;
+      this.startLearnerTranscriptCapture();
+    };
+    if (old) {
+      old.onresult = null;
+      old.onerror = null;
+      old.onstart = null;
+      old.onend = () => {
+        old.onend = null;
+        restart();
+      };
+      try {
+        old.abort();
+      } catch (_4) {
+        old.onend = null;
+      }
+    }
+    if (!started) this.lessonRecognitionRestartTimer = setTimeout(() => {
+      if (old) old.onend = null;
+      restart();
+    }, 500);
+    this.refreshLessonConversationStatus();
+    return true;
+  }
   lessonConversationStatus(now = Date.now()) {
     if (this.sessionEnding) return { state: "ending", label: "Ending session", hint: "Releasing microphone and camera." };
     if (!this.sessionActive) return { state: "idle", label: "Ready to begin", hint: "Start or resume your lesson." };
@@ -35243,6 +35333,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     return { state: "listening", label: "Listening", hint: "Your turn. Speak now or type your reply." };
   }
   refreshLessonConversationStatus() {
+    this.refreshLessonSpeechControls();
     const box = this.shadowRoot?.getElementById("lessonConversationStatus");
     if (!box) return;
     const next = this.lessonConversationStatus();
@@ -36416,7 +36507,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
       const recognition = new Recognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = "en-US";
+      recognition.lang = this.currentLessonSpeechLanguage();
       recognition.onresult = (event) => {
         if (!this.speechRecognitionActive || !this.sessionActive || this.sessionEnding) return;
         for (let i3 = event.resultIndex; i3 < event.results.length; i3++) {
@@ -36796,6 +36887,8 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
   }
   stopLearnerTranscriptCapture() {
+    clearTimeout(this.lessonRecognitionRestartTimer);
+    this.lessonRecognitionRestartTimer = null;
     this.learnerRecognitionReady = false;
     this.lessonReplyPendingAt = 0;
     clearTimeout(this.safariAudioRetryTimer);
