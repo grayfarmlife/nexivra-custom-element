@@ -35243,7 +35243,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
   lessonSpeechLanguageOptions() {
     if (this.isExperienceNexstorvenDemo()) return [];
     const cfg = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
-    const labels = { "es-MX": "Spanish", "en-US": "English" };
+    const labels = { "es-ES": "Spanish", "es-MX": "Spanish (Mexico)", "en-US": "English" };
     const configured = Array.isArray(cfg.speechRecognitionLanguages) ? cfg.speechRecognitionLanguages : [];
     return [...new Set(configured)].filter((code) => Object.hasOwn(labels, code)).map((code) => ({ code, label: labels[code] }));
   }
