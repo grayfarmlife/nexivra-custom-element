@@ -36518,7 +36518,13 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     }
     this.setStatus(this.learnerRecognitionFailureMessage());
   }
-  startLearnerTranscriptCapture() {
+  canWarmLessonRecognition() {
+    const cfg = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
+    return !this.isExperienceNexstorvenDemo() && this.runtimeContext?.course?.courseConfig?.editorialTestOnly === true && cfg.voiceReplyMode === "short_language_rehearsal" && cfg.activeLessonPacket?.audience === "adults" && this.lessonSpeechLanguageOptions().length > 0;
+  }
+  startLearnerTranscriptCapture({ warmup = false } = {}) {
+    if (warmup && !this.canWarmLessonRecognition()) return;
+    if (warmup) this.learnerRecognitionWarming = true;
     if (this.speechRecognitionActive) return;
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
@@ -36528,6 +36534,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     }
     this.learnerRecognitionError = null;
     try {
+      const captureEpoch = this.localMediaEpoch;
       const recognition = new Recognition();
       recognition.continuous = true;
       recognition.interimResults = true;
@@ -36892,9 +36899,10 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
         }
       };
       recognition.onend = () => {
+        if (this.speechRecognition !== recognition) return;
         this.cancelSpanishUtteranceFinalization();
         this.learnerRecognitionReady = false;
-        if (this.speechRecognition === recognition && this.speechRecognitionActive && this.sessionActive && !this.sessionEnding) {
+        if (this.speechRecognitionActive && (this.sessionActive || this.learnerRecognitionWarming) && captureEpoch === this.localMediaEpoch && !this.sessionEnding) {
           try {
             recognition.start();
           } catch (error) {
@@ -36913,6 +36921,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
   }
   stopLearnerTranscriptCapture() {
+    this.learnerRecognitionWarming = false;
     this.cancelSpanishUtteranceFinalization();
     clearTimeout(this.lessonRecognitionRestartTimer);
     this.lessonRecognitionRestartTimer = null;
@@ -37067,6 +37076,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
           videoTracks: stream.getVideoTracks().length
         }
       );
+      if (!this.isExperienceNexstorvenDemo()) this.resetLiveState();
       this.sessionStartupStage = "audio_monitor";
       this.setStatus(
         "Preparing learner audio..."
@@ -37075,6 +37085,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
         stream
       );
       if (!this.learnerCaptureIsCurrent(captureEpoch, stream)) return;
+      if (this.canWarmLessonRecognition()) this.startLearnerTranscriptCapture({ warmup: true });
       this.sessionStartupStage = "vision";
       this.setStatus(
         "Starting visual analysis..."
@@ -37114,8 +37125,9 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
         );
         this.releaseDeferredResumeInteractionGate();
       }
+      this.learnerRecognitionWarming = false;
       this.startLearnerTranscriptCapture();
-      this.resetLiveState();
+      if (this.isExperienceNexstorvenDemo()) this.resetLiveState();
       this.setTrainingState(
         "ACTIVE"
       );
