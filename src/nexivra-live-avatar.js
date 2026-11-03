@@ -8034,13 +8034,21 @@ this.learnerRecognitionError=code;
  try{this.speechRecognition?.abort();}catch(_){}
  this.setStatus(this.learnerRecognitionFailureMessage());
 }
-startLearnerTranscriptCapture() {
+canWarmLessonRecognition() {
+ const cfg=this.runtimeContext?.module?.config||this.runtimeContext?.module?.moduleConfig||{};
+ return !this.isExperienceNexstorvenDemo() && this.runtimeContext?.course?.courseConfig?.editorialTestOnly===true && cfg.voiceReplyMode==='short_language_rehearsal' && cfg.activeLessonPacket?.audience==='adults' && this.lessonSpeechLanguageOptions().length>0;
+}
+
+startLearnerTranscriptCapture({warmup=false}={}) {
+if(warmup&&!this.canWarmLessonRecognition())return;
+if(warmup)this.learnerRecognitionWarming=true;
                                                                                                             if(this.speechRecognitionActive)return;
                                                                                                             const Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
                                                                                                             if(!Recognition){console.warn("NEXIVRA TRANSCRIPT: browser speech recognition unavailable.");this.handleLearnerRecognitionFailure("unsupported");return;}
  this.learnerRecognitionError=null;
                                                                                                             try{
-                                                                                                              const recognition=new Recognition();recognition.continuous=true;recognition.interimResults=true;recognition.lang=this.currentLessonSpeechLanguage();
+                                                                                                              const captureEpoch=this.localMediaEpoch;
+const recognition=new Recognition();recognition.continuous=true;recognition.interimResults=true;recognition.lang=this.currentLessonSpeechLanguage();
                                                                                                               recognition.onresult=event=>{if(!this.speechRecognitionActive||!this.sessionActive||this.sessionEnding)return;for(let i=event.resultIndex;i<event.results.length;i++){const result=event.results[i];const text=String(result?.[0]?.transcript||"").trim();if(!text)continue;
                                                                                                                 if(!result?.isFinal){
                                                                                                                   if(
@@ -8433,12 +8441,13 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                         }};
                                                                                                               recognition.onerror=event=>{if(this.speechRecognition!==recognition)return;const error=String(event?.error||"");if(error==="audio-capture"&&this.retrySafariAudioCapture(recognition))return;if(!["no-speech","aborted"].includes(error)){console.warn("NEXIVRA TRANSCRIPT ERROR:",error);this.handleLearnerRecognitionFailure(error);}};
                                                                                                               recognition.onstart=()=>{if(this.speechRecognition===recognition){this.learnerRecognitionReady=true;this.refreshLessonConversationStatus();}};
-recognition.onend=()=>{this.cancelSpanishUtteranceFinalization();this.learnerRecognitionReady=false;if(this.speechRecognition===recognition&&this.speechRecognitionActive&&this.sessionActive&&!this.sessionEnding){try{recognition.start();}catch(error){}}};
+recognition.onend=()=>{if(this.speechRecognition!==recognition)return;this.cancelSpanishUtteranceFinalization();this.learnerRecognitionReady=false;if(this.speechRecognitionActive&&(this.sessionActive||this.learnerRecognitionWarming)&&captureEpoch===this.localMediaEpoch&&!this.sessionEnding){try{recognition.start();}catch(error){}}};
                                                                                                               this.speechRecognition=recognition;this.speechRecognitionActive=true;recognition.start();console.log("NEXIVRA TRANSCRIPT CAPTURE ACTIVE");
                                                                                                             }catch(error){this.speechRecognitionActive=false;this.speechRecognition=null;console.warn("NEXIVRA TRANSCRIPT START ERROR:",error);this.handleLearnerRecognitionFailure("start-failed");}
                                                                                                           }
 
                                                                                                           stopLearnerTranscriptCapture() {
+ this.learnerRecognitionWarming=false;
  this.cancelSpanishUtteranceFinalization();
  clearTimeout(this.lessonRecognitionRestartTimer);this.lessonRecognitionRestartTimer=null;
  this.learnerRecognitionReady=false;this.lessonReplyPendingAt=0;
@@ -8636,7 +8645,8 @@ recognition.onend=()=>{this.cancelSpanishUtteranceFinalization();this.learnerRec
                                                                                                               );
 
 
-                                                                                                              this.sessionStartupStage =
+                                                                                                              if(!this.isExperienceNexstorvenDemo())this.resetLiveState();
+this.sessionStartupStage =
                                                                                                                 "audio_monitor";
 
 
@@ -8651,7 +8661,8 @@ recognition.onend=()=>{this.cancelSpanishUtteranceFinalization();this.learnerRec
  if(!this.learnerCaptureIsCurrent(captureEpoch,stream))return;
 
 
-                                                                                                              this.sessionStartupStage =
+                                                                                                              if(this.canWarmLessonRecognition())this.startLearnerTranscriptCapture({warmup:true});
+this.sessionStartupStage =
                                                                                                                 "vision";
 
 
@@ -8725,10 +8736,10 @@ recognition.onend=()=>{this.cancelSpanishUtteranceFinalization();this.learnerRec
                                                                                                                 this.releaseDeferredResumeInteractionGate();
                                                                                                               }
 
-                                                                                                              this.startLearnerTranscriptCapture();
-
-
-                                                                                                              this.resetLiveState();
+                                                                                                              this.learnerRecognitionWarming=false;
+this.startLearnerTranscriptCapture();
+// Ordinary lessons already reset before audio calibration; preserve the current speaker floor.
+if(this.isExperienceNexstorvenDemo())this.resetLiveState();
 
 
                                                                                                               this.setTrainingState(
