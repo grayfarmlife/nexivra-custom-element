@@ -6390,7 +6390,27 @@ const preset = presets[organizationId] || {};
                                                                                                           }
 
 
-                                                                                                          lessonSpeechLanguageOptions() {
+                                                                                                          cancelSpanishUtteranceFinalization() {
+ clearTimeout(this.spanishUtteranceFinalizationTimer);this.spanishUtteranceFinalizationTimer=null;
+}
+scheduleSpanishUtteranceFinalization() {
+ this.cancelSpanishUtteranceFinalization();
+ const cfg=this.runtimeContext?.module?.config||this.runtimeContext?.module?.moduleConfig||{};
+ const enabled=()=>this.runtimeContext?.course?.courseConfig?.editorialTestOnly===true && cfg.voiceReplyMode==='short_language_rehearsal' && cfg.activeLessonPacket?.audience==='adults' && this.currentLessonSpeechLanguage().startsWith('es-') && !this.isExperienceNexstorvenDemo();
+ if(!enabled())return;
+ const recognition=this.speechRecognition,epoch=this.localMediaEpoch,key=this.lessonSpeechLanguageKey();
+ const stopped=this.learnerAudioWindowStoppedAtMs;
+ if(Number(this.lessonLastFinalRecognitionAtMs||0)>=Number(this.learnerAudioWindowStartedAtMs||0))return;
+ if(!recognition||!this.speechRecognitionActive||!this.learnerRecognitionReady||!this.sessionActive||this.sessionEnding||this.rolePlayActive||this.avatarSpeaking||this.m5b3d1SpeechBeganDuringInstructor)return;
+ this.spanishUtteranceFinalizationTimer=setTimeout(()=>{
+  this.spanishUtteranceFinalizationTimer=null;
+  if(!enabled()||this.speechRecognition!==recognition||epoch!==this.localMediaEpoch||key!==this.lessonSpeechLanguageKey()||!this.sessionActive||this.sessionEnding||!this.speechRecognitionActive||!this.learnerRecognitionReady||this.learnerMicSpeaking||this.avatarSpeaking||this.rolePlayActive||this.m5b3d1SpeechBeganDuringInstructor||stopped!==this.learnerAudioWindowStoppedAtMs||Number(this.learnerAudioWindowStartedAtMs||0)>stopped||Number(this.lessonLastFinalRecognitionAtMs||0)>=Number(this.learnerAudioWindowStartedAtMs||0))return;
+  // Ask the recognizer for a FINAL result; never route interim text or guess an answer.
+  try{recognition.stop();console.log('NEXSTORVEN SPANISH RECOGNITION: requested final result after learner silence');}catch(_){}
+ },700);
+}
+
+lessonSpeechLanguageOptions() {
  if(this.isExperienceNexstorvenDemo())return [];
  const cfg=this.runtimeContext?.module?.config||this.runtimeContext?.module?.moduleConfig||{};
  const labels={'es-ES':'Spanish','es-MX':'Spanish (Mexico)','en-US':'English'};
@@ -6424,6 +6444,7 @@ refreshLessonSpeechControls() {
  select.onchange=()=>this.changeLessonSpeechLanguage(select.value);
 }
 changeLessonSpeechLanguage(code) {
+ this.cancelSpanishUtteranceFinalization();
  if(!this.lessonSpeechLanguageOptions().some(o=>o.code===code)||this.sessionEnding||this.learnerMicSpeaking)return false;
  const previous=this.currentLessonSpeechLanguage();
  this.lessonSpeechLanguageChoice={key:this.lessonSpeechLanguageKey(),code};
@@ -8032,7 +8053,8 @@ startLearnerTranscriptCapture() {
                                                                                                                   }
                                                                                                                   continue;
                                                                                                                 }
-                                                                                                                // M5B-4B: reject stale role-play transcripts after returning to Elenora.
+                                                                                                                this.lessonLastFinalRecognitionAtMs=Date.now();
+// M5B-4B: reject stale role-play transcripts after returning to Elenora.
                                                                                                                 if(this.isExperienceNexstorvenDemo() && !this.rolePlayActive && this.m5b4bLastRolePlayUtterance && Date.now()-Number(this.m5b4bRolePlayExitAt||0)<15000 && text.toLowerCase()===String(this.m5b4bLastRolePlayUtterance).toLowerCase()){
                                                                                                                   console.log('NEXSTORVEN M5B-4B STALE PEDRO TRANSCRIPT IGNORED:',text);
                                                                                                                   continue;
@@ -8411,12 +8433,13 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                         }};
                                                                                                               recognition.onerror=event=>{if(this.speechRecognition!==recognition)return;const error=String(event?.error||"");if(error==="audio-capture"&&this.retrySafariAudioCapture(recognition))return;if(!["no-speech","aborted"].includes(error)){console.warn("NEXIVRA TRANSCRIPT ERROR:",error);this.handleLearnerRecognitionFailure(error);}};
                                                                                                               recognition.onstart=()=>{if(this.speechRecognition===recognition){this.learnerRecognitionReady=true;this.refreshLessonConversationStatus();}};
-recognition.onend=()=>{this.learnerRecognitionReady=false;if(this.speechRecognition===recognition&&this.speechRecognitionActive&&this.sessionActive&&!this.sessionEnding){try{recognition.start();}catch(error){}}};
+recognition.onend=()=>{this.cancelSpanishUtteranceFinalization();this.learnerRecognitionReady=false;if(this.speechRecognition===recognition&&this.speechRecognitionActive&&this.sessionActive&&!this.sessionEnding){try{recognition.start();}catch(error){}}};
                                                                                                               this.speechRecognition=recognition;this.speechRecognitionActive=true;recognition.start();console.log("NEXIVRA TRANSCRIPT CAPTURE ACTIVE");
                                                                                                             }catch(error){this.speechRecognitionActive=false;this.speechRecognition=null;console.warn("NEXIVRA TRANSCRIPT START ERROR:",error);this.handleLearnerRecognitionFailure("start-failed");}
                                                                                                           }
 
                                                                                                           stopLearnerTranscriptCapture() {
+ this.cancelSpanishUtteranceFinalization();
  clearTimeout(this.lessonRecognitionRestartTimer);this.lessonRecognitionRestartTimer=null;
  this.learnerRecognitionReady=false;this.lessonReplyPendingAt=0;
  clearTimeout(this.safariAudioRetryTimer);this.safariAudioRetryTimer=null;this.safariAudioRetryUsed=false;
@@ -10686,7 +10709,8 @@ this.learnerSource =
                                                                                                                           console.log(
                                                                                                                             "NEXIVRA LEARNER AUDIO: speaking started"
                                                                                                                           );
-                                                                                                                          this.learnerAudioWindowStartedAtMs=Date.now();
+                                                                                                                          this.cancelSpanishUtteranceFinalization();
+this.learnerAudioWindowStartedAtMs=Date.now();
 this.m5b3d1SpeechBeganDuringInstructor=Boolean(this.avatarSpeaking);
                                                                                                                           this.m5b3d1FaceVisibleAtSpeechStart=Boolean(this.metrics?.faceDetected);
                                                                                                                           if(this.m5b3d1SpeechBeganDuringInstructor){
@@ -10809,6 +10833,7 @@ this.m5b3d1SpeechBeganDuringInstructor=Boolean(this.avatarSpeaking);
                                                                                                                           "NEXIVRA LEARNER AUDIO: speaking stopped"
                                                                                                                         );
 this.learnerAudioWindowStoppedAtMs=Date.now();
+this.scheduleSpanishUtteranceFinalization();
 
                                                                                                                         if(this.rolePlayActive&&this.m5b2nLearnerTurnArmed&&!this.m5b2jPedroSpeaking){
                                                                                                                           this.m5b2nLearnerAudioStoppedAtMs=Date.now();
