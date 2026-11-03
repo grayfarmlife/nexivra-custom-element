@@ -736,6 +736,8 @@ Acknowledge the learner and ask one brief question about where they want to resu
 
 
                           connectedCallback() {
+ clearInterval(this.lessonStatusTimer);
+ this.lessonStatusTimer=setInterval(()=>this.refreshLessonConversationStatus(),200);
                                                                                                             console.log(
                                                                                                               "NEXIVRA BUILD:",
                                                                                                               "PACKAGE3-M5B3L-R4-OCT8-ELENORA-PROVEN-RECOVERY"
@@ -4515,7 +4517,14 @@ const preset = presets[organizationId] || {};
                                                                                                                   font-size: 10px;
                                                                                                                 }
 
-                                                                                                                .session-indicator {
+                                                                                                                .lesson-conversation-status {position:absolute;left:16px;right:16px;top:52px;z-index:66;display:flex;flex-direction:column;gap:3px;padding:10px 13px;border:1px solid #476476;border-radius:10px;background:rgba(3,15,25,.94);color:#fff;font-size:13px;line-height:1.35;pointer-events:none;max-width:380px;box-sizing:border-box;}
+.lesson-conversation-status span {font-size:12px;color:#c8d7df;}
+.lesson-conversation-status[data-state="listening"] {border-color:#00cee8;}
+.lesson-conversation-status[data-state="speaking"] {border-color:#ffab39;}
+.lesson-conversation-status[data-state="error"],.lesson-conversation-status[data-state="delayed"] {border-color:#ff8c8c;}
+@media(max-width:600px){.lesson-conversation-status{left:10px;right:10px;top:48px;padding:8px 10px;font-size:12px;max-width:calc(100% - 20px);}}
+
+.session-indicator {
                                                                                                                   position: absolute;
                                                                                                                   top: 16px;
                                                                                                                   left: 16px;
@@ -6191,7 +6200,11 @@ const preset = presets[organizationId] || {};
                                                                                                                 </div>
 
 
-                                                                                                                <div class="controls">
+                                                                                                                <div id="lessonConversationStatus" class="lesson-conversation-status" role="status" aria-live="polite" aria-atomic="true">
+ <strong data-conversation-label>Ready to begin</strong>
+ <span data-conversation-hint>Start or resume your lesson.</span>
+</div>
+<div class="controls">
 
                                                                                                                   <input
                                                                                                                     id="messageInput"
@@ -6368,7 +6381,28 @@ const preset = presets[organizationId] || {};
                                                                                                           }
 
 
-                                                                                                          setStatus(message) {
+                                                                                                          lessonConversationStatus(now=Date.now()) {
+ if(this.sessionEnding)return {state:'ending',label:'Ending session',hint:'Releasing microphone and camera.'};
+ if(!this.sessionActive)return {state:'idle',label:'Ready to begin',hint:'Start or resume your lesson.'};
+ if(this.m5b3d1ManualPaused||String(this.trainingState||'').startsWith('PAUSED'))return {state:'paused',label:'Paused',hint:'Resume when you are ready.'};
+ if(this.avatarSpeaking||this.m5b2jPedroSpeaking||this.m5b2GuestSpeaking)return {state:'speaking',label:'Avatar is talking',hint:'Wait for Listening before answering.'};
+ if(this.learnerRecognitionError)return {state:'error',label:'Voice input needs attention',hint:this.learnerRecognitionFailureMessage()};
+ if(!this.learnerRecognitionReady)return {state:'connecting',label:'Connecting voice input',hint:'Please wait before speaking. You can also type.'};
+ if(this.lessonReplyPendingAt&&now-this.lessonReplyPendingAt<45000)return {state:'thinking',label:'Preparing a reply',hint:'Your reply was heard. Please wait.'};
+ if(this.lessonReplyPendingAt)return {state:'delayed',label:'Reply is taking longer',hint:'You can try again or type your reply.'};
+ return {state:'listening',label:'Listening',hint:'Your turn. Speak now or type your reply.'};
+}
+refreshLessonConversationStatus() {
+ // Display only: never starts media, submits a turn or changes conversation routing.
+ const box=this.shadowRoot?.getElementById('lessonConversationStatus');if(!box)return;
+ const next=this.lessonConversationStatus();
+ if(box.dataset.state===next.state&&box.dataset.hint===next.hint)return;
+ box.dataset.state=next.state;box.dataset.hint=next.hint;
+ box.querySelector('[data-conversation-label]').textContent=next.label;
+ box.querySelector('[data-conversation-hint]').textContent=next.hint;
+}
+
+setStatus(message) {
  if (this.learnerRecognitionError && this.sessionActive && !this.isExperienceNexstorvenDemo()) {
    const voiceStatus=this.learnerRecognitionFailureMessage();
    if(!String(message).includes(voiceStatus))message=String(message)+' '+voiceStatus;
@@ -6596,7 +6630,7 @@ hardReleaseLocalMedia(reason="session_end") {
                                                                                                                 this.session.on(
                                                                                                                   AgentEventsEnum.AVATAR_SPEAK_STARTED,
                                                                                                                   ()=>{
-                                                                                                                    this.avatarSpeaking=true;
+                                                                                                                    this.lessonReplyPendingAt=0;this.avatarSpeaking=true;
                                                                                                                     console.log("NEXIVRA SPEECH EVENT: avatar started speaking");
  if(!this.isExperienceNexstorvenDemo())this.recordLearnerReplySpeechStart();
                                                                                                                     if(this.m5b3e3SilentStandbyLock){
@@ -6710,7 +6744,7 @@ hardReleaseLocalMedia(reason="session_end") {
                                                                                                                 AgentEventsEnum.AVATAR_SPEAK_STARTED,
                                                                                                                 () => {
 
-                                                                                                                  this.avatarSpeaking = true;
+                                                                                                                  this.lessonReplyPendingAt=0;this.avatarSpeaking = true;
 
                                                                                                                   console.log(
                                                                                                                     "NEXIVRA SPEECH EVENT: avatar started speaking"
@@ -7904,7 +7938,8 @@ retrySafariAudioCapture(recognition) {
 handleLearnerRecognitionFailure(code) {
  // Keep the existing demonstration route unchanged.
  if(this.isExperienceNexstorvenDemo())return;
- this.learnerRecognitionError=code;
+ this.learnerRecognitionReady=false;
+this.learnerRecognitionError=code;
  this.speechRecognitionActive=false;
  try{this.speechRecognition?.abort();}catch(_){}
  this.setStatus(this.learnerRecognitionFailureMessage());
@@ -8033,7 +8068,8 @@ if(shortLanguageReplyAccepted&&!learnerSpeakerSupported){
                                                                                                                   console.log("NEXIVRA M5B-3D1 SESSION LEARNER POSITION LOCKED:",this.m5b3d1LearnerFaceAnchor);
                                                                                                                 }
 
-                                                                                                                this.lastLearnerTranscript=text;
+                                                                                                                this.lessonReplyPendingAt=Date.now();
+this.lastLearnerTranscript=text;
                                                                                                                 this.lastLearnerTranscriptAt=now;
                                                                                                                 if(this.m5b3cInputRouterActive)console.log("NEXIVRA M5B-3D1 LEARNER SPEAKER CONFIRMED:",text);
                                                                                                                 this.m5b3dSpeechWindowMouthActivity=false;
@@ -8305,12 +8341,14 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                                           }
                                         }};
                                                                                                               recognition.onerror=event=>{if(this.speechRecognition!==recognition)return;const error=String(event?.error||"");if(error==="audio-capture"&&this.retrySafariAudioCapture(recognition))return;if(!["no-speech","aborted"].includes(error)){console.warn("NEXIVRA TRANSCRIPT ERROR:",error);this.handleLearnerRecognitionFailure(error);}};
-                                                                                                              recognition.onend=()=>{if(this.speechRecognition===recognition&&this.speechRecognitionActive&&this.sessionActive&&!this.sessionEnding){try{recognition.start();}catch(error){}}};
+                                                                                                              recognition.onstart=()=>{if(this.speechRecognition===recognition){this.learnerRecognitionReady=true;this.refreshLessonConversationStatus();}};
+recognition.onend=()=>{this.learnerRecognitionReady=false;if(this.speechRecognition===recognition&&this.speechRecognitionActive&&this.sessionActive&&!this.sessionEnding){try{recognition.start();}catch(error){}}};
                                                                                                               this.speechRecognition=recognition;this.speechRecognitionActive=true;recognition.start();console.log("NEXIVRA TRANSCRIPT CAPTURE ACTIVE");
                                                                                                             }catch(error){this.speechRecognitionActive=false;this.speechRecognition=null;console.warn("NEXIVRA TRANSCRIPT START ERROR:",error);this.handleLearnerRecognitionFailure("start-failed");}
                                                                                                           }
 
                                                                                                           stopLearnerTranscriptCapture() {
+ this.learnerRecognitionReady=false;this.lessonReplyPendingAt=0;
  clearTimeout(this.safariAudioRetryTimer);this.safariAudioRetryTimer=null;this.safariAudioRetryUsed=false;
                                                                                                             clearTimeout(this.m5b3ySpeechTimer);this.m5b3ySpeechParts=[];clearTimeout(this.m5b3zSynthesisWatchdog);this.m5b3zSynthesisSpeechStarted=false;
                                                                                                             this.speechRecognitionActive=false;
@@ -11334,6 +11372,7 @@ this.learnerAudioWindowStoppedAtMs=Date.now();
 
 
                                                                                                           disconnectedCallback() {
+ clearInterval(this.lessonStatusTimer);this.lessonStatusTimer=null;
  this.releaseLearnerCapture("element_disconnected");
                                                                                                             this.stopGuestInfrastructureTest("element_disconnected").catch(() => {});
 
