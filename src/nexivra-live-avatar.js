@@ -6282,7 +6282,7 @@ const preset = presets[organizationId] || {};
 <label id="lessonSpeechLanguageControl" class="lesson-speech-language" hidden>
  <span>Voice input:</span>
  <select id="lessonSpeechLanguage" aria-label="Voice input language"></select>
- <small>Choose Spanish for practice or English for questions.</small>
+ <small>Automatic recognizes English and Spanish. Manual options are available if needed.</small>
 </label>
 
                                                                                                                   <input
@@ -10863,8 +10863,7 @@ this.learnerSource =
                                                                                                                             now -
                                                                                                                             this.learnerSpeechAboveSince
                                                                                                                           ) >=
-                                                                                                                            this.thresholds
-                                                                                                                              .learnerSpeechStartHoldMs
+                                                                                                                            (this.currentLessonSpeechLanguage()==='auto'?80:this.thresholds.learnerSpeechStartHoldMs)
                                                                                                                         ) {
 
                                                                                                                           this.learnerMicSpeaking =
