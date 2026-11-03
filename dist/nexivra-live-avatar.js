@@ -31703,6 +31703,15 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     ).trim().toLowerCase();
     return courseName === "experience nexstorven" || courseName.includes("experience nexstorven") && moduleName.includes("imagine what's possible");
   }
+  canAcceptShortLanguageReply(text, evidence = {}) {
+    const course = this.runtimeContext?.course?.courseConfig || {};
+    const module = this.runtimeContext?.module?.moduleConfig || {};
+    const value = String(text || "").trim();
+    const started = Number(this.learnerAudioWindowStartedAtMs || 0);
+    const stopped = Number(this.learnerAudioWindowStoppedAtMs || 0);
+    const now = Date.now();
+    return Boolean(course.editorialTestOnly === true && module.voiceReplyMode === "short_language_rehearsal" && module.activeLessonPacket?.audience === "adults" && this.sessionActive && !this.sessionEnding && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && !this.isExperienceNexstorvenDemo() && !this.avatarSpeaking && !this.m5b3d1SpeechBeganDuringInstructor && evidence.faceVisible && evidence.faceVisibleAtSpeechStart && evidence.currentAnchor && evidence.learnerContinuity && Number.isFinite(evidence.currentAnchor.at) && now >= evidence.currentAnchor.at && now - evidence.currentAnchor.at <= 1500 && started > 0 && now >= started && now - started <= 15e3 && (this.learnerMicSpeaking || stopped >= started && now >= stopped && now - stopped <= 3500) && value.length > 0 && value.length <= 80 && value.split(/\s+/).length <= 5 && /[\p{L}]/u.test(value));
+  }
   isConfiguredGuestRolePlayEnabled() {
     const course = this.runtimeContext?.course?.courseConfig || {};
     const module = this.runtimeContext?.module?.moduleConfig || {};
@@ -36429,7 +36438,17 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
           }
           const learnerSpeakerSupported = faceVisible && Boolean(this.m5b3d1FaceVisibleAtSpeechStart) && mouthActivity && Boolean(currentAnchor) && learnerContinuity;
           const postPedroLearnerGraceActive = this.rolePlayActive && this.m5b2FloorOwner === "PEDRO" && !this.m5b2jPedroSpeaking && Date.now() <= Number(this.m5b3lPostPedroLearnerGraceUntilMs || 0) && Boolean(faceVisible || this.m5b3d1FaceVisibleAtSpeechStart || learnerContinuity);
-          const learnerSpeakerAccepted = learnerSpeakerSupported || postPedroLearnerGraceActive;
+          const shortLanguageReplyAccepted = this.canAcceptShortLanguageReply(text, {
+            faceVisible,
+            faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
+            currentAnchor,
+            learnerContinuity
+          });
+          const learnerSpeakerAccepted = learnerSpeakerSupported || postPedroLearnerGraceActive || shortLanguageReplyAccepted;
+          if (shortLanguageReplyAccepted && !learnerSpeakerSupported) {
+            console.log("NEXSTORVEN SHORT LANGUAGE REPLY: accepted with fresh audio and continuous visible learner");
+            this.setStatus("Reply heard. Waiting for Elenora\u2026");
+          }
           if (this.m5b3cInputRouterActive && !learnerSpeakerSupported && postPedroLearnerGraceActive) {
             console.log("NEXIVRA M5B-3L-F POST-PEDRO LEARNER SPEECH ACCEPTED BY FLOOR GRACE:", {
               text,
@@ -37935,6 +37954,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                 console.log(
                   "NEXIVRA LEARNER AUDIO: speaking started"
                 );
+                this.learnerAudioWindowStartedAtMs = Date.now();
                 this.m5b3d1SpeechBeganDuringInstructor = Boolean(this.avatarSpeaking);
                 this.m5b3d1FaceVisibleAtSpeechStart = Boolean(this.metrics?.faceDetected);
                 if (this.m5b3d1SpeechBeganDuringInstructor) {
@@ -38001,6 +38021,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
               console.log(
                 "NEXIVRA LEARNER AUDIO: speaking stopped"
               );
+              this.learnerAudioWindowStoppedAtMs = Date.now();
               if (this.rolePlayActive && this.m5b2nLearnerTurnArmed && !this.m5b2jPedroSpeaking) {
                 this.m5b2nLearnerAudioStoppedAtMs = Date.now();
                 if (String(this.m5b2oLatestInterimText || "").trim()) {
