@@ -1506,33 +1506,33 @@ var protoBase64 = {
    * Encode a byte array to a base64 string.
    */
   enc(bytes) {
-    let base64 = "", groupPos = 0, b3, p3 = 0;
+    let base642 = "", groupPos = 0, b3, p3 = 0;
     for (let i3 = 0; i3 < bytes.length; i3++) {
       b3 = bytes[i3];
       switch (groupPos) {
         case 0:
-          base64 += encTable[b3 >> 2];
+          base642 += encTable[b3 >> 2];
           p3 = (b3 & 3) << 4;
           groupPos = 1;
           break;
         case 1:
-          base64 += encTable[p3 | b3 >> 4];
+          base642 += encTable[p3 | b3 >> 4];
           p3 = (b3 & 15) << 2;
           groupPos = 2;
           break;
         case 2:
-          base64 += encTable[p3 | b3 >> 6];
-          base64 += encTable[b3 & 63];
+          base642 += encTable[p3 | b3 >> 6];
+          base642 += encTable[b3 & 63];
           groupPos = 0;
           break;
       }
     }
     if (groupPos) {
-      base64 += encTable[p3];
-      base64 += "=";
-      if (groupPos == 1) base64 += "=";
+      base642 += encTable[p3];
+      base642 += "=";
+      if (groupPos == 1) base642 += "=";
     }
-    return base64;
+    return base642;
   }
 };
 function getExtension(message, extension, options) {
@@ -30048,6 +30048,159 @@ Kc.prototype.detectForVideo = Kc.prototype.H, Kc.prototype.detect = Kc.prototype
 }, Kc.POSE_CONNECTIONS = Tc, r3("module$exports$google3$third_party$mediapipe$tasks$web$vision$pose_landmarker$pose_landmarker.PoseLandmarker.POSE_CONNECTIONS", Kc.POSE_CONNECTIONS);
 
 // src/nexivra-live-avatar.js
+function encodeWav(pcm) {
+  if (!(pcm instanceof Int16Array) || pcm.length < 3200 || pcm.length > 16e4) throw Error("INVALID_AUDIO_LENGTH");
+  const out = new Uint8Array(44 + pcm.length * 2), v3 = new DataView(out.buffer);
+  const ascii = (at2, text) => {
+    for (let i3 = 0; i3 < text.length; i3++) out[at2 + i3] = text.charCodeAt(i3);
+  };
+  ascii(0, "RIFF");
+  v3.setUint32(4, out.length - 8, true);
+  ascii(8, "WAVE");
+  ascii(12, "fmt ");
+  v3.setUint32(16, 16, true);
+  v3.setUint16(20, 1, true);
+  v3.setUint16(22, 1, true);
+  v3.setUint32(24, 16e3, true);
+  v3.setUint32(28, 32e3, true);
+  v3.setUint16(32, 2, true);
+  v3.setUint16(34, 16, true);
+  ascii(36, "data");
+  v3.setUint32(40, pcm.length * 2, true);
+  for (let i3 = 0; i3 < pcm.length; i3++) v3.setInt16(44 + i3 * 2, pcm[i3], true);
+  return out;
+}
+function base64(bytes) {
+  let text = "";
+  for (let i3 = 0; i3 < bytes.length; i3 += 8192) text += String.fromCharCode(...bytes.subarray(i3, i3 + 8192));
+  return btoa(text);
+}
+var AutomaticLanguageClient = class {
+  constructor({ transcribe, isCurrent, onFinal = () => {
+  }, onStatus = () => {
+  }, now = Date.now }) {
+    this.transcribe = transcribe;
+    this.isCurrent = isCurrent;
+    this.onFinal = onFinal;
+    this.onStatus = onStatus;
+    this.now = now;
+    this.generation = 0;
+    this.active = null;
+    this.pending = false;
+    this.seen = /* @__PURE__ */ new Set();
+  }
+  start({ sessionId, moduleId, consentGranted = false }) {
+    this.stop();
+    if (consentGranted !== true) throw Error("AUDIO_PROCESSING_CONSENT_REQUIRED");
+    if (typeof sessionId !== "string" || !sessionId || typeof moduleId !== "string" || !moduleId) throw Error("INVALID_SCOPE");
+    this.active = Object.freeze({ sessionId, moduleId });
+    this.seen.clear();
+  }
+  async submit({ turnId, pcm }) {
+    if (!this.active || !this.isCurrent(this.active)) throw Error("INACTIVE_SESSION");
+    if (this.pending) throw Error("TRANSCRIPTION_BUSY");
+    if (typeof turnId !== "string" || !/^[a-zA-Z0-9_-]{1,100}$/.test(turnId) || this.seen.has(turnId)) throw Error("DUPLICATE_OR_INVALID_TURN");
+    const audio = encodeWav(pcm);
+    const generation = this.generation, scope = this.active;
+    this.seen.add(turnId);
+    if (this.seen.size > 512) {
+      audio.fill(0);
+      throw Error("SESSION_TURN_LIMIT");
+    }
+    this.pending = true;
+    this.onStatus("recognizing");
+    try {
+      const result = await this.transcribe({ sessionId: scope.sessionId, turnId, audioBase64: base64(audio) });
+      if (generation !== this.generation || scope !== this.active || !this.isCurrent(scope)) return { ignored: "ended-or-changed-session" };
+      if (result?.ok !== true || result.sessionId !== scope.sessionId || result.turnId !== turnId || typeof result.text !== "string" || result.text.length > 4e3) throw Error("INVALID_TRANSCRIPTION_RESPONSE");
+      if (!result.text.trim()) {
+        this.onStatus("no-words");
+        return { ok: true, empty: true };
+      }
+      this.onFinal({ sessionId: scope.sessionId, turnId, text: result.text.trim() });
+      this.onStatus("heard");
+      return { ok: true };
+    } catch (error) {
+      if (generation === this.generation && scope === this.active) this.onStatus("error");
+      throw error;
+    } finally {
+      audio.fill(0);
+      if (generation === this.generation) this.pending = false;
+    }
+  }
+  stop() {
+    this.generation++;
+    this.active = null;
+    this.pending = false;
+    this.seen.clear();
+  }
+};
+var UtteranceCaptureBuffer = class {
+  constructor({ sampleRate = 48e3, maxSeconds = 10 } = {}) {
+    if (![16e3, 24e3, 44100, 48e3].includes(sampleRate) || !Number.isInteger(maxSeconds) || maxSeconds < 1 || maxSeconds > 10) throw Error("INVALID_CAPTURE_CONFIG");
+    this.sampleRate = sampleRate;
+    this.maxSamples = maxSeconds * 16e3;
+    this.reset();
+  }
+  reset() {
+    for (const frame of this.frames || []) frame.fill(0);
+    this.frames = [];
+    this.count = 0;
+    this.phase = 0;
+    this.sum = 0;
+    this.samples = 0;
+    this.active = false;
+  }
+  begin() {
+    this.reset();
+    this.active = true;
+  }
+  push(floatSamples, { learnerFloor = false } = {}) {
+    if (!this.active) return;
+    if (!learnerFloor) {
+      this.reset();
+      return;
+    }
+    if (!(floatSamples instanceof Float32Array)) throw Error("INVALID_AUDIO_FRAME");
+    const out = [];
+    for (const sample of floatSamples) {
+      if (!Number.isFinite(sample)) {
+        this.reset();
+        throw Error("INVALID_AUDIO_FRAME");
+      }
+      this.sum += Math.max(-1, Math.min(1, sample));
+      this.samples++;
+      this.phase += 16e3;
+      if (this.phase >= this.sampleRate) {
+        this.phase -= this.sampleRate;
+        const v3 = this.sum / this.samples;
+        out.push(Math.round(v3 * (v3 < 0 ? 32768 : 32767)));
+        this.sum = 0;
+        this.samples = 0;
+      }
+    }
+    if (this.count + out.length > this.maxSamples) {
+      this.reset();
+      throw Error("UTTERANCE_TOO_LONG");
+    }
+    if (out.length) {
+      const frame = Int16Array.from(out);
+      this.frames.push(frame);
+      this.count += frame.length;
+    }
+  }
+  finish() {
+    if (!this.active) return null;
+    const out = new Int16Array(this.count);
+    let offset = 0;
+    for (const frame of this.frames) {
+      out.set(frame, offset);
+      offset += frame.length;
+    }
+    this.reset();
+    return out;
+  }
+};
 var NexivraLiveAvatar = class extends HTMLElement {
   static get observedAttributes() {
     return [
@@ -30071,7 +30224,8 @@ var NexivraLiveAvatar = class extends HTMLElement {
       "client-journey-image-url",
       "resume-checkpoint",
       "learner-dashboard-view",
-      "preferred-name-save-result"
+      "preferred-name-save-result",
+      "automatic-transcription-result"
     ];
   }
   constructor() {
@@ -30909,6 +31063,10 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD NAV ACTIVE:", buttons.map((b3) => b3.dataset.dashboardView));
   }
   attributeChangedCallback(name, oldValue, newValue) {
+    if (name === "automatic-transcription-result") {
+      this.receiveAutomaticTranscription(newValue);
+      return;
+    }
     if (name === "preferred-name-save-result") {
       this.applyM5B3R2PreferredNameSaveResult(newValue);
       return;
@@ -31711,8 +31869,10 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     const value = String(text || "").trim();
     const started = Number(this.learnerAudioWindowStartedAtMs || 0);
     const stopped = Number(this.learnerAudioWindowStoppedAtMs || 0);
+    const proof = this.automaticValidatedTurn;
+    const pendingAutomaticAudio = Boolean(proof && proof.sessionId === this.runtimeSessionId && proof.epoch === this.localMediaEpoch && Date.now() >= proof.endedAt && Date.now() - proof.endedAt <= 2e4);
     const now = Date.now();
-    return Boolean(course.editorialTestOnly === true && module.voiceReplyMode === "short_language_rehearsal" && module.activeLessonPacket?.audience === "adults" && this.sessionActive && !this.sessionEnding && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && !this.isExperienceNexstorvenDemo() && !this.avatarSpeaking && !this.m5b3d1SpeechBeganDuringInstructor && evidence.faceVisible && evidence.faceVisibleAtSpeechStart && evidence.currentAnchor && evidence.learnerContinuity && Number.isFinite(evidence.currentAnchor.at) && now >= evidence.currentAnchor.at && now - evidence.currentAnchor.at <= 1500 && started > 0 && now >= started && now - started <= 15e3 && (this.learnerMicSpeaking || stopped >= started && now >= stopped && now - stopped <= 3500) && value.length > 0 && value.length <= 80 && value.split(/\s+/).length <= 5 && /[\p{L}]/u.test(value));
+    return Boolean(course.editorialTestOnly === true && module.voiceReplyMode === "short_language_rehearsal" && module.activeLessonPacket?.audience === "adults" && this.sessionActive && !this.sessionEnding && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && !this.isExperienceNexstorvenDemo() && !this.avatarSpeaking && !this.m5b3d1SpeechBeganDuringInstructor && evidence.faceVisible && evidence.faceVisibleAtSpeechStart && evidence.currentAnchor && evidence.learnerContinuity && Number.isFinite(evidence.currentAnchor.at) && now >= evidence.currentAnchor.at && now - evidence.currentAnchor.at <= 1500 && started > 0 && now >= started && now - started <= 15e3 && (this.learnerMicSpeaking || stopped >= started && now >= stopped && now - stopped <= 3500 || pendingAutomaticAudio) && value.length > 0 && value.length <= 80 && value.split(/\s+/).length <= 5 && /[\p{L}]/u.test(value));
   }
   isConfiguredGuestRolePlayEnabled() {
     const course = this.runtimeContext?.course?.courseConfig || {};
@@ -35114,7 +35274,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
 </div>
 <div class="controls">
 <label id="lessonSpeechLanguageControl" class="lesson-speech-language" hidden>
- <span>I'm speaking:</span>
+ <span>Voice input:</span>
  <select id="lessonSpeechLanguage" aria-label="Voice input language"></select>
  <small>Choose Spanish for practice or English for questions.</small>
 </label>
@@ -35268,7 +35428,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     const cfg = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
     const labels = { "es-ES": "Spanish", "es-MX": "Spanish (Mexico)", "en-US": "English" };
     const configured = Array.isArray(cfg.speechRecognitionLanguages) ? cfg.speechRecognitionLanguages : [];
-    return [...new Set(configured)].filter((code) => Object.hasOwn(labels, code)).map((code) => ({ code, label: labels[code] }));
+    return (this.automaticLanguageAvailable() ? [{ code: "auto", label: "Automatic (English + Spanish)" }] : []).concat([...new Set(configured)].filter((code) => Object.hasOwn(labels, code)).map((code) => ({ code, label: labels[code] })));
   }
   lessonSpeechLanguageKey() {
     return JSON.stringify([this.runtimeContext?.courseId || this.runtimeContext?.course?.id || this.runtimeContext?.course?._id || "", this.runtimeContext?.moduleId || this.runtimeContext?.module?.id || this.runtimeContext?.module?._id || ""]);
@@ -35278,6 +35438,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     if (!options.length) return "en-US";
     const key = this.lessonSpeechLanguageKey();
     if (this.lessonSpeechLanguageChoice?.key === key && options.some((o4) => o4.code === this.lessonSpeechLanguageChoice.code)) return this.lessonSpeechLanguageChoice.code;
+    if (this.automaticLanguageAvailable()) return "auto";
     const preferred = (this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig)?.speechRecognitionLanguage;
     return options.some((o4) => o4.code === preferred) ? preferred : options[0].code;
   }
@@ -35306,6 +35467,13 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     this.cancelSpanishUtteranceFinalization();
     if (!this.lessonSpeechLanguageOptions().some((o4) => o4.code === code) || this.sessionEnding || this.learnerMicSpeaking) return false;
     const previous = this.currentLessonSpeechLanguage();
+    if (code === "auto" || previous === "auto") {
+      this.lessonSpeechLanguageChoice = { key: this.lessonSpeechLanguageKey(), code };
+      this.stopLearnerTranscriptCapture();
+      if (this.sessionActive) this.startLearnerTranscriptCapture();
+      this.refreshLessonSpeechControls();
+      return true;
+    }
     this.lessonSpeechLanguageChoice = { key: this.lessonSpeechLanguageKey(), code };
     this.refreshLessonSpeechControls();
     if (previous === code || !this.sessionActive) return true;
@@ -35351,6 +35519,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     if (this.m5b3d1ManualPaused || String(this.trainingState || "").startsWith("PAUSED")) return { state: "paused", label: "Paused", hint: "Resume when you are ready." };
     if (this.avatarSpeaking || this.m5b2jPedroSpeaking || this.m5b2GuestSpeaking) return { state: "speaking", label: "Avatar is talking", hint: "Wait for Listening before answering." };
     if (this.learnerRecognitionError) return { state: "error", label: "Voice input needs attention", hint: this.learnerRecognitionFailureMessage() };
+    if (this.automaticClient?.pending) return { state: "recognizing", label: "Recognizing your reply", hint: "English or Spanish is recognized automatically. Please wait." };
     if (!this.learnerRecognitionReady) return { state: "connecting", label: "Connecting voice input", hint: "Please wait before speaking. You can also type." };
     if (this.lessonReplyPendingAt && now - this.lessonReplyPendingAt < 45e3) return { state: "thinking", label: "Preparing a reply", hint: "Your reply was heard. Please wait." };
     if (this.lessonReplyPendingAt) return { state: "delayed", label: "Reply is taking longer", hint: "You can try again or type your reply." };
@@ -36478,6 +36647,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
   }
   learnerRecognitionFailureMessage() {
     const code = this.learnerRecognitionError;
+    if (code === "automatic") return this.automaticVoiceError || "Automatic voice needs attention. Select a manual voice option or type your reply.";
     if (code === "not-allowed" || code === "service-not-allowed") return "Voice input is blocked. Check microphone permissions, or type your reply below.";
     if (code === "audio-capture") return "No microphone input is available. Check your microphone, or type your reply below.";
     if (code === "unsupported") return "This browser does not support voice recognition. Type your reply below or use a supported browser.";
@@ -36518,340 +36688,502 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     }
     this.setStatus(this.learnerRecognitionFailureMessage());
   }
-  canWarmLessonRecognition() {
-    const cfg = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
-    return !this.isExperienceNexstorvenDemo() && this.runtimeContext?.course?.courseConfig?.editorialTestOnly === true && cfg.voiceReplyMode === "short_language_rehearsal" && cfg.activeLessonPacket?.audience === "adults" && this.lessonSpeechLanguageOptions().length > 0;
+  automaticLanguageAvailable() {
+    const c3 = this.runtimeContext?.course, m3 = this.runtimeContext?.module, cfg = m3?.config || m3?.moduleConfig || {};
+    return !this.isExperienceNexstorvenDemo() && c3?.id === "0b936c77-347d-4323-a1cf-9c37b7a6af0f" && m3?.id === "b9b73f57-3b4f-4f59-95c6-5d884052fe1d" && c3.courseConfig?.editorialTestOnly === true && cfg.activeLessonPacket?.audience === "adults" && cfg.automaticTranscriptionEnabled === true && cfg.automaticTrialId === "automatic-language-20261103-v1" && Date.parse(cfg.automaticTrialExpiresAt) > Date.now();
   }
-  startLearnerTranscriptCapture({ warmup = false } = {}) {
-    if (warmup && !this.canWarmLessonRecognition()) return;
-    if (warmup) this.learnerRecognitionWarming = true;
-    if (this.speechRecognitionActive) return;
-    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Recognition) {
-      console.warn("NEXIVRA TRANSCRIPT: browser speech recognition unavailable.");
-      this.handleLearnerRecognitionFailure("unsupported");
+  requestAutomaticTranscription(input) {
+    return new Promise((resolve, reject) => {
+      this.automaticRequests || (this.automaticRequests = /* @__PURE__ */ new Map());
+      const timeout = setTimeout(() => {
+        this.automaticRequests.delete(input.turnId);
+        reject(Error("TRANSCRIPTION_TIMEOUT"));
+      }, 2e4);
+      this.automaticRequests.set(input.turnId, { sessionId: input.sessionId, resolve, reject, timeout });
+      this.dispatchRuntimeEvent("nexstorven-transcription-request", input);
+    });
+  }
+  receiveAutomaticTranscription(value) {
+    let r4;
+    try {
+      r4 = JSON.parse(value);
+    } catch (_4) {
       return;
     }
-    this.learnerRecognitionError = null;
+    const pending = this.automaticRequests?.get(r4?.turnId);
+    if (!pending || r4.sessionId !== pending.sessionId) return;
+    clearTimeout(pending.timeout);
+    this.automaticRequests.delete(r4.turnId);
+    if (r4.ok === true) pending.resolve(r4);
+    else pending.reject(Error(String(r4.error || "TRANSCRIPTION_UNAVAILABLE")));
+  }
+  async startAutomaticLanguageCapture() {
+    if (this.automaticAudioStarting || this.automaticAudioContext) return;
+    const stream = this.cameraStream, epoch = this.localMediaEpoch, key = this.lessonSpeechLanguageKey();
+    if (!this.automaticLanguageAvailable() || !stream?.getAudioTracks?.().some((t3) => t3.readyState === "live")) {
+      this.handleLearnerRecognitionFailure("audio-capture");
+      return;
+    }
+    this.automaticAudioStarting = true;
+    this.speechRecognitionActive = true;
+    const current = () => epoch === this.localMediaEpoch && key === this.lessonSpeechLanguageKey() && !this.sessionEnding && this.currentLessonSpeechLanguage() === "auto";
     try {
-      const captureEpoch = this.localMediaEpoch;
-      const recognition = new Recognition();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = this.currentLessonSpeechLanguage();
-      recognition.onresult = (event) => {
-        if (!this.speechRecognitionActive || !this.sessionActive || this.sessionEnding) return;
-        for (let i3 = event.resultIndex; i3 < event.results.length; i3++) {
-          const result = event.results[i3];
-          const text = String(result?.[0]?.transcript || "").trim();
-          if (!text) continue;
-          if (!result?.isFinal) {
-            if (this.rolePlayActive && this.m5b2nLearnerTurnArmed && !this.m5b2jPedroSpeaking) {
-              this.m5b2oLatestInterimText = text;
-              this.m5b2oLatestInterimAtMs = Date.now();
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContextClass();
+      this.automaticAudioContext = ctx;
+      const source = ctx.createMediaStreamSource(stream), processor = ctx.createScriptProcessor(2048, 1, 1), silent = ctx.createGain();
+      silent.gain.value = 0;
+      this.automaticAudioNodes = { source, processor, silent };
+      this.automaticCapture = new UtteranceCaptureBuffer({ sampleRate: ctx.sampleRate });
+      this.automaticPreRoll = [];
+      const scope = { sessionId: this.runtimeSessionId, moduleId: this.runtimeContext.module.id, consentGranted: true };
+      this.automaticClient = new AutomaticLanguageClient({
+        transcribe: (input) => this.requestAutomaticTranscription(input),
+        isCurrent: (s3) => current() && this.sessionActive && s3.sessionId === this.runtimeSessionId,
+        onStatus: () => this.refreshLessonConversationStatus(),
+        onFinal: (r4) => {
+          if (!current() || !this.sessionActive || this.avatarSpeaking) return;
+          const proof = this.automaticTurnEvidence;
+          if (!proof || proof.turnId !== r4.turnId || Date.now() - proof.endedAt > 2e4) return;
+          const saved = {};
+          const fields = ["m5b3d1FaceVisibleAtSpeechStart", "m5b3dSpeechWindowMouthActivity", "m5b3d1SpeechBeganDuringInstructor", "learnerAudioWindowStartedAtMs", "learnerAudioWindowStoppedAtMs"];
+          for (const field of fields) {
+            saved[field] = this[field];
+            this[field] = proof[field];
+          }
+          this.automaticValidatedTurn = proof;
+          try {
+            this.handleLearnerRecognitionResult({ resultIndex: 0, results: [Object.assign([{ transcript: r4.text }], { isFinal: true })] });
+          } finally {
+            for (const field of fields) this[field] = saved[field];
+            this.automaticValidatedTurn = null;
+          }
+        }
+      });
+      this.automaticClient.start(scope);
+      processor.onaudioprocess = (event) => {
+        if (!current()) return;
+        const gate = this.sessionActive && !this.avatarSpeaking && !this.rolePlayActive && !this.m5b3d1ManualPaused && this.metrics?.faceDetected && !this.automaticClient.pending;
+        if (!gate) {
+          this.automaticCapture.reset();
+          for (const f3 of this.automaticPreRoll) f3.fill(0);
+          this.automaticPreRoll = [];
+          return;
+        }
+        const frame = Float32Array.from(event.inputBuffer.getChannelData(0));
+        try {
+          if (!this.automaticCapture.active && this.learnerMicSpeaking) {
+            this.learnerRecognitionError = null;
+            this.automaticCapture.begin();
+            for (const prior of this.automaticPreRoll) {
+              this.automaticCapture.push(prior, { learnerFloor: true });
+              prior.fill(0);
             }
+            this.automaticPreRoll = [];
+          }
+          if (this.automaticCapture.active) this.automaticCapture.push(frame, { learnerFloor: true });
+          else {
+            this.automaticPreRoll.push(Float32Array.from(frame));
+            while (this.automaticPreRoll.length > Math.ceil(ctx.sampleRate * 0.2 / 2048)) this.automaticPreRoll.shift().fill(0);
+          }
+        } catch (_4) {
+          this.automaticCapture.reset();
+          this.setStatus("Please use one short sentence at a time for this voice test.");
+        } finally {
+          frame.fill(0);
+        }
+      };
+      source.connect(processor);
+      processor.connect(silent);
+      silent.connect(ctx.destination);
+      await ctx.resume();
+      if (!current()) {
+        this.stopAutomaticLanguageCapture();
+        return;
+      }
+      this.learnerRecognitionReady = true;
+      this.learnerRecognitionError = null;
+      this.refreshLessonConversationStatus();
+    } catch (_4) {
+      this.stopAutomaticLanguageCapture();
+      this.automaticVoiceError = "Automatic voice could not start. You can select a manual voice option or type your reply.";
+      this.handleLearnerRecognitionFailure("automatic");
+    } finally {
+      this.automaticAudioStarting = false;
+    }
+  }
+  scheduleAutomaticUtterance() {
+    clearTimeout(this.automaticUtteranceTimer);
+    if (this.currentLessonSpeechLanguage() !== "auto" || !this.automaticCapture?.active) return;
+    const epoch = this.localMediaEpoch, key = this.lessonSpeechLanguageKey();
+    this.automaticUtteranceTimer = setTimeout(() => {
+      if (epoch !== this.localMediaEpoch || key !== this.lessonSpeechLanguageKey() || !this.sessionActive || this.sessionEnding || this.learnerMicSpeaking || this.avatarSpeaking || this.currentLessonSpeechLanguage() !== "auto") return;
+      const pcm = this.automaticCapture.finish();
+      if (!pcm || pcm.length < 3200) {
+        pcm?.fill(0);
+        return;
+      }
+      const turnId = "voice_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 10);
+      this.automaticTurnEvidence = { turnId, sessionId: this.runtimeSessionId, epoch, endedAt: Date.now(), m5b3d1FaceVisibleAtSpeechStart: this.m5b3d1FaceVisibleAtSpeechStart, m5b3dSpeechWindowMouthActivity: this.m5b3dSpeechWindowMouthActivity, m5b3d1SpeechBeganDuringInstructor: this.m5b3d1SpeechBeganDuringInstructor, learnerAudioWindowStartedAtMs: this.learnerAudioWindowStartedAtMs, learnerAudioWindowStoppedAtMs: this.learnerAudioWindowStoppedAtMs };
+      this.automaticClient.submit({ turnId, pcm }).catch((error) => {
+        if (epoch === this.localMediaEpoch && this.sessionActive && this.currentLessonSpeechLanguage() === "auto") {
+          const code = String(error?.message || "");
+          this.automaticVoiceError = code.includes("RATE_LIMITED") ? "The automatic voice trial is complete. You can use a manual voice option or type." : "Automatic voice could not recognize that reply. You can try again, choose a manual voice option, or type.";
+          this.learnerRecognitionError = "automatic";
+          this.setStatus(this.automaticVoiceError);
+          this.refreshLessonConversationStatus();
+          if (code.includes("RATE_LIMITED")) {
+            this.stopAutomaticLanguageCapture();
+            this.speechRecognitionActive = false;
+            this.learnerRecognitionReady = false;
+          }
+        }
+      }).finally(() => pcm.fill(0));
+    }, 500);
+  }
+  stopAutomaticLanguageCapture() {
+    clearTimeout(this.automaticUtteranceTimer);
+    this.automaticUtteranceTimer = null;
+    this.automaticClient?.stop();
+    this.automaticClient = null;
+    this.automaticCapture?.reset();
+    this.automaticCapture = null;
+    this.automaticTurnEvidence = null;
+    this.automaticValidatedTurn = null;
+    for (const f3 of this.automaticPreRoll || []) f3.fill(0);
+    this.automaticPreRoll = [];
+    if (this.automaticAudioNodes) {
+      this.automaticAudioNodes.processor.onaudioprocess = null;
+      for (const n3 of Object.values(this.automaticAudioNodes)) try {
+        n3.disconnect();
+      } catch (_4) {
+      }
+      this.automaticAudioNodes = null;
+    }
+    const ctx = this.automaticAudioContext;
+    this.automaticAudioContext = null;
+    if (ctx) Promise.resolve(ctx.close()).catch(() => {
+    });
+    for (const p3 of this.automaticRequests?.values() || []) {
+      clearTimeout(p3.timeout);
+      p3.reject(Error("AUTOMATIC_SESSION_ENDED"));
+    }
+    this.automaticRequests?.clear();
+    this.automaticAudioStarting = false;
+  }
+  handleLearnerRecognitionResult(event) {
+    if (!this.speechRecognitionActive || !this.sessionActive || this.sessionEnding) return;
+    for (let i3 = event.resultIndex; i3 < event.results.length; i3++) {
+      const result = event.results[i3];
+      const text = String(result?.[0]?.transcript || "").trim();
+      if (!text) continue;
+      if (!result?.isFinal) {
+        if (this.rolePlayActive && this.m5b2nLearnerTurnArmed && !this.m5b2jPedroSpeaking) {
+          this.m5b2oLatestInterimText = text;
+          this.m5b2oLatestInterimAtMs = Date.now();
+        }
+        continue;
+      }
+      this.lessonLastFinalRecognitionAtMs = Date.now();
+      if (this.isExperienceNexstorvenDemo() && !this.rolePlayActive && this.m5b4bLastRolePlayUtterance && Date.now() - Number(this.m5b4bRolePlayExitAt || 0) < 15e3 && text.toLowerCase() === String(this.m5b4bLastRolePlayUtterance).toLowerCase()) {
+        console.log("NEXSTORVEN M5B-4B STALE PEDRO TRANSCRIPT IGNORED:", text);
+        continue;
+      }
+      if (this.isExperienceNexstorvenDemo() && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && !this.m5b3yFlushing) {
+        this.m5b3ySpeechParts = this.m5b3ySpeechParts || [];
+        const previous = this.m5b3ySpeechParts[this.m5b3ySpeechParts.length - 1];
+        if (previous !== text) this.m5b3ySpeechParts.push(text);
+        clearTimeout(this.m5b3ySpeechTimer);
+        this.m5b3ySpeechTimer = setTimeout(() => {
+          if (!this.sessionActive || this.rolePlayActive) return;
+          const answer = (this.m5b3ySpeechParts || []).join(" ").trim();
+          this.m5b3ySpeechParts = [];
+          if (!answer) return;
+          this.m5b3yFlushing = true;
+          try {
+            this.m5b3yRouteCompleteAnswer(answer);
+          } finally {
+            this.m5b3yFlushing = false;
+          }
+        }, 2100);
+        console.log("NEXIVRA M5B-3Y DISCOVERY FRAGMENT BUFFERED:", text);
+        continue;
+      }
+      const now = Date.now();
+      if (text === this.lastLearnerTranscript && now - this.lastLearnerTranscriptAt < 5e3) continue;
+      if (this.m5b3cInputRouterActive && this.m5b3d1SpeechBeganDuringInstructor) {
+        console.log("NEXIVRA M5B-3D1 TRANSCRIPT DISCARDED \u2014 AUDIO BEGAN WHILE ELENORA OWNED FLOOR:", text);
+        this.m5b3dSpeechWindowMouthActivity = false;
+        this.m5b3d1SpeechBeganDuringInstructor = false;
+        continue;
+      }
+      const faceVisible = Boolean(this.metrics?.faceDetected);
+      const mouthActivity = Boolean(this.m5b3dSpeechWindowMouthActivity);
+      const currentAnchor = this.m5b3d1CurrentFaceAnchor;
+      let learnerContinuity = true;
+      if (this.m5b3d1LearnerFaceAnchor && currentAnchor) {
+        const dx = Math.abs(Number(currentAnchor.centerX) - Number(this.m5b3d1LearnerFaceAnchor.centerX));
+        const dy = Math.abs(Number(currentAnchor.centerY) - Number(this.m5b3d1LearnerFaceAnchor.centerY));
+        const scaleBase = Math.max(1e-4, Number(this.m5b3d1LearnerFaceAnchor.scale || 1e-4));
+        const scaleDelta = Math.abs(Number(currentAnchor.scale) - scaleBase) / scaleBase;
+        learnerContinuity = dx <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && dy <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && scaleDelta <= Number(this.m5b3d1FaceScaleTolerance || 0.55);
+      }
+      const learnerSpeakerSupported = faceVisible && Boolean(this.m5b3d1FaceVisibleAtSpeechStart) && mouthActivity && Boolean(currentAnchor) && learnerContinuity;
+      const postPedroLearnerGraceActive = this.rolePlayActive && this.m5b2FloorOwner === "PEDRO" && !this.m5b2jPedroSpeaking && Date.now() <= Number(this.m5b3lPostPedroLearnerGraceUntilMs || 0) && Boolean(faceVisible || this.m5b3d1FaceVisibleAtSpeechStart || learnerContinuity);
+      const shortLanguageReplyAccepted = this.canAcceptShortLanguageReply(text, {
+        faceVisible,
+        faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
+        currentAnchor,
+        learnerContinuity
+      });
+      const learnerSpeakerAccepted = learnerSpeakerSupported || postPedroLearnerGraceActive || shortLanguageReplyAccepted;
+      if (shortLanguageReplyAccepted && !learnerSpeakerSupported) {
+        console.log("NEXSTORVEN SHORT LANGUAGE REPLY: accepted with fresh audio and continuous visible learner");
+        this.setStatus("Reply heard. Waiting for Elenora\u2026");
+      }
+      if (this.m5b3cInputRouterActive && !learnerSpeakerSupported && postPedroLearnerGraceActive) {
+        console.log("NEXIVRA M5B-3L-F POST-PEDRO LEARNER SPEECH ACCEPTED BY FLOOR GRACE:", {
+          text,
+          faceVisible,
+          faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
+          mouthActivity,
+          learnerContinuity
+        });
+      }
+      if (this.m5b3cInputRouterActive && !learnerSpeakerAccepted) {
+        console.log("NEXIVRA M5B-3D1 BACKGROUND/UNVERIFIED SPEECH REJECTED:", {
+          text,
+          faceVisible,
+          faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
+          mouthActivity,
+          learnerContinuity
+        });
+        this.m5b3dSpeechWindowMouthActivity = false;
+        this.m5b3d1SpeechBeganDuringInstructor = false;
+        continue;
+      }
+      if (this.m5b3cInputRouterActive && !this.m5b3d1LearnerFaceAnchor && currentAnchor) {
+        this.m5b3d1LearnerFaceAnchor = { ...currentAnchor };
+        console.log("NEXIVRA M5B-3D1 SESSION LEARNER POSITION LOCKED:", this.m5b3d1LearnerFaceAnchor);
+      }
+      this.lessonReplyPendingAt = Date.now();
+      this.lastLearnerTranscript = text;
+      this.lastLearnerTranscriptAt = now;
+      if (this.m5b3cInputRouterActive) console.log("NEXIVRA M5B-3D1 LEARNER SPEAKER CONFIRMED:", text);
+      this.m5b3dSpeechWindowMouthActivity = false;
+      this.m5b3d1SpeechBeganDuringInstructor = false;
+      console.log("NEXIVRA LEARNER TRANSCRIPT CAPTURED:", text);
+      const globalControlText = String(text || "").trim().toLowerCase();
+      if (!this.rolePlayActive) {
+        if (/^(pause|pause session|hold on|just pause)$/.test(globalControlText)) {
+          this.m5b3d1ManualPaused = true;
+          try {
+            if (typeof this.session?.interrupt === "function") this.session.interrupt();
+          } catch (error) {
+          }
+          this.setTrainingState("PAUSED_MANUAL");
+          this.setStatus("Session paused.");
+          console.log("NEXIVRA M5B-3D1 ROUTE: PAUSE \u2192 RUNTIME");
+          continue;
+        }
+        if (/^(resume|resume session|continue|continue session)$/.test(globalControlText)) {
+          if (this.m5b3d1ManualPaused) {
+            this.m5b3d1ManualPaused = false;
+            this.setTrainingState("ACTIVE");
+            this.setStatus("Session active.");
+            console.log("NEXIVRA M5B-3D1 ROUTE: RESUME \u2192 RUNTIME");
             continue;
           }
-          this.lessonLastFinalRecognitionAtMs = Date.now();
-          if (this.isExperienceNexstorvenDemo() && !this.rolePlayActive && this.m5b4bLastRolePlayUtterance && Date.now() - Number(this.m5b4bRolePlayExitAt || 0) < 15e3 && text.toLowerCase() === String(this.m5b4bLastRolePlayUtterance).toLowerCase()) {
-            console.log("NEXSTORVEN M5B-4B STALE PEDRO TRANSCRIPT IGNORED:", text);
-            continue;
-          }
-          if (this.isExperienceNexstorvenDemo() && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && !this.m5b3yFlushing) {
-            this.m5b3ySpeechParts = this.m5b3ySpeechParts || [];
-            const previous = this.m5b3ySpeechParts[this.m5b3ySpeechParts.length - 1];
-            if (previous !== text) this.m5b3ySpeechParts.push(text);
-            clearTimeout(this.m5b3ySpeechTimer);
-            this.m5b3ySpeechTimer = setTimeout(() => {
-              if (!this.sessionActive || this.rolePlayActive) return;
-              const answer = (this.m5b3ySpeechParts || []).join(" ").trim();
-              this.m5b3ySpeechParts = [];
-              if (!answer) return;
-              this.m5b3yFlushing = true;
-              try {
-                this.m5b3yRouteCompleteAnswer(answer);
-              } finally {
-                this.m5b3yFlushing = false;
+        }
+        if (/^(end session|finish session|stop session|end the session)$/.test(globalControlText)) {
+          console.log("NEXIVRA M5B-3D1 ROUTE: END SESSION \u2192 RUNTIME");
+          this.endSession();
+          return;
+        }
+        if (this.m5b3d1ManualPaused) {
+          console.log("NEXIVRA M5B-3D1 INPUT IGNORED \u2014 SESSION MANUALLY PAUSED:", text);
+          continue;
+        }
+      }
+      this.captureGuestIdentityFromConversation(text);
+      const rolePlayControlText = String(text || "").trim().toLowerCase();
+      const isRolePlayControl = /^(pause|just pause|pause role[- ]?play|pause the role[- ]?play|resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText) || /\b(restart|repeat|start over|do over|redo|end|finish|complete|cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText);
+      if (this.rolePlayActive && !isRolePlayControl) {
+        if (this.m5b2jPedroSpeaking) {
+          console.log("NEXIVRA M5B-2N TRANSCRIPT DISCARDED \u2014 PEDRO OWNS FLOOR:", text);
+          continue;
+        }
+        if (!this.m5b2nLearnerTurnArmed) {
+          console.log("NEXIVRA M5B-2O LATE FINAL TRANSCRIPT DISCARDED \u2014 TURN ALREADY CLOSED:", text);
+          continue;
+        }
+        this.cancelM5B2OFastTurnTimer();
+        this.m5b3lH1AwaitingFinalTranscript = false;
+        this.m5b2oLatestInterimText = "";
+        this.m5b2oLatestInterimAtMs = 0;
+        this.m5b2jPendingLearnerFragments = [text];
+        console.log("NEXIVRA M5B-3L-H1 AUTHORITATIVE FINAL TRANSCRIPT COMMITTED:", {
+          text,
+          fragmentCount: 1
+        });
+        this.scheduleM5B2JLearnerTurnFlush("authoritative_final_transcript");
+        continue;
+      }
+      if (this.rolePlayActive) {
+        if (/^(pause|just pause|pause role[- ]?play|pause the role[- ]?play)$/.test(rolePlayControlText)) {
+          this.rolePlayPaused = true;
+          console.log("NEXIVRA FORMAL ROLE PLAY PAUSED:", this.formalRolePlaySessionId);
+          return;
+        }
+        if (/^(resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText)) {
+          this.rolePlayPaused = false;
+          console.log("NEXIVRA FORMAL ROLE PLAY RESUMED:", this.formalRolePlaySessionId);
+          return;
+        }
+        if (/\b(restart|repeat|start over|do over|redo)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText)) {
+          const priorScenario = this.activeRolePlayScenario || {};
+          const priorSessionId = this.formalRolePlaySessionId;
+          if (priorSessionId) {
+            this.dispatchRuntimeEvent(
+              "nexivra-formal-role-play-complete",
+              {
+                rolePlaySessionId: priorSessionId,
+                outcomeSummary: "Role-play restarted by learner.",
+                cancelled: true,
+                saveMemory: false,
+                memoryUpdate: {}
               }
-            }, 2100);
-            console.log("NEXIVRA M5B-3Y DISCOVERY FRAGMENT BUFFERED:", text);
-            continue;
-          }
-          const now = Date.now();
-          if (text === this.lastLearnerTranscript && now - this.lastLearnerTranscriptAt < 5e3) continue;
-          if (this.m5b3cInputRouterActive && this.m5b3d1SpeechBeganDuringInstructor) {
-            console.log("NEXIVRA M5B-3D1 TRANSCRIPT DISCARDED \u2014 AUDIO BEGAN WHILE ELENORA OWNED FLOOR:", text);
-            this.m5b3dSpeechWindowMouthActivity = false;
-            this.m5b3d1SpeechBeganDuringInstructor = false;
-            continue;
-          }
-          const faceVisible = Boolean(this.metrics?.faceDetected);
-          const mouthActivity = Boolean(this.m5b3dSpeechWindowMouthActivity);
-          const currentAnchor = this.m5b3d1CurrentFaceAnchor;
-          let learnerContinuity = true;
-          if (this.m5b3d1LearnerFaceAnchor && currentAnchor) {
-            const dx = Math.abs(Number(currentAnchor.centerX) - Number(this.m5b3d1LearnerFaceAnchor.centerX));
-            const dy = Math.abs(Number(currentAnchor.centerY) - Number(this.m5b3d1LearnerFaceAnchor.centerY));
-            const scaleBase = Math.max(1e-4, Number(this.m5b3d1LearnerFaceAnchor.scale || 1e-4));
-            const scaleDelta = Math.abs(Number(currentAnchor.scale) - scaleBase) / scaleBase;
-            learnerContinuity = dx <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && dy <= Number(this.m5b3d1FaceCenterTolerance || 0.24) && scaleDelta <= Number(this.m5b3d1FaceScaleTolerance || 0.55);
-          }
-          const learnerSpeakerSupported = faceVisible && Boolean(this.m5b3d1FaceVisibleAtSpeechStart) && mouthActivity && Boolean(currentAnchor) && learnerContinuity;
-          const postPedroLearnerGraceActive = this.rolePlayActive && this.m5b2FloorOwner === "PEDRO" && !this.m5b2jPedroSpeaking && Date.now() <= Number(this.m5b3lPostPedroLearnerGraceUntilMs || 0) && Boolean(faceVisible || this.m5b3d1FaceVisibleAtSpeechStart || learnerContinuity);
-          const shortLanguageReplyAccepted = this.canAcceptShortLanguageReply(text, {
-            faceVisible,
-            faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
-            currentAnchor,
-            learnerContinuity
-          });
-          const learnerSpeakerAccepted = learnerSpeakerSupported || postPedroLearnerGraceActive || shortLanguageReplyAccepted;
-          if (shortLanguageReplyAccepted && !learnerSpeakerSupported) {
-            console.log("NEXSTORVEN SHORT LANGUAGE REPLY: accepted with fresh audio and continuous visible learner");
-            this.setStatus("Reply heard. Waiting for Elenora\u2026");
-          }
-          if (this.m5b3cInputRouterActive && !learnerSpeakerSupported && postPedroLearnerGraceActive) {
-            console.log("NEXIVRA M5B-3L-F POST-PEDRO LEARNER SPEECH ACCEPTED BY FLOOR GRACE:", {
-              text,
-              faceVisible,
-              faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
-              mouthActivity,
-              learnerContinuity
-            });
-          }
-          if (this.m5b3cInputRouterActive && !learnerSpeakerAccepted) {
-            console.log("NEXIVRA M5B-3D1 BACKGROUND/UNVERIFIED SPEECH REJECTED:", {
-              text,
-              faceVisible,
-              faceVisibleAtSpeechStart: Boolean(this.m5b3d1FaceVisibleAtSpeechStart),
-              mouthActivity,
-              learnerContinuity
-            });
-            this.m5b3dSpeechWindowMouthActivity = false;
-            this.m5b3d1SpeechBeganDuringInstructor = false;
-            continue;
-          }
-          if (this.m5b3cInputRouterActive && !this.m5b3d1LearnerFaceAnchor && currentAnchor) {
-            this.m5b3d1LearnerFaceAnchor = { ...currentAnchor };
-            console.log("NEXIVRA M5B-3D1 SESSION LEARNER POSITION LOCKED:", this.m5b3d1LearnerFaceAnchor);
-          }
-          this.lessonReplyPendingAt = Date.now();
-          this.lastLearnerTranscript = text;
-          this.lastLearnerTranscriptAt = now;
-          if (this.m5b3cInputRouterActive) console.log("NEXIVRA M5B-3D1 LEARNER SPEAKER CONFIRMED:", text);
-          this.m5b3dSpeechWindowMouthActivity = false;
-          this.m5b3d1SpeechBeganDuringInstructor = false;
-          console.log("NEXIVRA LEARNER TRANSCRIPT CAPTURED:", text);
-          const globalControlText = String(text || "").trim().toLowerCase();
-          if (!this.rolePlayActive) {
-            if (/^(pause|pause session|hold on|just pause)$/.test(globalControlText)) {
-              this.m5b3d1ManualPaused = true;
-              try {
-                if (typeof this.session?.interrupt === "function") this.session.interrupt();
-              } catch (error) {
-              }
-              this.setTrainingState("PAUSED_MANUAL");
-              this.setStatus("Session paused.");
-              console.log("NEXIVRA M5B-3D1 ROUTE: PAUSE \u2192 RUNTIME");
-              continue;
-            }
-            if (/^(resume|resume session|continue|continue session)$/.test(globalControlText)) {
-              if (this.m5b3d1ManualPaused) {
-                this.m5b3d1ManualPaused = false;
-                this.setTrainingState("ACTIVE");
-                this.setStatus("Session active.");
-                console.log("NEXIVRA M5B-3D1 ROUTE: RESUME \u2192 RUNTIME");
-                continue;
-              }
-            }
-            if (/^(end session|finish session|stop session|end the session)$/.test(globalControlText)) {
-              console.log("NEXIVRA M5B-3D1 ROUTE: END SESSION \u2192 RUNTIME");
-              this.endSession();
-              return;
-            }
-            if (this.m5b3d1ManualPaused) {
-              console.log("NEXIVRA M5B-3D1 INPUT IGNORED \u2014 SESSION MANUALLY PAUSED:", text);
-              continue;
-            }
-          }
-          this.captureGuestIdentityFromConversation(text);
-          const rolePlayControlText = String(text || "").trim().toLowerCase();
-          const isRolePlayControl = /^(pause|just pause|pause role[- ]?play|pause the role[- ]?play|resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText) || /\b(restart|repeat|start over|do over|redo|end|finish|complete|cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText);
-          if (this.rolePlayActive && !isRolePlayControl) {
-            if (this.m5b2jPedroSpeaking) {
-              console.log("NEXIVRA M5B-2N TRANSCRIPT DISCARDED \u2014 PEDRO OWNS FLOOR:", text);
-              continue;
-            }
-            if (!this.m5b2nLearnerTurnArmed) {
-              console.log("NEXIVRA M5B-2O LATE FINAL TRANSCRIPT DISCARDED \u2014 TURN ALREADY CLOSED:", text);
-              continue;
-            }
-            this.cancelM5B2OFastTurnTimer();
-            this.m5b3lH1AwaitingFinalTranscript = false;
-            this.m5b2oLatestInterimText = "";
-            this.m5b2oLatestInterimAtMs = 0;
-            this.m5b2jPendingLearnerFragments = [text];
-            console.log("NEXIVRA M5B-3L-H1 AUTHORITATIVE FINAL TRANSCRIPT COMMITTED:", {
-              text,
-              fragmentCount: 1
-            });
-            this.scheduleM5B2JLearnerTurnFlush("authoritative_final_transcript");
-            continue;
-          }
-          if (this.rolePlayActive) {
-            if (/^(pause|just pause|pause role[- ]?play|pause the role[- ]?play)$/.test(rolePlayControlText)) {
-              this.rolePlayPaused = true;
-              console.log("NEXIVRA FORMAL ROLE PLAY PAUSED:", this.formalRolePlaySessionId);
-              return;
-            }
-            if (/^(resume|continue|continue role[- ]?play|resume role[- ]?play)$/.test(rolePlayControlText)) {
-              this.rolePlayPaused = false;
-              console.log("NEXIVRA FORMAL ROLE PLAY RESUMED:", this.formalRolePlaySessionId);
-              return;
-            }
-            if (/\b(restart|repeat|start over|do over|redo)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText)) {
-              const priorScenario = this.activeRolePlayScenario || {};
-              const priorSessionId = this.formalRolePlaySessionId;
-              if (priorSessionId) {
-                this.dispatchRuntimeEvent(
-                  "nexivra-formal-role-play-complete",
-                  {
-                    rolePlaySessionId: priorSessionId,
-                    outcomeSummary: "Role-play restarted by learner.",
-                    cancelled: true,
-                    saveMemory: false,
-                    memoryUpdate: {}
-                  }
-                );
-              }
-              this.rolePlayActive = false;
-              this.rolePlayPaused = false;
-              this.restoreElenoraInstructorMode("role_play_restart");
-              console.log(
-                "NEXIVRA FORMAL ROLE PLAY RESTART REQUESTED:",
-                priorSessionId
-              );
-              if (priorScenario?.guestId) {
-                this.requestFormalRolePlayWithGuest(
-                  priorScenario.guestId,
-                  priorScenario.guestName || priorScenario.guestId
-                );
-              } else {
-                this.requestAdaptiveRolePlay();
-              }
-              return;
-            }
-            if (/\b(end|finish|complete)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText)) {
-              this.completeAdaptiveRolePlay({
-                outcomeSummary: "Role-play ended by learner."
-              });
-              return;
-            }
-            if (/\b(cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText)) {
-              const sessionId = this.formalRolePlaySessionId;
-              if (sessionId) {
-                this.dispatchRuntimeEvent(
-                  "nexivra-formal-role-play-complete",
-                  {
-                    rolePlaySessionId: sessionId,
-                    outcomeSummary: "Role-play cancelled by learner.",
-                    cancelled: true,
-                    saveMemory: false,
-                    memoryUpdate: {}
-                  }
-                );
-              }
-              this.rolePlayActive = false;
-              this.rolePlayPaused = false;
-              this.restoreElenoraInstructorMode("role_play_cancelled");
-              this.formalRolePlaySessionId = "";
-              this.formalRolePlayGuestId = "";
-              console.log("NEXIVRA FORMAL ROLE PLAY CANCELLED:", sessionId);
-              return;
-            }
-          }
-          const lowerText = String(text || "").toLowerCase();
-          const gatewayNow = Date.now();
-          const explicitRolePlayRequest = /(?:^|\b)(?:let'?s|can we|can i|could we|i want to|i would like to|please|start|begin|do|try|practice|continue|new)\b[\s\S]{0,55}\b(?:role[- ]?play|scenario|practice)\b/i.test(lowerText) || /^(?:role[- ]?play|practice|start role[- ]?play|new role[- ]?play)$/i.test(lowerText);
-          if (this.isConfiguredGuestRolePlayEnabled() && !this.rolePlayActive && !this.rolePlayGatewayLocked && gatewayNow >= Number(this.rolePlayGatewayRearmAt || 0) && explicitRolePlayRequest && !this.isExperienceNexstorvenDemo()) {
-            if (/\b(?:with\s+)?sally\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("sally", "Sally");
-            else if (/\b(?:with\s+)?ron\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("ron", "Ron");
-            else if (/\b(?:new|first[- ]?time|unknown|someone new)\s+(?:guest|customer|client|person)\b/.test(lowerText) || /\b(?:guest|customer|client|person)\s+(?:i|we)\s+(?:have not|haven't|havent|never)\s+(?:met|seen|helped|served)\b/.test(lowerText)) {
-              console.log("NEXIVRA M5B-2E EXPLICIT NEW GUEST REQUEST:", text);
-              this.requestAdaptiveRolePlay({ requestedGuestType: "new_guest" });
-            } else this.requestAdaptiveRolePlay();
-            this.rolePlayGatewayLocked = true;
-            try {
-              if (typeof this.session?.interrupt === "function") this.session.interrupt();
-            } catch (error) {
-              console.warn("NEXIVRA M5B-3B CONTROL HANDOFF INTERRUPT WARNING:", error);
-            }
-            console.log("NEXIVRA M5B-3C ROUTE: ROLE PLAY COMMAND \u2192 RUNTIME \u2014 ELENORA NEVER RECEIVED:", text);
-            return;
-          }
-          if (this.rolePlayActive) {
-            this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
-          }
-          if (this.rolePlayActive) {
-          }
-          if (this.m5b2fRolePlayPreparing) {
-            console.log("NEXIVRA M5B-2I LEARNER INPUT IGNORED DURING HANDOFF:", text);
-            return;
-          }
-          if (this.rolePlayActive && this.formalRolePlaySessionId) {
-            this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", {
-              rolePlaySessionId: this.formalRolePlaySessionId,
-              speaker: "learner",
-              text,
-              scenario: this.activeRolePlayScenario || {},
-              clientCapturedAtMs: Date.now()
-            });
-          }
-          this.dispatchRuntimeEvent("nexivra-learner-transcript", { sessionId: this.runtimeSessionId || "", text, observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null });
-          if (this.m5b3cInputRouterActive && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && this.m5b2FloorOwner !== "PEDRO") {
-            if (this.isExperienceNexstorvenDemo() && this.m5b4bRolePlayExitAt) {
-              console.log("NEXSTORVEN M5B-4B POST-PEDRO DISCOVERY ROUTE BLOCKED:", text);
-              return;
-            }
-            if (this.isExperienceNexstorvenDemo()) {
-              this.m5b3yDemoAnswers = (this.m5b3yDemoAnswers || 0) + 1;
-              const lower = String(text || "").toLowerCase();
-              if (/(?:training|role.play|onboard|employee|associate|staff|challenge|difficulty|problem|nervous|anxious|consisten)/i.test(lower)) this.m5b3yNeedsIdentified = true;
-              console.log("NEXIVRA M5B-3Y COMPLETE DISCOVERY ANSWER:", this.m5b3yDemoAnswers);
-              if (this.m5b3yNeedsIdentified && !this.m5b3yDemoHandoffArmed && (this.m5b3yDemoAnswers >= 3 || this.m5b3yDemoAnswers >= 2 && /\b(?:yes|show|see that|ready|go ahead|let.s do|sounds good)\b/i.test(String(text || "")))) {
-                this.m5b3yDemoHandoffArmed = true;
-                this.sendLiveAvatarMessageSafely(`DEMO STAGE: PERSONALIZED EXPLANATION \u2014 YOU LEAD. Discovery is complete. Reflect the actual company facts and the specific training challenge provided. Explain how NEXSTORVEN could help through private AI practice, adaptive teaching, evaluation and coaching as relevant. Do not ask another question or ask permission. Finish with: Rather than just explain it, let me show you. Do not pretend to be Pedro. A separate guest will follow.`, "m5b3y-demo-synthesis");
-                console.log("NEXIVRA M5B-3Y SYNTHESIS REQUESTED \u2014 WAITING FOR ELENORA SPEECH END");
-                this.m5b3zSynthesisSpeechStarted = false;
-                clearTimeout(this.m5b3zSynthesisWatchdog);
-                this.m5b3zSynthesisWatchdog = setTimeout(() => {
-                  if (!this.m5b3yDemoHandoffRequested && this.m5b3yDemoHandoffArmed) {
-                    if (this.avatarSpeaking) {
-                      console.warn("NEXIVRA M5B-3Z WATCHDOG: ELENORA STILL SPEAKING; WAITING");
-                      this.m5b3zSynthesisWatchdog = setTimeout(() => {
-                        if (!this.avatarSpeaking) this.m5b3zRequestPedroAfterSynthesis("watchdog-after-speech");
-                        else {
-                          console.warn("NEXIVRA M5B-4F WATCHDOG: SPEECH STILL ACTIVE; RECHECKING");
-                          this.m5b3zSynthesisWatchdog = setTimeout(() => {
-                            if (!this.m5b3yDemoHandoffRequested && this.m5b3yDemoHandoffArmed && !this.avatarSpeaking) this.m5b3zRequestPedroAfterSynthesis("delayed-speech-completion");
-                          }, 8e3);
-                        }
-                      }, 12e3);
-                    } else this.m5b3zRequestPedroAfterSynthesis("missing-speech-event-watchdog");
-                  }
-                }, 35e3);
-                return;
-              }
-            }
-            const deterministicRolePlayRequested = this.requestDeterministicRolePlayFromLearner(
-              text
             );
-            if (deterministicRolePlayRequested) {
-              console.log(
-                "NEXIVRA M5B-3L-B NORMAL ELENORA ROUTE SUPPRESSED \u2014 ROLE-PLAY ORCHESTRATION OWNS TURN"
-              );
-              return;
-            }
-            const routed = this.isExperienceNexstorvenDemo() ? `EXPERIENCE NEXSTORVEN LEARNER TURN \u2014 AUTHORITATIVE
+          }
+          this.rolePlayActive = false;
+          this.rolePlayPaused = false;
+          this.restoreElenoraInstructorMode("role_play_restart");
+          console.log(
+            "NEXIVRA FORMAL ROLE PLAY RESTART REQUESTED:",
+            priorSessionId
+          );
+          if (priorScenario?.guestId) {
+            this.requestFormalRolePlayWithGuest(
+              priorScenario.guestId,
+              priorScenario.guestName || priorScenario.guestId
+            );
+          } else {
+            this.requestAdaptiveRolePlay();
+          }
+          return;
+        }
+        if (/\b(end|finish|complete)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText)) {
+          this.completeAdaptiveRolePlay({
+            outcomeSummary: "Role-play ended by learner."
+          });
+          return;
+        }
+        if (/\b(cancel|stop)\b.*\b(role[- ]?play|scenario)\b/.test(rolePlayControlText)) {
+          const sessionId = this.formalRolePlaySessionId;
+          if (sessionId) {
+            this.dispatchRuntimeEvent(
+              "nexivra-formal-role-play-complete",
+              {
+                rolePlaySessionId: sessionId,
+                outcomeSummary: "Role-play cancelled by learner.",
+                cancelled: true,
+                saveMemory: false,
+                memoryUpdate: {}
+              }
+            );
+          }
+          this.rolePlayActive = false;
+          this.rolePlayPaused = false;
+          this.restoreElenoraInstructorMode("role_play_cancelled");
+          this.formalRolePlaySessionId = "";
+          this.formalRolePlayGuestId = "";
+          console.log("NEXIVRA FORMAL ROLE PLAY CANCELLED:", sessionId);
+          return;
+        }
+      }
+      const lowerText = String(text || "").toLowerCase();
+      const gatewayNow = Date.now();
+      const explicitRolePlayRequest = /(?:^|\b)(?:let'?s|can we|can i|could we|i want to|i would like to|please|start|begin|do|try|practice|continue|new)\b[\s\S]{0,55}\b(?:role[- ]?play|scenario|practice)\b/i.test(lowerText) || /^(?:role[- ]?play|practice|start role[- ]?play|new role[- ]?play)$/i.test(lowerText);
+      if (this.isConfiguredGuestRolePlayEnabled() && !this.rolePlayActive && !this.rolePlayGatewayLocked && gatewayNow >= Number(this.rolePlayGatewayRearmAt || 0) && explicitRolePlayRequest && !this.isExperienceNexstorvenDemo()) {
+        if (/\b(?:with\s+)?sally\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("sally", "Sally");
+        else if (/\b(?:with\s+)?ron\b/.test(lowerText)) this.requestFormalRolePlayWithGuest("ron", "Ron");
+        else if (/\b(?:new|first[- ]?time|unknown|someone new)\s+(?:guest|customer|client|person)\b/.test(lowerText) || /\b(?:guest|customer|client|person)\s+(?:i|we)\s+(?:have not|haven't|havent|never)\s+(?:met|seen|helped|served)\b/.test(lowerText)) {
+          console.log("NEXIVRA M5B-2E EXPLICIT NEW GUEST REQUEST:", text);
+          this.requestAdaptiveRolePlay({ requestedGuestType: "new_guest" });
+        } else this.requestAdaptiveRolePlay();
+        this.rolePlayGatewayLocked = true;
+        try {
+          if (typeof this.session?.interrupt === "function") this.session.interrupt();
+        } catch (error) {
+          console.warn("NEXIVRA M5B-3B CONTROL HANDOFF INTERRUPT WARNING:", error);
+        }
+        console.log("NEXIVRA M5B-3C ROUTE: ROLE PLAY COMMAND \u2192 RUNTIME \u2014 ELENORA NEVER RECEIVED:", text);
+        return;
+      }
+      if (this.rolePlayActive) {
+        this.rolePlayConversation.push({ speaker: "learner", text, at: (/* @__PURE__ */ new Date()).toISOString() });
+      }
+      if (this.rolePlayActive) {
+      }
+      if (this.m5b2fRolePlayPreparing) {
+        console.log("NEXIVRA M5B-2I LEARNER INPUT IGNORED DURING HANDOFF:", text);
+        return;
+      }
+      if (this.rolePlayActive && this.formalRolePlaySessionId) {
+        this.dispatchRuntimeEvent("nexivra-formal-role-play-turn", {
+          rolePlaySessionId: this.formalRolePlaySessionId,
+          speaker: "learner",
+          text,
+          scenario: this.activeRolePlayScenario || {},
+          clientCapturedAtMs: Date.now()
+        });
+      }
+      this.dispatchRuntimeEvent("nexivra-learner-transcript", { sessionId: this.runtimeSessionId || "", text, observation: this.observationTimeline.length ? this.observationTimeline[this.observationTimeline.length - 1] : null });
+      if (this.m5b3cInputRouterActive && !this.rolePlayActive && !this.m5b2fRolePlayPreparing && this.m5b2FloorOwner !== "PEDRO") {
+        if (this.isExperienceNexstorvenDemo() && this.m5b4bRolePlayExitAt) {
+          console.log("NEXSTORVEN M5B-4B POST-PEDRO DISCOVERY ROUTE BLOCKED:", text);
+          return;
+        }
+        if (this.isExperienceNexstorvenDemo()) {
+          this.m5b3yDemoAnswers = (this.m5b3yDemoAnswers || 0) + 1;
+          const lower = String(text || "").toLowerCase();
+          if (/(?:training|role.play|onboard|employee|associate|staff|challenge|difficulty|problem|nervous|anxious|consisten)/i.test(lower)) this.m5b3yNeedsIdentified = true;
+          console.log("NEXIVRA M5B-3Y COMPLETE DISCOVERY ANSWER:", this.m5b3yDemoAnswers);
+          if (this.m5b3yNeedsIdentified && !this.m5b3yDemoHandoffArmed && (this.m5b3yDemoAnswers >= 3 || this.m5b3yDemoAnswers >= 2 && /\b(?:yes|show|see that|ready|go ahead|let.s do|sounds good)\b/i.test(String(text || "")))) {
+            this.m5b3yDemoHandoffArmed = true;
+            this.sendLiveAvatarMessageSafely(`DEMO STAGE: PERSONALIZED EXPLANATION \u2014 YOU LEAD. Discovery is complete. Reflect the actual company facts and the specific training challenge provided. Explain how NEXSTORVEN could help through private AI practice, adaptive teaching, evaluation and coaching as relevant. Do not ask another question or ask permission. Finish with: Rather than just explain it, let me show you. Do not pretend to be Pedro. A separate guest will follow.`, "m5b3y-demo-synthesis");
+            console.log("NEXIVRA M5B-3Y SYNTHESIS REQUESTED \u2014 WAITING FOR ELENORA SPEECH END");
+            this.m5b3zSynthesisSpeechStarted = false;
+            clearTimeout(this.m5b3zSynthesisWatchdog);
+            this.m5b3zSynthesisWatchdog = setTimeout(() => {
+              if (!this.m5b3yDemoHandoffRequested && this.m5b3yDemoHandoffArmed) {
+                if (this.avatarSpeaking) {
+                  console.warn("NEXIVRA M5B-3Z WATCHDOG: ELENORA STILL SPEAKING; WAITING");
+                  this.m5b3zSynthesisWatchdog = setTimeout(() => {
+                    if (!this.avatarSpeaking) this.m5b3zRequestPedroAfterSynthesis("watchdog-after-speech");
+                    else {
+                      console.warn("NEXIVRA M5B-4F WATCHDOG: SPEECH STILL ACTIVE; RECHECKING");
+                      this.m5b3zSynthesisWatchdog = setTimeout(() => {
+                        if (!this.m5b3yDemoHandoffRequested && this.m5b3yDemoHandoffArmed && !this.avatarSpeaking) this.m5b3zRequestPedroAfterSynthesis("delayed-speech-completion");
+                      }, 8e3);
+                    }
+                  }, 12e3);
+                } else this.m5b3zRequestPedroAfterSynthesis("missing-speech-event-watchdog");
+              }
+            }, 35e3);
+            return;
+          }
+        }
+        const deterministicRolePlayRequested = this.requestDeterministicRolePlayFromLearner(
+          text
+        );
+        if (deterministicRolePlayRequested) {
+          console.log(
+            "NEXIVRA M5B-3L-B NORMAL ELENORA ROUTE SUPPRESSED \u2014 ROLE-PLAY ORCHESTRATION OWNS TURN"
+          );
+          return;
+        }
+        const routed = this.isExperienceNexstorvenDemo() ? `EXPERIENCE NEXSTORVEN LEARNER TURN \u2014 AUTHORITATIVE
 The participant just said: "${String(text || "").replaceAll('"', "'")}"
 If this is a sentence fragment, do not respond or advance; wait for the participant to finish their thought. Do not interrupt their answer.
 
@@ -36878,11 +37210,37 @@ If you already have enough information to understand their role/company and at l
 Do not invent additional participant speech or company facts.` : `LEARNER TURN \u2014 AUTHORITATIVE
 The learner just said: "${String(text || "").replaceAll('"', "'")}"
 Respond naturally as Elenora to this learner turn. Follow the current course state and instructions. Do not invent additional learner speech. If the learner asked a question, answer it. If the learner answered your question, evaluate only that actual answer and continue appropriately.`;
-            console.log("NEXIVRA M5B-3C ROUTE: LEARNER \u2192 ELENORA:", text);
-            this.sendLiveAvatarMessageSafely(routed, "m5b3c-learner-turn");
-          }
-        }
-      };
+        console.log("NEXIVRA M5B-3C ROUTE: LEARNER \u2192 ELENORA:", text);
+        this.sendLiveAvatarMessageSafely(routed, "m5b3c-learner-turn");
+      }
+    }
+  }
+  canWarmLessonRecognition() {
+    const cfg = this.runtimeContext?.module?.config || this.runtimeContext?.module?.moduleConfig || {};
+    return !this.isExperienceNexstorvenDemo() && this.runtimeContext?.course?.courseConfig?.editorialTestOnly === true && cfg.voiceReplyMode === "short_language_rehearsal" && cfg.activeLessonPacket?.audience === "adults" && this.lessonSpeechLanguageOptions().length > 0;
+  }
+  startLearnerTranscriptCapture({ warmup = false } = {}) {
+    if (warmup && !this.canWarmLessonRecognition()) return;
+    if (warmup) this.learnerRecognitionWarming = true;
+    if (this.currentLessonSpeechLanguage() === "auto") {
+      this.startAutomaticLanguageCapture();
+      return;
+    }
+    if (this.speechRecognitionActive) return;
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) {
+      console.warn("NEXIVRA TRANSCRIPT: browser speech recognition unavailable.");
+      this.handleLearnerRecognitionFailure("unsupported");
+      return;
+    }
+    this.learnerRecognitionError = null;
+    try {
+      const captureEpoch = this.localMediaEpoch;
+      const recognition = new Recognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = this.currentLessonSpeechLanguage();
+      recognition.onresult = (event) => this.handleLearnerRecognitionResult(event);
       recognition.onerror = (event) => {
         if (this.speechRecognition !== recognition) return;
         const error = String(event?.error || "");
@@ -36921,6 +37279,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
     }
   }
   stopLearnerTranscriptCapture() {
+    this.stopAutomaticLanguageCapture();
     this.learnerRecognitionWarming = false;
     this.cancelSpanishUtteranceFinalization();
     clearTimeout(this.lessonRecognitionRestartTimer);
@@ -38133,6 +38492,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
                 console.log(
                   "NEXIVRA LEARNER AUDIO: speaking started"
                 );
+                clearTimeout(this.automaticUtteranceTimer);
                 this.cancelSpanishUtteranceFinalization();
                 this.learnerAudioWindowStartedAtMs = Date.now();
                 this.m5b3d1SpeechBeganDuringInstructor = Boolean(this.avatarSpeaking);
@@ -38203,6 +38563,7 @@ Respond naturally as Elenora to this learner turn. Follow the current course sta
               );
               this.learnerAudioWindowStoppedAtMs = Date.now();
               this.scheduleSpanishUtteranceFinalization();
+              this.scheduleAutomaticUtterance();
               if (this.rolePlayActive && this.m5b2nLearnerTurnArmed && !this.m5b2jPedroSpeaking) {
                 this.m5b2nLearnerAudioStoppedAtMs = Date.now();
                 if (String(this.m5b2oLatestInterimText || "").trim()) {
