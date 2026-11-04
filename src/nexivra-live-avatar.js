@@ -85,6 +85,7 @@ class NexivraLiveAvatar extends HTMLElement {
                                                                                                               "subject-id",
                                                                                                               "lesson-id",
                                                                                                               "runtime-session-id",
+"livekit-preview-bridge",
                                                                                                               "runtime-context",
                                                                                                               "dashboard-data",
                                                                                                               "adaptive-guidance",
@@ -1117,6 +1118,14 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
                           }
 
                                                                                                           attributeChangedCallback(name, oldValue, newValue) {
+if(name==='livekit-preview-bridge'){
+ if(newValue==='v1'){
+  const previewModuleUrl='https://grayfarmlife.github.io/nexivra-custom-element/dist/nexstorven-livekit-preview.browser.js?v=34e34dba44cb5a3cdca6d0d023f4b04c92715fd1';
+  import(previewModuleUrl).then(module=>module.installLivekitPreview(this)).catch(()=>this.setAttribute('livekit-preview-load-status','unavailable'));
+ }
+ return;
+}
+
 if(name==='automatic-transcription-result'){this.receiveAutomaticTranscription(newValue);return;}
                         if(name==="preferred-name-save-result"){this.applyM5B3R2PreferredNameSaveResult(newValue);return;}
                         if(name==="resume-checkpoint"){try{this.resumeCheckpoint=newValue?JSON.parse(newValue):null;console.log("NEXIVRA RESUME CHECKPOINT ACTIVE:",this.resumeCheckpoint||"NONE");}catch(error){this.resumeCheckpoint=null;console.error("NEXIVRA RESUME CHECKPOINT PARSE ERROR:",error);}}
