@@ -8177,13 +8177,16 @@ scheduleAutomaticUtterance() {
  clearTimeout(this.automaticUtteranceTimer);
  if(this.currentLessonSpeechLanguage()!=='auto'||!this.automaticCapture?.active)return;
  const epoch=this.localMediaEpoch,key=this.lessonSpeechLanguageKey();
+ // Count the silence already observed by VAD instead of adding another fixed pause.
+ const quietElapsed=Math.max(0,Date.now()-(Number(this.responseSpeechEndedAtMs)||Date.now()));
+ const remainingQuietMs=Math.max(0,500-quietElapsed);
  this.automaticUtteranceTimer=setTimeout(()=>{
   if(epoch!==this.localMediaEpoch||key!==this.lessonSpeechLanguageKey()||!this.sessionActive||this.sessionEnding||this.learnerMicSpeaking||this.avatarSpeaking||this.currentLessonSpeechLanguage()!=='auto')return;
   const pcm=this.automaticCapture.finish();if(!pcm||pcm.length<3200){pcm?.fill(0);return;}
   const turnId='voice_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,10);
   this.automaticTurnEvidence={turnId,sessionId:this.runtimeSessionId,epoch,endedAt:Date.now(),m5b3d1FaceVisibleAtSpeechStart:this.m5b3d1FaceVisibleAtSpeechStart,m5b3dSpeechWindowMouthActivity:this.m5b3dSpeechWindowMouthActivity,m5b3d1SpeechBeganDuringInstructor:this.m5b3d1SpeechBeganDuringInstructor,learnerAudioWindowStartedAtMs:this.learnerAudioWindowStartedAtMs,learnerAudioWindowStoppedAtMs:this.learnerAudioWindowStoppedAtMs};
   this.automaticClient.submit({turnId,pcm}).catch(error=>{if(epoch===this.localMediaEpoch&&this.sessionActive&&this.currentLessonSpeechLanguage()==='auto'){const code=String(error?.message||'');this.automaticVoiceError=code.includes('RATE_LIMITED')?'The automatic voice trial is complete. You can use a manual voice option or type.':'Automatic voice could not recognize that reply. You can try again, choose a manual voice option, or type.';this.learnerRecognitionError='automatic';this.setStatus(this.automaticVoiceError);this.refreshLessonConversationStatus();if(code.includes('RATE_LIMITED')){this.stopAutomaticLanguageCapture();this.speechRecognitionActive=false;this.learnerRecognitionReady=false;}}}).finally(()=>pcm.fill(0));
- },500);
+ },remainingQuietMs);
 }
 stopAutomaticLanguageCapture() {
  this.learnerReplyTiming=null;this.responseSpeechEndedAtMs=0;
