@@ -36817,6 +36817,8 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
     clearTimeout(this.automaticUtteranceTimer);
     if (this.currentLessonSpeechLanguage() !== "auto" || !this.automaticCapture?.active) return;
     const epoch = this.localMediaEpoch, key = this.lessonSpeechLanguageKey();
+    const quietElapsed = Math.max(0, Date.now() - (Number(this.responseSpeechEndedAtMs) || Date.now()));
+    const remainingQuietMs = Math.max(0, 500 - quietElapsed);
     this.automaticUtteranceTimer = setTimeout(() => {
       if (epoch !== this.localMediaEpoch || key !== this.lessonSpeechLanguageKey() || !this.sessionActive || this.sessionEnding || this.learnerMicSpeaking || this.avatarSpeaking || this.currentLessonSpeechLanguage() !== "auto") return;
       const pcm = this.automaticCapture.finish();
@@ -36840,7 +36842,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
           }
         }
       }).finally(() => pcm.fill(0));
-    }, 500);
+    }, remainingQuietMs);
   }
   stopAutomaticLanguageCapture() {
     this.learnerReplyTiming = null;
