@@ -7108,6 +7108,8 @@ hardReleaseLocalMedia(reason="session_end") {
                                                                                                                   AgentEventsEnum.AVATAR_SPEAK_STARTED,
                                                                                                                   () => {
                                                                                                                     this.m5b2jPedroSpeaking=true;
+this.lessonReplyPendingAt=0;
+this.refreshLessonConversationStatus();
                                                                                                                     const spokenTurnId=String(this.m5b3oSpeakingTurnId||this.m5b3nPendingTurnId||"");
                                                                                                                     if(spokenTurnId){
                                                                                                                       this.m5b3nCancelledTurnIds?.delete?.(spokenTurnId);
@@ -7131,6 +7133,7 @@ hardReleaseLocalMedia(reason="session_end") {
                                                                                                                   AgentEventsEnum.AVATAR_SPEAK_ENDED,
                                                                                                                   () => {
                                                                                                                     this.m5b2jPedroSpeaking=false;
+this.lessonReplyPendingAt=0;
                                                                                                                     this.cancelM5B2JLearnerTurnTimer();
                                                                                                                     this.m5b2jPendingLearnerFragments=[];
                                                                                                                     this.m5b2nLearnerTurnArmed=false;
@@ -7150,7 +7153,8 @@ hardReleaseLocalMedia(reason="session_end") {
                                                                                                                       });
                                                                                                                       return;
                                                                                                                     }
-                                                                                                                    console.log("NEXIVRA M5B-2N PEDRO FINISHED — FRESH LEARNER FLOOR OPEN");
+                                                                                                                    this.refreshLessonConversationStatus();
+console.log("NEXIVRA M5B-2N PEDRO FINISHED — FRESH LEARNER FLOOR OPEN");
                                                                                                                   }
                                                                                                                 );
                                                                                                               } catch(error) {
