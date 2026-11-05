@@ -31066,7 +31066,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
   }
   attributeChangedCallback(name, oldValue, newValue) {
     if (name === "livekit-lesson-bridge") {
-      if (newValue === "v1") import("https://grayfarmlife.github.io/nexivra-custom-element/dist/nexstorven-livekit-lesson-v3.browser.js?v=lesson3").then((module) => module.installLessonVoice(this)).catch(() => this.setAttribute("livekit-lesson-load-status", "unavailable"));
+      if (newValue === "v1") import("https://grayfarmlife.github.io/nexivra-custom-element/dist/nexstorven-livekit-lesson-v4.browser.js?v=lesson4").then((module) => module.installLessonVoice(this)).catch(() => this.setAttribute("livekit-lesson-load-status", "unavailable"));
       return;
     }
     if (name === "livekit-preview-bridge") {
