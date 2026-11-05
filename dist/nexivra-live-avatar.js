@@ -31066,7 +31066,7 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
   attributeChangedCallback(name, oldValue, newValue) {
     if (name === "livekit-preview-bridge") {
       if (newValue === "v1") {
-        const previewModuleUrl = "https://grayfarmlife.github.io/nexivra-custom-element/dist/nexstorven-livekit-preview.browser.js?v=34e34dba44cb5a3cdca6d0d023f4b04c92715fd1";
+        const previewModuleUrl = "https://grayfarmlife.github.io/nexivra-custom-element/dist/nexstorven-livekit-preview.browser.v2.js?v=20261104-timer2";
         import(previewModuleUrl).then((module) => module.installLivekitPreview(this)).catch(() => this.setAttribute("livekit-preview-load-status", "unavailable"));
       }
       return;
