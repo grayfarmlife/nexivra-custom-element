@@ -36002,6 +36002,8 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
           AgentEventsEnum.AVATAR_SPEAK_STARTED,
           () => {
             this.m5b2jPedroSpeaking = true;
+            this.lessonReplyPendingAt = 0;
+            this.refreshLessonConversationStatus();
             const spokenTurnId = String(this.m5b3oSpeakingTurnId || this.m5b3nPendingTurnId || "");
             if (spokenTurnId) {
               this.m5b3nCancelledTurnIds?.delete?.(spokenTurnId);
@@ -36025,6 +36027,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
           AgentEventsEnum.AVATAR_SPEAK_ENDED,
           () => {
             this.m5b2jPedroSpeaking = false;
+            this.lessonReplyPendingAt = 0;
             this.cancelM5B2JLearnerTurnTimer();
             this.m5b2jPendingLearnerFragments = [];
             this.m5b2nLearnerTurnArmed = false;
@@ -36044,6 +36047,7 @@ Briefly acknowledge the request and tell the learner you are preparing a scenari
               });
               return;
             }
+            this.refreshLessonConversationStatus();
             console.log("NEXIVRA M5B-2N PEDRO FINISHED \u2014 FRESH LEARNER FLOOR OPEN");
           }
         );
