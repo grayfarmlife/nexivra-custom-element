@@ -30208,6 +30208,7 @@ var NexivraLiveAvatar = class extends HTMLElement {
       "subject-id",
       "lesson-id",
       "runtime-session-id",
+      "livekit-lesson-bridge",
       "livekit-preview-bridge",
       "runtime-context",
       "dashboard-data",
@@ -31064,6 +31065,10 @@ html,body{margin:0;width:100%;height:100%;background:#eef3f7;font-family:Arial,s
     console.log("NEXIVRA M5B-3L-R1 NATIVE DASHBOARD NAV ACTIVE:", buttons.map((b3) => b3.dataset.dashboardView));
   }
   attributeChangedCallback(name, oldValue, newValue) {
+    if (name === "livekit-lesson-bridge") {
+      if (newValue === "v1") import("https://grayfarmlife.github.io/nexivra-custom-element/dist/nexstorven-livekit-lesson.browser.js?v=lesson1").then((module) => module.installLessonVoice(this)).catch(() => this.setAttribute("livekit-lesson-load-status", "unavailable"));
+      return;
+    }
     if (name === "livekit-preview-bridge") {
       if (newValue === "v1") {
         const previewModuleUrl = "https://grayfarmlife.github.io/nexivra-custom-element/dist/nexstorven-livekit-preview.browser.v2.js?v=20261104-timer2";
