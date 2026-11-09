@@ -3817,6 +3817,12 @@ textarea {
           </select>
         </div>
 
+        <div id="assignmentRubricField" hidden>
+          <label for="assignmentRubric">Assessment rubric</label>
+          <select id="assignmentRubric"><option value="">No management assessment</option></select>
+          <p id="assignmentRubricStatus" role="status"></p>
+        </div>
+
         <div
           style="
             padding:16px;
@@ -12905,6 +12911,43 @@ window.openModuleKnowledgeUpload =
    ASSIGNMENT CREATION
 ====================================================== */
 
+let assignmentRubricRequest=0;
+function loadAssignmentRubrics(){
+  const field=document.getElementById('assignmentRubricField');
+  const picker=document.getElementById('assignmentRubric');
+  const status=document.getElementById('assignmentRubricStatus');
+  const courseId=document.getElementById('assignmentCourse').value;
+  field.hidden=state.nsCourseSkillsEnabled!==true;
+  picker.replaceChildren(new Option('No management assessment',''));
+  picker.disabled=true;
+  status.textContent='';
+  const requestId='assignment-rubric-'+(++assignmentRubricRequest);
+  if(field.hidden||!courseId)return;
+  status.textContent='Checking approved rubrics…';
+  sendToWix('NS_COURSE_SKILLS',{action:'list-approved',requestId,courseId});
+}
+
+document.getElementById('assignmentCourse').addEventListener('change',loadAssignmentRubrics);
+window.addEventListener('message',event=>{
+  if(event.source!==window.parent||event.data?.source!=='NEXIVRA_WIX'||event.data.type!=='NS_COURSE_SKILLS_RESULT')return;
+  const {payload}=event.data;
+  if(payload?.requestId!=='assignment-rubric-'+assignmentRubricRequest||state.nsCourseSkillsEnabled!==true)return;
+  const status=document.getElementById('assignmentRubricStatus');
+  if(payload.ok!==true||!Array.isArray(payload.versions)){
+    status.textContent='Approved rubrics are unavailable. You can still assign the course without a management assessment.';
+    return;
+  }
+  const picker=document.getElementById('assignmentRubric');
+  for(const rubric of payload.versions){
+    if(typeof rubric.version!=='string'||!Array.isArray(rubric.skillLabels)||!Number.isInteger(rubric.skillCount))continue;
+    const extra=rubric.skillCount-rubric.skillLabels.length;
+    const label=rubric.skillLabels.join(', ')+(extra>0?' and '+extra+' more':'');
+    picker.add(new Option(label+' · '+rubric.version,rubric.version));
+  }
+  picker.disabled=picker.options.length===1;
+  status.textContent=picker.disabled?'No approved rubric for this course version.':'Select an approved rubric to assign assessed learning.';
+});
+
 function openAssignmentModal() {
 
   const learnerSelect =
@@ -12964,6 +13007,7 @@ function openAssignmentModal() {
       ).join('');
   }
 
+  loadAssignmentRubrics();
   openModal(
     'assignmentModal'
   );
@@ -13003,7 +13047,9 @@ function createCourseAssignment() {
     'CREATE_ASSIGNMENT',
     {
       memberId,
-      courseId
+      courseId,
+      ...(state.nsCourseSkillsEnabled===true && document.getElementById('assignmentRubric')?.value
+        ? { reportRubricVersion: document.getElementById('assignmentRubric').value } : {})
     }
   );
 
