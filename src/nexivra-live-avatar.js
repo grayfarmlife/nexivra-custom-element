@@ -2289,6 +2289,7 @@ Do not role-play the client yourself and do not continue ordinary teaching.
 If the separate Pedro avatar has not yet been activated, wait as Elenora rather than simulating the interaction.
 Briefly acknowledge the request and tell the learner you are preparing a scenario appropriate to their organization. Do not invent the scenario; NEXIVRA will provide the selected scenario and handoff instructions.`;
 
+                                                                                                            if(this.getAttribute("livekit-lesson-bridge")==="v1")this.recordLearnerReplyDispatch("spoken");
                                                                                                             this.sendLiveAvatarMessageSafely(
                                                                                                               elenoraTransition,
                                                                                                               "m5b3l-b-roleplay-intent"
@@ -7110,7 +7111,10 @@ hardReleaseLocalMedia(reason="session_end") {
                                                                                                                     this.m5b2jPedroSpeaking=true;
 this.lessonReplyPendingAt=0;
 this.refreshLessonConversationStatus();
-                                                                                                                    const spokenTurnId=String(this.m5b3oSpeakingTurnId||this.m5b3nPendingTurnId||"");
+                                                                                                                    if(this.getAttribute("livekit-lesson-bridge")==="v1"&&this.m5b3oSpeakingTurnId){
+                                                                                                                    this.recordLearnerReplySpeechStart("guest",this.m5b3oSpeakingTurnId);
+                                                                                                                  }
+                                                                                                                  const spokenTurnId=String(this.m5b3oSpeakingTurnId||this.m5b3nPendingTurnId||"");
                                                                                                                     if(spokenTurnId){
                                                                                                                       this.m5b3nCancelledTurnIds?.delete?.(spokenTurnId);
                                                                                                                       this.m5b3oSpeakGateCancelledTurnIds?.delete?.(spokenTurnId);
@@ -7861,6 +7865,7 @@ console.log("NEXIVRA M5B-2N PEDRO FINISHED — FRESH LEARNER FLOOR OPEN");
                                                                                                             const turnId=`turn-${clientCapturedAtMs}-${Math.random().toString(36).slice(2,8)}`;
                                                                                                             this.m5b3nPendingTurnId=turnId;
                                                                                                             this.m5b3nPendingTurnText=text;
+                                                                                                            if(this.getAttribute("livekit-lesson-bridge")==="v1")this.recordLearnerReplyDispatch("spoken","guest",turnId);
                                                                                                             this.dispatchRuntimeEvent("nexivra-formal-role-play-turn",{
                                                                                                               rolePlaySessionId:this.formalRolePlaySessionId,
                                                                                                               speaker:"learner",
@@ -10382,19 +10387,27 @@ if(this.isExperienceNexstorvenDemo())this.resetLiveState();
  const recent=[this.lastLearnerTranscriptAt,this.lastLearnerTextAt].some(at=>Number.isFinite(at)&&now>=at&&now-at<30000);
  return Boolean(this.avatarSpeaking||this.learnerSpeaking||this.learnerMicSpeaking||recent);
 }
-recordLearnerReplyDispatch(kind) {
+recordLearnerReplyDispatch(kind, speaker="instructor", turnId="") {
  const speechEndedAt=Number(this.responseSpeechEndedAtMs||0);
  const now=Date.now();
- this.learnerReplyTiming={kind,dispatchedAt:performance.now(),speechEndedAt:kind==='spoken'&&speechEndedAt>Number(this.responseLastRecordedEndAtMs||0)&&now>=speechEndedAt&&now-speechEndedAt<=20000?speechEndedAt:null,sessionId:this.runtimeSessionId};
+ this.learnerReplyTiming={kind,speaker,turnId,dispatchedAt:performance.now(),speechEndedAt:kind==='spoken'&&speechEndedAt>Number(this.responseLastRecordedEndAtMs||0)&&now>=speechEndedAt&&now-speechEndedAt<=20000?speechEndedAt:null,sessionId:this.runtimeSessionId};
 }
-recordLearnerReplySpeechStart() {
+recordLearnerReplySpeechStart(speaker="instructor", turnId="") {
  const timing=this.learnerReplyTiming;
- if(!timing)return;
+ if(!timing||timing.speaker!==speaker||timing.turnId!==turnId)return;
  this.learnerReplyTiming=null;
  const elapsed=performance.now()-timing.dispatchedAt;
  if(Number.isFinite(elapsed)&&elapsed>=0&&elapsed<=120000)console.log('NEXSTORVEN LEARNER REPLY TIMING:',{input:timing.kind,dispatchToFirstSpeechMs:Math.round(elapsed)});
  const totalMs=Date.now()-timing.speechEndedAt;
  if(timing.kind==='spoken'&&timing.speechEndedAt&&timing.sessionId===this.runtimeSessionId&&this.sessionActive&&!this.sessionEnding&&Number.isFinite(totalMs)&&totalMs>=0&&totalMs<=120000){
+  if(this.getAttribute?.("livekit-lesson-bridge")==="v1"){
+    const afterDispatchMs=Math.min(Math.round(totalMs),Math.max(0,Math.round(elapsed)));
+    const sample={speaker,totalMs:Math.round(totalMs),beforeDispatchMs:Math.round(totalMs)-afterDispatchMs,afterDispatchMs};
+    const recent=this.lessonSpokenTimingSession===this.runtimeSessionId?this.lessonSpokenTimingSamples||[]:[];
+    this.lessonSpokenTimingSession=this.runtimeSessionId;
+    this.lessonSpokenTimingSamples=[...recent,sample].slice(-64);
+    this.setAttribute("lesson-spoken-timing",JSON.stringify(this.lessonSpokenTimingSamples));
+  }
   this.responseLastRecordedEndAtMs=timing.speechEndedAt;
   this.responseTimingSequence=(this.responseTimingSequence||0)+1;
   if(this.responseTimingSequence<=512)this.dispatchRuntimeEvent('nexstorven-response-timing',{sessionId:this.runtimeSessionId,sample:timing.speechEndedAt,totalMs:Math.round(totalMs)});
